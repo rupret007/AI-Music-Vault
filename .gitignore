@@ -1,0 +1,21 @@
+# Audio never goes in this repo — masters stay local + Drive
+*.m4a
+*.mp3
+*.wav
+*.aif
+*.aiff
+*.flac
+*.logicx
+*.band
+
+# Big/derived
+*.zip
+*.tar.gz
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+
+# Local scratch
+tmp_*
+_fingerprints.json
