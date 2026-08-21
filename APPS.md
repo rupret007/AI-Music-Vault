@@ -19,9 +19,14 @@
 | **story-cursor-guardrails** | Guardrails for AI-assisted development (Python). | **CONCEPTUAL.** The vault has its own guardrails (rights gates, ORIGINAL→PROPOSED→WHY, 3-song cap). Same instinct, different domain — worth cross-pollinating. |
 | **Cursor-OpenClaw-Integration** | Cursor / OpenClaw integration (Python). | Tooling context. |
 
-### 📋 Story-family / other
-`StoryBoard` · `StoryLiner` · `Story-Flight-Plan` · `story-corner-shelf` · `StoryLand-Driving-School` · `Turdanoid` (Arkanoid game) · `FireLoader` (C#) · `constructiondaily` · `WPSD-Dashboard`
-*(Non-music or unconfirmed — Jeff: flag any of these that touch music and they move up.)*
+### 🏢 The band-business layer (RESOLVED 2026-08-20 — these were the sleepers)
+| Repo | What it is | Vault relevance |
+|---|---|---|
+| **StoryBoard** | **A band-business OS — "the manager."** Venue CRM + booking pitch campaigns with approval gates, 90-day planning with measurable goals, daily/weekly briefings, bounded AI conversation, event day-of views, **song libraries and setlist building**, invoicing/settlement math, Gmail/Calendar/Drive integrations. Next.js 16 / NestJS 11 / Prisma 7 / Postgres 16. | **HIGHEST — the flagship consumer.** Its song library + setlist builder should be fed by `data/app_api.json` instead of hand-entered data: 150 songs with keys, scores, momentum, rights gates, 40 setlist-ready originals. Its show/booking events are exactly what `events/` wants back. |
+| **StoryLiner** | **The promo half.** AI-assisted social content for multiple bands (demo bands: Stalemate + Rad Dad) with distinct voice profiles, hard guardrails against AI clichés, review-before-publish queue, cross-platform scheduling, livestream run-of-show. Next.js 15 / Prisma / Postgres. | **HIGH.** Its voice-profile guardrails and the vault's Style Guide are the same idea — they should share one source. Release/promo copy for finished songs (Manic, the album) draws facts from the catalog: dates, credits, the story behind each song. |
+
+### 📋 Non-music (confirmed by Jeff / inspection)
+`Story-Flight-Plan` (flight-training plan for Jeff + his son — not music) · `story-corner-shelf` · `StoryLand-Driving-School` · `Turdanoid` (Arkanoid game) · `FireLoader` (C#) · `constructiondaily` · `WPSD-Dashboard` · `story-cursor-guardrails` / `Cursor-OpenClaw-Integration` (dev tooling)
 
 ---
 
@@ -69,8 +74,8 @@ The highest-value flow is **live-set truth**. Right now momentum is inferred fro
 ```
 Dropped into `events/` and folded in at the next session. Same shape works for WebJam bounces (`{"event":"bounce", "song":"Manic", "version":"v1.5", "path":"…", "sha256":"…"}`).
 
-### Step 3 — the assistant gets the brain
-`Andrea-Assistant` / `Andrea_NanoBot` should read `data/app_api.json` plus the four docs that hold judgment: `Priority Queue`, `What's Alive`, `Song Map`, and `Jeff Story Style Guide`. That combination is what lets an assistant answer *"what should I work on tonight?"* with a real answer instead of a guess — and the Style Guide is what keeps it from writing generic AI lyrics if it ever helps with words.
+### Step 3 — the manager gets the brain
+**StoryBoard first** (it already has the song-library and setlist concepts — the feed drops straight into its domain model), then `Andrea-Assistant` / `Andrea_NanoBot` should read `data/app_api.json` plus the four docs that hold judgment: `Priority Queue`, `What's Alive`, `Song Map`, and `Jeff Story Style Guide`. That combination is what lets an assistant answer *"what should I work on tonight?"* with a real answer instead of a guess — and the Style Guide is what keeps it from writing generic AI lyrics if it ever helps with words.
 
 ---
 
@@ -87,7 +92,8 @@ Recommendation: stay at (1) until an app actually consumes `app_api.json`, then 
 ---
 
 ## Open questions for Jeff
-- Which of the Story-family repos touch music? (StoryBoard? StoryLiner?)
+- ~~Which of the Story-family repos touch music?~~ **RESOLVED:** StoryBoard = band-business OS (the manager), StoryLiner = promo assistant, Story-Flight-Plan = flight training with Jeff's son (not music).
 - Is **Andrea** the assistant named after the song "Andrea," or a separate thing? (Affects nothing technical — but the vault should record it either way.)
+- StoryBoard's song library: what's its schema, and is it empty or hand-populated today? (Determines whether app_api.json import is a seed or a merge.)
 - Does `rad-dad-show-night` already store setlists in a structured file we can read directly, rather than inventing the event format above?
 - Should the vault's dashboard and the app ecosystem eventually converge into one interface, or stay separate tools?
