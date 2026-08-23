@@ -301,6 +301,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 errors.append("storyboard.active_lane_cap must stay 3")
             if sb.get("protected_opus") != PROTECTED_LANES["opus"]:
                 errors.append("storyboard.protected_opus must stay JS-0107")
+            sl = sb.get("setlist") or {}
+            if sl.get("seed_from") != "setlist_ready":
+                errors.append("storyboard.setlist must seed from setlist_ready")
+            if sl.get("jeff_owns_order") is not True:
+                errors.append("storyboard.setlist must leave running order to Jeff")
             banned = {n.lower() for n in (sb.get("not_band_os") or [])}
             if "storydesk" not in banned or "storyops" not in banned:
                 errors.append("storyboard mapping must name StoryDesk/StoryOps as not-band-os")

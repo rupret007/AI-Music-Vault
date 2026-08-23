@@ -84,6 +84,10 @@ def extras_ok(cat=None):
                 "active_lane_cap": 3,
                 "protected_opus": "JS-0107",
                 "not_band_os": ["StoryDesk", "StoryOps"],
+                "setlist": {
+                    "seed_from": "setlist_ready",
+                    "jeff_owns_order": True,
+                },
             },
             "songs": [
                 {
@@ -182,6 +186,14 @@ class ValidateCatalogTests(unittest.TestCase):
         extra["app_api"]["songs"] = extra["app_api"]["songs"][:-1]
         errors = validate(cat, extra)
         self.assertTrue(any("app_api.json song ids" in e for e in errors), errors)
+
+    def test_setlist_order_must_stay_jeffs(self):
+        cat = fixture()
+        extra = extras_ok(cat)
+        extra["app_api"]["storyboard"]["setlist"]["jeff_owns_order"] = False
+        extra["app_api"]["storyboard"]["setlist"]["seed_from"] = "invented_set"
+        errors = validate(cat, extra)
+        self.assertTrue(any("setlist_ready" in e or "running order" in e for e in errors), errors)
 
     def test_app_api_must_name_storyboard(self):
         cat = fixture()

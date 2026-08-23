@@ -46,6 +46,10 @@ StoryBoard `Song` fields: `title`, `durationSeconds?`, `musicalKey?`, `bpm?` (in
 
 Seed a playable library from `setlist_ready` (originals that already have a key). Full seed = `songs[]`. Merge on `vault_id` / `vault_ref`, not on title.
 
+**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs (`setlist_ready` / `songs[]`). Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist.
+
+**Ops:** StoryBoard show/booking events write back to `events/` (`show_played` with vault ids). That is the ops loop. No second catalog.
+
 Regenerate after catalog edits: `python3 scripts/export_app_api.py`. CI fails closed if this file drifts from the catalog or the three-lane cap.
 
 ---

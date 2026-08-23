@@ -51,6 +51,19 @@ STORYBOARD = {
     "active_lanes": ["flagship", "quick_win", "experimental"],
     "active_lane_cap": 3,
     "protected_opus": "JS-0107",
+    # StoryBoard Setlist + ops consume the same feed. Jeff owns order/feel.
+    "setlist": {
+        "seed_from": "setlist_ready",
+        "item_type": "song",
+        "link_by": "vault_id",
+        "jeff_owns_order": True,
+        "do_not_invent": ["breaks", "running_order", "lead_vocalist", "duration"],
+    },
+    "ops": {
+        "write_back": "events/",
+        "show_played_songs": "vault_id preferred, title fallback",
+        "lanes_are_not_a_setlist": True,
+    },
 }
 
 

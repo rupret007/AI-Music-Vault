@@ -22,6 +22,12 @@ On deck: JS-0128 It's Alright. **Protected opus:** JS-0107 Blue Skies Fade (Kimb
 
 StoryBoard may *display* the whole library. It must not promote a fourth WIP. Set-list / feel / who is alive stays Jeff's.
 
+## Setlists + ops (same file, not a second catalog)
+
+- **Library seed:** `songs[]` (merge on `vault_id` / `vault_ref`).
+- **Setlist seed:** `setlist_ready` — keyed originals only. StoryBoard `SetlistItem.itemType` = `song`. Do **not** invent breaks, durations, or running order.
+- **Ops write-back:** drop `show_played` / `bounce` JSON into `events/` citing vault ids. That is how live-set truth returns. Lanes in the feed are WIP slots, not a setlist.
+
 ## What StoryBoard should not do
 
 - Store audio (none lives here; masters stay local + Drive)
