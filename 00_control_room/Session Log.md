@@ -140,3 +140,19 @@
 ## Session 1 — CLOSING STATE (2026-08-19)
 Everything saved to project "2026 Song Organization": THE-PLAN, priority-queue, master-catalog (json+csv), covers-reference, song-map, jeff-story-style-guide, pocket-vault, workbench-plan, needs-jeff, decision-log, session-log, access-gaps, rights-and-ai-provenance, producer briefs (ST-0001, ST-0004), suno EXP-001 + EXP-002, hidden-gems list, all manifests. On Jeff's Mac: organized vault (00-99), 139 song sheets, memos-by-song links, dashboard artifact in Cowork sidebar. Delivered to Jeff: catalog xlsx, dashboard, co-writer skill, Mystery Gem #1.
 AWAITING JEFF: Mystery Gem verdict · Manic lead guitar · workbench Terminal paste · BSF file to intake · Chrome extension handshake · Stalemate artist link · remaining Needs Jeff answers.
+
+## Integrity + StoryBoard pass — 2026-08-23 (Cloud Agent, no audio)
+### Done
+1. Catalog integrity: ST-0009 gate aligned with Jeff-confirmed rights; stale top-level counts (`original_song_entities` 113→126, memo pool 326/73→372/88); JS-0139/0140 gained empty `key`/`bpm` fields.
+2. `scripts/validate_catalog.py` + `.github/workflows/catalog-validate.yml` + unit tests. Fail closed.
+3. StoryBoard documented as **the** band-OS import: `data/app_api.json` + `storyboard` mapping. APPS.md / `00_control_room/Vault to StoryBoard.md` / Producer README resume paths. Explicitly not StoryDesk/StoryOps. No new app.
+4. Dashboard builder pointed at `data/` (was `/home/claude/vault/...`). Memo-match overlay from `vm_matches.json`. Search also hits writers / next action / gate.
+5. Historical patch/build scripts labeled do-not-re-run (Cowork paths).
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Whisper/Demucs/Basic Pitch/Chromaprint run. No Suno. No masters added, renamed, moved, or deleted (none in-repo).
+- Blue Skies Fade / Kimberly lane: not rewritten.
+- Three-active-song cap: not expanded.
+
+### Next continuation point
+Same as before this pass: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard can now be wired to `data/app_api.json` on its side — that work lives in the StoryBoard repo, not here.

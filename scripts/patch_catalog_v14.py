@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# HISTORICAL one-shot. Do not re-run — writes /home/claude/vault/...
+# Current spine: data/master_catalog.json · validate: scripts/validate_catalog.py
 """Catalog v1.4 — deep-archive read complete (all 2020-folder docs). Scores, reclassifications,
 lineage merges. Also saves archive texts summary for future sessions."""
 import json

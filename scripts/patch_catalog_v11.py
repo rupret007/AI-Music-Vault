@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# HISTORICAL one-shot. Do not re-run — writes /home/claude/vault/...
+# Current spine: data/master_catalog.json · validate: scripts/validate_catalog.py
 """Catalog v1.1 patch — folds in: 27 newly-read lyric docs (subagent full-text pass, saved to
 doc_texts/) and signal-level audio analysis of 4 of 6 album bounces. Still NO aesthetic
 listening and NO speech-to-text (blocked in sandbox); audio_status upgraded only to

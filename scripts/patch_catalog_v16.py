@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# HISTORICAL one-shot. Do not re-run — writes /home/claude/vault/...
+# Current spine: data/master_catalog.json · validate: scripts/validate_catalog.py
 """Catalog patch v1.6 — the Discovery Pass (lyric docs + session transcripts + public web)."""
 import json
 

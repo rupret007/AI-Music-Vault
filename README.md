@@ -20,6 +20,8 @@ This is the working brain of the Jeff Story catalog: 150 song entities spanning 
 | Co-write with an AI without it sounding like AI | [`00_control_room/Jeff Story Style Guide.md`](00_control_room/Jeff%20Story%20Style%20Guide.md) |
 | See what needs Jeff's answer | [`00_control_room/Needs Jeff.md`](00_control_room/Needs%20Jeff.md) |
 | Know why any decision was made | [`00_control_room/Decision Log.md`](00_control_room/Decision%20Log.md) |
+| Feed StoryBoard (band OS) | [`data/app_api.json`](data/app_api.json) — mapping in [`APPS.md`](APPS.md) and [`00_control_room/Vault to StoryBoard.md`](00_control_room/Vault%20to%20StoryBoard.md) |
+| Confirm the catalog isn't broken | `python3 scripts/validate_catalog.py` |
 
 ## The three lanes (+ on deck)
 
@@ -78,7 +80,7 @@ Run order and rationale: [`00_control_room/Workbench Plan.md`](00_control_room/W
 
 1. **Originals are never modified, renamed, moved, or deleted.** Everything here is an index layered on top.
 2. **Transcription ≠ listening.** Every audio claim states exactly what was done. Signal analysis is not an opinion about a song.
-3. **Rights walls are machine-enforced.** Every entity carries `ai_upload_ok` — currently 125 YES (Jeff-written, solo recordings only) / 21 NO / 2 NEEDS-CONSENT. Covers, co-writes, and collaborators' songs never go to an AI service.
+3. **Rights walls are machine-enforced.** Every entity carries `ai_upload_ok` — currently 128 YES (Jeff-written, solo recordings only) / 20 NO / 2 NEEDS-CONSENT. Covers, co-writes, and collaborators' songs never go to an AI service.
 4. **AI output is a decision aid, never a release.** Sketches inform arrangement choices; finished Jeff Story songs are 100% human.
 5. **Never silently replace Jeff's words.** Every lyric suggestion is shown as ORIGINAL → PROPOSED → WHY, and Jeff approves or it doesn't happen.
 6. **No voice cloning** without separate, explicit, per-case permission.
@@ -90,10 +92,10 @@ See [`00_control_room/Rights and AI Provenance.md`](00_control_room/Rights%20and
 
 ## Related projects
 
-Jeff's music software lives in its own repos and increasingly plugs into this vault — see [`APPS.md`](APPS.md) for the ecosystem map and integration plan (WebJam, Rad Dad Show Night, the Andrea assistants, and more).
+The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — not a second catalog, not StoryDesk/StoryOps). See [`APPS.md`](APPS.md).
 
 ## Current state
 
-Catalog v1.6 · 150 entities (124 originals) · 916 memos transcribed, 372 matched · 57+ songs scored · 6-track Stalemate album ~16 small items from done.
+Catalog v1.6 · 150 entities (126 originals) · 916 memos transcribed, 372 matched · 59 songs scored · 6-track Stalemate album ~16 small items from done. StoryBoard import: `data/app_api.json`. Validate: `python3 scripts/validate_catalog.py`.
 
 *Maintained with Claude in the "2026 Song Organization" project. Sessions append to the Decision Log and Session Log — read those first to pick up where the last one left off.*

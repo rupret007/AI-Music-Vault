@@ -1,4 +1,5 @@
 # Priority Queue — v1.5 (2026-08-20, the Transcript Pass)
+*Integrity pass 2026-08-23: catalog v1.6 / 150 entities. Three active songs unchanged. Long Long Drive AI-upload gate corrected to YES (Jeff confirmed 2026-08-18). Band OS consumer = StoryBoard via `data/app_api.json` — not StoryDesk/StoryOps. No new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE

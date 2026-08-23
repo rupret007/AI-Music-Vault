@@ -2,7 +2,8 @@
  "generated": "2026-08-19 v1.11",
  "session": "Cowork session 1",
  "honesty_note": "Lyrics: 41 songs now read in full. Audio: 4 of 6 album bounces signal-analyzed (duration/tempo/key-estimate/loudness/energy) \u2014 NO aesthetic listening and NO speech-to-text has occurred (ASR model downloads blocked in sandbox). SoundCloud stats remain weak supporting evidence only.",
- "original_song_entities": 113,
+ "original_song_entities": 126,
+ "integrity_pass": "2026-08-23 — schema/gate validation added. No audio listened to this pass. ST-0009 ai_upload_ok corrected to YES (Jeff confirmed rights 2026-08-18). Transcripts already in-repo from the 2026-08-20 Whisper pass (transcription ≠ listening).",
  "covers_reference": 93,
  "songs": [
   {
@@ -518,7 +519,7 @@
     }
    ],
    "live_latest": "2024-04",
-   "ai_upload_ok": "NO \u2014 rights confidence not high (resolve first)"
+   "ai_upload_ok": "YES \u2014 Jeff-written; SOLO recordings only (band performances never upload), private, logged"
   },
   {
    "song_id": "ST-0010",
@@ -6338,6 +6339,8 @@
    "readiness": null,
    "confidence": "medium",
    "audio_status": "transcription only \u2014 NOT listened to",
+   "key": "",
+   "bpm": "",
    "lyric_status": "partial \u2014 recovered from memo transcript, garbled in spots",
    "next_action": "LISTEN: the 11-20-2024 memo. Gem verdict.",
    "ai_involvement": "none (transcription only)",
@@ -6364,6 +6367,8 @@
    "readiness": null,
    "confidence": "medium",
    "audio_status": "transcription only \u2014 NOT listened to",
+   "key": "",
+   "bpm": "",
    "lyric_status": "partial \u2014 recovered from memo transcript, garbled in spots",
    "next_action": "LISTEN: the 10-24-24 memo; catch the real chorus words.",
    "ai_involvement": "none (transcription only)",
@@ -6939,10 +6944,10 @@
  },
  "voice_memo_pool": {
   "total": 916,
-  "matched": 326,
-  "matched_songs": 73,
-  "unmatched": 590,
-  "note": "590 unmatched memos: ~290 carry location-default names (Maxwell Dr ~196, Crescent Dr ~60, Briar Creek Ln 8, Merlin Ct 8, Sundown Blvd 7, ...) = UNTITLED IDEAS, the hidden-gem pool for transcription/listening. Named-but-unmatched include: Airtime (6), Shine On (5), Suddenly Stranded (2), Castle chorus take (2), Time machine bridge (2), New ska song (2), Ditty, Tacos, plus many cover practice takes (Linoleum, Just Like Heaven, Burnout, Carousel, In Bloom, ...). Full list: 01_source_manifests/voicememo/vm_unmatched.json"
+  "matched": 372,
+  "matched_songs": 88,
+  "unmatched": 544,
+  "note": "544 unmatched memos: ~290 carry location-default names (Maxwell Dr ~196, Crescent Dr ~60, Briar Creek Ln 8, Merlin Ct 8, Sundown Blvd 7, ...) = UNTITLED IDEAS, the hidden-gem pool for transcription/listening. Named-but-unmatched include: Airtime (6), Shine On (5), Suddenly Stranded (2), Castle chorus take (2), Time machine bridge (2), New ska song (2), Ditty, Tacos, plus many cover practice takes (Linoleum, Just Like Heaven, Burnout, Carousel, In Bloom, ...). Full list: 01_source_manifests/voicememo/vm_unmatched.json"
  },
  "notes_unrecorded_doc": "Jeff's own UnRecorded Songs list (2024-12-10, 71 titles) captured \u2014 it IS his backlog; use it to weight the priority queue.",
  "archive_notes": "Lyrics(2020)/\"Song ideas\" (2019-20) contains raw crisis-era fragments referencing Andrea. Preserved, not ranked, not for external use. The crisis cluster (What To Do, Heart Racing, Why Do I..., Manic, Song ideas) is some of the most honest material in the catalog; development only at Jeff's pace and choice.",
@@ -6955,5 +6960,5 @@
   "Blue Skies Fade original 8-track college recording = Drive file 1fNrd0agVhRpycddFi6bwm2pfajO25nNg (Jeff shared the link 2026-08-18; 18.4MB > 10MB connector cap). Get it via: Jeff drags into Voice Memo Intake, attaches in chat, or Chrome extension download."
  ],
  "version": "1.6",
- "updated": "2026-08-20"
+ "updated": "2026-08-23"
 }

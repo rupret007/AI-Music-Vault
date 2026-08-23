@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# HISTORICAL one-shot. Do not re-run — writes /home/claude/vault/...
+# Current spine: data/master_catalog.json · validate: scripts/validate_catalog.py
 """Catalog v1.2 — folds in: Jeff's rights answers (2026-08-18), 916 Voice Memos (matched),
 deep-corner Drive enumeration (622 records), Dustin Duffy stems, J&C Nov-2024 demos."""
 import json, collections, re, datetime
