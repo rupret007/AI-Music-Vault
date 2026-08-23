@@ -10,7 +10,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from export_app_api import build_payload  # noqa: E402
-from storyboard_contract import import_scope, storyboard_parse_bpm  # noqa: E402
+from storyboard_contract import (  # noqa: E402
+    decide_vault_song,
+    import_scope,
+    parse_bpm,
+    storyboard_parse_bpm,
+)
 from validate_catalog import (  # noqa: E402
     ACTIVE_LANES,
     PROTECTED_LANES,
@@ -214,25 +219,38 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIsNone(bpm_int(""))
         self.assertIsNone(bpm_int("Eb tuning"))
 
-    def test_storyboard_parse_bpm_is_strict(self):
-        """The importer drops annotated tempos; export must pre-parse."""
+    def test_storyboard_parse_bpm_prefers_bpm_int(self):
+        """StoryBoard #4: bpm_int first; leading tempo on bpm is fallback."""
         self.assertEqual(storyboard_parse_bpm(214), 214)
         self.assertEqual(storyboard_parse_bpm("145"), 145)
-        self.assertIsNone(storyboard_parse_bpm("214 (cut)"))
+        self.assertEqual(storyboard_parse_bpm("214 (cut)"), 214)
         self.assertIsNone(storyboard_parse_bpm(""))
         self.assertIsNone(storyboard_parse_bpm("Eb tuning"))
         self.assertIsNone(storyboard_parse_bpm(True))
+        self.assertEqual(
+            parse_bpm({"bpm": "214 (cut)", "bpm_int": 214}),
+            214,
+        )
+        self.assertEqual(
+            parse_bpm({"bpm": "96", "bpm_int": 118}),
+            118,
+        )
 
-    def test_hybrid_project_is_not_a_live_band(self):
+    def test_hybrid_rad_dad_phrase_is_live_repertoire(self):
         self.assertEqual(import_scope("Rad Dad"), "default_live")
+        self.assertEqual(import_scope("Jeff Story"), "default_live")
         self.assertEqual(import_scope("Stalemate"), "parked_catalog")
         self.assertEqual(import_scope("Trailer Swift"), "parked_catalog")
         self.assertEqual(import_scope("Something Dirty"), "parked_catalog")
         self.assertEqual(
             import_scope("Something Dirty / Stalemate / Rad Dad"),
-            "not_live_band",
+            "default_live",
         )
-        self.assertEqual(import_scope("Jeff Story"), "not_live_band")
+        self.assertEqual(
+            import_scope("Stalemate / Something Dirty"),
+            "parked_catalog",
+        )
+        self.assertEqual(import_scope("Travis Story"), "travis_books")
 
     def test_missing_app_api_fails_closed(self):
         extra = extras_ok()
@@ -244,29 +262,31 @@ class ValidateCatalogTests(unittest.TestCase):
         errors = validate(fixture())
         self.assertTrue(any("app_api.json is required" in e for e in errors), errors)
 
-    def test_field_map_bpm_int_lie_fails(self):
+    def test_field_map_bpm_not_bpm_int_fails(self):
         extra = extras_ok()
-        extra["app_api"]["storyboard"]["field_map"]["bpm"] = "bpm_int"
+        extra["app_api"]["storyboard"]["field_map"]["bpm"] = "bpm"
         errors = validate(fixture(), extra)
-        self.assertTrue(any("does not read bpm_int" in e for e in errors), errors)
+        self.assertTrue(any("prefers bpm_int" in e for e in errors), errors)
 
-    def test_field_map_active_is_original_lie_fails(self):
+    def test_field_map_active_always_true_lie_fails(self):
         extra = extras_ok()
-        extra["app_api"]["storyboard"]["field_map"]["active"] = "is_original"
+        extra["app_api"]["storyboard"]["field_map"]["active"] = "always true on import"
         errors = validate(fixture(), extra)
-        self.assertTrue(any("active=true" in e for e in errors), errors)
+        self.assertTrue(any("is_original" in e for e in errors), errors)
 
-    def test_field_map_notes_vault_ref_lie_fails(self):
+    def test_field_map_notes_constructed_lie_fails(self):
         extra = extras_ok()
-        extra["app_api"]["storyboard"]["field_map"]["notes"] = "vault_ref"
+        extra["app_api"]["storyboard"]["field_map"]["notes"] = (
+            "constructed: source {id} · {project} · original|not original"
+        )
         errors = validate(fixture(), extra)
-        self.assertTrue(any("constructs notes" in e for e in errors), errors)
+        self.assertTrue(any("vault_ref" in e for e in errors), errors)
 
     def test_annotated_bpm_in_feed_fails(self):
         extra = extras_ok()
         extra["app_api"]["songs"][0]["bpm"] = "214 (cut)"
         errors = validate(fixture(), extra)
-        self.assertTrue(any("StoryBoard-importable" in e or "StoryBoard-parseable" in e for e in errors), errors)
+        self.assertTrue(any("pre-parsed" in e or "bpm_raw" in e for e in errors), errors)
 
     def test_title_mismatch_fails(self):
         extra = extras_ok()
@@ -344,7 +364,10 @@ class ValidateCatalogTests(unittest.TestCase):
             {"id": "ST-0001", "title": "Turn Over The Flag"}
         ]
         errors = validate(fixture(), extra)
-        self.assertTrue(any("do not invent a live band" in e for e in errors), errors)
+        self.assertTrue(
+            any("not an invented setlist" in e or "invents ids" in e for e in errors),
+            errors,
+        )
 
     def test_missing_vm_matches_fails_closed(self):
         extra = extras_ok()
@@ -354,9 +377,9 @@ class ValidateCatalogTests(unittest.TestCase):
 
     def test_old_schema_version_fails(self):
         extra = extras_ok()
-        extra["app_api"]["schema_version"] = 1
+        extra["app_api"]["schema_version"] = 2
         errors = validate(fixture(), extra)
-        self.assertTrue(any("schema_version must be 2" in e for e in errors), errors)
+        self.assertTrue(any("schema_version must be 3" in e for e in errors), errors)
 
     def test_merge_key_vault_id_lie_fails(self):
         extra = extras_ok()
@@ -391,6 +414,96 @@ class ValidateCatalogTests(unittest.TestCase):
         errors = validate(fixture(), extra)
         self.assertTrue(any("storyboard.reads" in e for e in errors), errors)
 
+    def test_missing_vault_ref_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["songs"][0].pop("vault_ref")
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("vault_ref" in e for e in errors), errors)
+
+    def test_missing_bpm_int_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["songs"][0].pop("bpm_int")
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("bpm_int" in e for e in errors), errors)
+
+    def test_missing_played_live_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["songs"][0].pop("played_live")
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("played_live" in e for e in errors), errors)
+
+    def test_missing_booker_count_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"].pop("storyboard_booker")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.storyboard_booker is required" in e for e in errors),
+            errors,
+        )
+
+    def test_does_not_read_cannot_hide_bpm_int(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["does_not_read"] = list(
+            extra["app_api"]["storyboard"]["does_not_read"]
+        ) + ["bpm_int"]
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("must not claim bpm_int" in e for e in errors),
+            errors,
+        )
+
+    def test_zero_default_live_count_when_planner_keeps_songs_fails(self):
+        cat = fixture()
+        cat["songs"][0]["artist_project"] = "Jeff Story"
+        extra = extras_ok(cat)
+        extra["app_api"]["counts"]["storyboard_default_live"] = 0
+        extra["app_api"]["setlist_ready_default_import"] = []
+        extra["app_api"]["songs"][0]["import_scope"] = "not_live_band"
+        errors = validate(cat, extra)
+        self.assertTrue(
+            any("default_live" in e and ("lie" in e or "expected" in e) for e in errors),
+            errors,
+        )
+
+    def test_setlist_ready_drop_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["setlist_ready"] = extra["app_api"]["setlist_ready"][:-1]
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("invent or drop setlist rows" in e for e in errors), errors)
+
+    def test_played_live_over_schema_max_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["songs"][0]["played_live"] = [f"Band ({i})" for i in range(51)]
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("played_live exceeds" in e for e in errors), errors)
+
+    def test_decide_skips_cover_even_with_rad_dad_play(self):
+        decision = decide_vault_song(
+            {
+                "id": "ST-0002",
+                "project": "Stalemate",
+                "is_original": False,
+                "played_live": ["Rad Dad (2026-05)"],
+            },
+            has_ready_list=True,
+            in_ready_set=True,
+        )
+        self.assertFalse(decision.include)
+        self.assertEqual(decision.reason, "cover_not_active")
+
+    def test_decide_keeps_parked_original_with_rad_dad_play(self):
+        decision = decide_vault_song(
+            {
+                "id": "ST-0014",
+                "project": "Stalemate",
+                "is_original": True,
+                "played_live": ["Rad Dad (2026-05)"],
+            },
+            has_ready_list=True,
+            in_ready_set=True,
+        )
+        self.assertTrue(decision.include)
+
     def test_real_repo_catalog_passes(self):
         """Live spine must stay green after this pass — no weakening the check."""
         from validate_catalog import load_repo
@@ -398,6 +511,14 @@ class ValidateCatalogTests(unittest.TestCase):
         cat, extra = load_repo(ROOT)
         errors = validate(cat, extra)
         self.assertEqual(errors, [], errors)
+        default_ids = {
+            row["id"] for row in extra["app_api"]["setlist_ready_default_import"]
+        }
+        self.assertGreater(len(default_ids), 0)
+        self.assertIn("JS-0128", default_ids)
+        self.assertIn("ST-0014", default_ids)
+        self.assertNotIn("ST-0001", default_ids)
+        self.assertNotIn("ST-0002", default_ids)
 
 
 if __name__ == "__main__":

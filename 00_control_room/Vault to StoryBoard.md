@@ -1,7 +1,7 @@
 # Vault → StoryBoard (consolidated path)
 
 *2026-08-23 · Control-room pointer, not a new priority list.*
-*Importer-honest pass: fields StoryBoard actually reads, not the first-guess map.*
+*Importer-honest pass: fields StoryBoard actually reads after StoryBoard #4.*
 
 **This vault is the song brain.** StoryBoard is the band-management OS that reads it. StoryLiner is promo only. There is no StoryDesk / StoryOps band OS, and this repo does not grow a new manager app or a fourth live band.
 
@@ -15,25 +15,27 @@
 
 ## Fields StoryBoard actually imports
 
-From `songs[]` only: `id`, `title`, `project`, `is_original`, `key`, `bpm`.
+From `songs[]`: `id`, `title`, `project`, `is_original`, `key`, `bpm`, `bpm_int`, `vault_id`, `vault_ref`, `played_live`.
 
 | StoryBoard writes | Vault field | Do not |
 |---|---|---|
 | Song.title | `title` | rewrite the title |
 | Song.musicalKey | `key` (max 30) | invent a key |
-| Song.bpm | `bpm` as **int or null** | leave `"214 (cut)"` in `bpm` (importer drops it) |
-| Song.sourceKey | `vault:catalog_import_v1:{id}` | merge on `vault_ref` |
-| Song.notes | constructed from id / project / original flag | treat `vault_ref` as notes |
-| Song.active | always `true` on import | map `active` ← `is_original` |
+| Song.bpm | `bpm_int` first, then `bpm` (int or leading tempo) | invent a tempo |
+| Song.sourceKey | `vault:catalog_import_v1:{vault_id ?? id}` | merge on title |
+| Song.notes | `vault_ref` (`vault:{id}`) | invent liner notes |
+| Song.active | `is_original !== false` | force every row active |
 | duration / vocalist | null | guess feel |
 
-`bpm_raw` keeps catalog text. `bpm_int` is a compat alias; the importer does not read it.
+`bpm` and `bpm_int` are the same pre-parsed integer. `bpm_raw` keeps catalog text such as `"214 (cut)"`.
 
 ## Default live catalog (do not invent a band)
 
-StoryBoard default import is **Rad Dad only**. Parked catalogs (Stalemate, Trailer Swift, Something Dirty) stay off unless Jeff passes `includeParked` / `includeAllProjects` on the StoryBoard side.
+StoryBoard default import is **live repertoire**: project is Rad Dad or Jeff Story (or phrase-matches those names), **or** `played_live` records a Rad Dad play. When `setlist_ready` is present, default import keeps that slice only.
 
-This vault labels **no** `artist_project` as Rad Dad. Songs *played* by Rad Dad still live under Stalemate / hybrid labels (`live_presence` ≠ project). `setlist_ready_default_import` is therefore empty on purpose. Do not mint Rad Dad rows to make the default import look full.
+Parked catalogs (Stalemate, Trailer Swift, Something Dirty) stay off unless Jeff passes `includeParked` / `includeAllProjects`. Covers stay out. Travis rows are `travis_books` — StoryBoard does not auto-pitch him.
+
+This vault labels **no** `artist_project` as the exact string `Rad Dad`. Songs *played* by Rad Dad still live under Stalemate / hybrid labels (`live_presence` ≠ project) and **do** enter default import via `played_live`. Jeff Story keyed originals in `setlist_ready` enter as well. That is the existing catalog, not a minted band. `setlist_ready_default_import` is that slice — not an invented running order.
 
 ## Three active songs (unchanged — Jeff owns this cap)
 

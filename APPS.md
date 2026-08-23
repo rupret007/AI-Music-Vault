@@ -32,24 +32,25 @@ Updated 2026-08-23 — consolidated path: **Vault → `data/app_api.json` → St
 
 ### StoryBoard Song mapping (importer-honest, 2026-08-23)
 
-Inspected `rupret007/StoryBoard` `packages/shared/src/catalog-import.ts`.
-The importer **reads only** `songs[].id`, `title`, `project`, `is_original`, `key`, `bpm`
-(plus `setlist_ready` id/title/key/project). Prisma still has duration / vocalist / genre /
-URLs — those stay null. **StoryLiner is promo only** and does not consume this feed.
+Inspected `rupret007/StoryBoard` `packages/shared/src/catalog-import.ts` after StoryBoard #4.
+The importer reads `songs[].id`, `title`, `project`, `is_original`, `key`, `bpm`,
+`bpm_int`, `vault_id`, `vault_ref`, `played_live` (plus `setlist_ready` id/title).
+Prisma still has duration / vocalist / genre / URLs — those stay null.
+**StoryLiner is promo only** and does not consume this feed.
 
 | StoryBoard writes | From this feed | Honesty |
 |---|---|---|
 | `title` | `songs[].title` | do not rewrite Jeff's title |
 | `musicalKey` | `songs[].key` (trim; max 30; empty → null) | do not invent a key |
-| `bpm` | `songs[].bpm` (**integer or null**) | StoryBoard `parseBpm` rejects `"214 (cut)"`. Export pre-parses into `bpm` and keeps the annotation on `bpm_raw`. `bpm_int` is a compat alias the importer does **not** read. |
-| `sourceKey` | constructed `vault:catalog_import_v1:{id}` | not `vault_id` / `vault_ref` |
-| `notes` | constructed `source {id} · {project} · original\|not original` | not `vault_ref` |
-| `active` | **always true** on import | not `is_original` |
+| `bpm` | `songs[].bpm_int` first, then `bpm` | `parseBpm` prefers a clean integer. Export pre-parses into both `bpm` and `bpm_int`. `bpm_raw` keeps `"214 (cut)"`. |
+| `sourceKey` | `vault:catalog_import_v1:{vault_id ?? id}` | merge on sourceKey, not title |
+| `notes` | `vault_ref` (`vault:{id}`) | do not invent liner notes |
+| `active` | `is_original !== false` | covers stay inactive |
 | `durationSeconds` / `leadVocalist` / `genre` / URLs | **null** | Jeff owns feel |
 
-**Default live catalog is Rad Dad only.** Parked: Stalemate, Trailer Swift, Something Dirty. Hybrid labels (`Something Dirty / Stalemate / Rad Dad`) are `not_live_band`, not a fourth live band. `live_presence` is not `artist_project` — this vault currently has **zero** rows labeled Rad Dad, so a default StoryBoard import seeds an empty library until Jeff opts in (`includeParked` / `includeAllProjects`) or labels a project. Do not invent Rad Dad catalog rows.
+**Default live repertoire is Rad Dad + Jeff Story + recorded Rad Dad plays**, gated by `setlist_ready`. Parked: Stalemate, Trailer Swift, Something Dirty. Hybrid labels that phrase-match `rad dad` are live repertoire, not a fourth live band. `live_presence` is published as `played_live`. Travis rows are `travis_books`. Do not invent Rad Dad catalog rows.
 
-Seed keyed originals from `setlist_ready`. What default import actually keeps is `setlist_ready_default_import` (empty today). Merge on StoryBoard `sourceKey`, not on title.
+Seed keyed originals from `setlist_ready`. What default import actually keeps is `setlist_ready_default_import` (the live-repertoire slice — not an invented setlist). Merge on StoryBoard `sourceKey`, not on title.
 
 **Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist.
 
@@ -116,4 +117,4 @@ Prefer vault ids. Titles work as a fallback. Same shape for WebJam bounces (`{"e
 - Is **Andrea** the assistant named after the song "Andrea," or a separate thing?
 - Does `rad-dad-show-night` already store setlists in a structured file we can read directly?
 - StoryBoard library today: empty or hand-populated? (Import is a seed vs a merge on `vault:catalog_import_v1:{id}`.)
-- Should any vault `artist_project` be labeled **Rad Dad**, or does Jeff always import with `includeAllProjects` / `includeParked`? Default live is empty until that call is made — we will not invent the rows.
+- Should any vault `artist_project` be labeled **Rad Dad**, or does Jeff always import with `includeAllProjects` / `includeParked`? Default live is the existing Jeff Story / Rad Dad-play slice of `setlist_ready` — we will not invent Rad Dad rows.
