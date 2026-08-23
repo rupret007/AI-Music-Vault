@@ -462,6 +462,15 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
 
     expected_counts = {
         "entities": len(ids),
+        "originals": sum(
+            1 for src in by_id.values() if src.get("classification") == "original"
+        ),
+        "scored": sum(1 for src in by_id.values() if src.get("potential")),
+        "ai_upload_ok": sum(
+            1
+            for src in by_id.values()
+            if gate_class(src.get("ai_upload_ok")) == "YES"
+        ),
         "setlist_ready": len(ready_ids),
         "storyboard_default_live": 0,
         "storyboard_parked": 0,
@@ -507,6 +516,39 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "plan selects live repertoire (Jeff Story / Rad Dad / recorded "
                 "Rad Dad plays in setlist_ready). Do not invent a band; do not "
                 "hide the songs the importer already keeps."
+            )
+        if (
+            expected_counts["originals"] != expected_counts["setlist_ready"]
+            and counts.get("originals") is not None
+            and (
+                counts.get("originals") == counts.get("setlist_ready")
+                or counts.get("originals") == counts.get("storyboard_default_live")
+                or counts.get("originals") == counts.get("setlist_ready_default_import")
+            )
+        ):
+            errors.append(
+                "counts.originals must not equal the setlist-ready or default-live "
+                "count when they differ — originals are the catalog, not a setlist. "
+                "Do not hide unkeyed originals or collapse the library into a draft."
+            )
+        if (
+            expected_counts["scored"] != expected_counts["originals"]
+            and counts.get("scored") is not None
+            and counts.get("scored") == counts.get("originals")
+        ):
+            errors.append(
+                "counts.scored must not equal counts.originals when they differ — "
+                "not every original is scored."
+            )
+        if (
+            expected_counts["ai_upload_ok"] != expected_counts["originals"]
+            and counts.get("ai_upload_ok") is not None
+            and counts.get("ai_upload_ok") == counts.get("originals")
+        ):
+            errors.append(
+                "counts.ai_upload_ok must not equal counts.originals when they "
+                "differ — YES gates are not the original count. Do not hide "
+                "non-original YES rows or invent a one-to-one rights map."
             )
 
     honesty_fields = ("bpm_raw", "import_scope", "source_key", *IMPORTER_READS)

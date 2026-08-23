@@ -639,6 +639,116 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
 
+    def test_missing_originals_count_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"].pop("originals")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.originals is required" in e for e in errors),
+            errors,
+        )
+
+    def test_stale_originals_count_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"]["originals"] = 0
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.originals=" in e and "expected" in e for e in errors),
+            errors,
+        )
+
+    def test_originals_count_cannot_conflate_with_setlist_ready(self):
+        """Hand-edit must not make 5 originals look like 4 keyed setlist rows."""
+        cat = fixture()
+        cat["songs"][5]["key"] = ""
+        extra = extras_ok(cat)
+        extra["app_api"]["counts"]["originals"] = extra["app_api"]["counts"][
+            "setlist_ready"
+        ]
+        errors = validate(cat, extra)
+        self.assertTrue(
+            any(
+                "counts.originals" in e
+                and ("expected" in e or "must not equal the setlist-ready" in e)
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_missing_scored_count_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"].pop("scored")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.scored is required" in e for e in errors),
+            errors,
+        )
+
+    def test_stale_scored_count_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"]["scored"] = 0
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.scored=" in e and "expected" in e for e in errors),
+            errors,
+        )
+
+    def test_scored_count_cannot_conflate_with_originals(self):
+        """Fixture is 6 scored / 5 originals — do not pretend every original is scored."""
+        extra = extras_ok()
+        extra["app_api"]["counts"]["scored"] = extra["app_api"]["counts"]["originals"]
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any(
+                "counts.scored" in e
+                and ("expected" in e or "must not equal counts.originals" in e)
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_missing_ai_upload_ok_count_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"].pop("ai_upload_ok")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.ai_upload_ok is required" in e for e in errors),
+            errors,
+        )
+
+    def test_stale_ai_upload_ok_count_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"]["ai_upload_ok"] = 0
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.ai_upload_ok=" in e and "expected" in e for e in errors),
+            errors,
+        )
+
+    def test_ai_upload_ok_count_cannot_conflate_with_originals(self):
+        """A YES fragment is not an original — the counts must stay distinct."""
+        cat = fixture()
+        cat["songs"].append(
+            song(
+                "JS-0002",
+                "Moonlight Pride sketch",
+                classification="original fragment",
+            )
+        )
+        extra = extras_ok(cat)
+        extra["app_api"]["counts"]["ai_upload_ok"] = extra["app_api"]["counts"][
+            "originals"
+        ]
+        errors = validate(cat, extra)
+        self.assertTrue(
+            any(
+                "counts.ai_upload_ok" in e
+                and ("expected" in e or "must not equal counts.originals" in e)
+                for e in errors
+            ),
+            errors,
+        )
+
     def test_setlist_names_must_stay_distinct(self):
         self.assertNotEqual(
             VAULT_DEFAULT_LIVE_SETLIST_NAME,
@@ -803,9 +913,28 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertEqual(api["counts"]["storyboard_default_live"], 20)
         self.assertEqual(len(ready_ids), 40)
         self.assertEqual(api["counts"]["setlist_ready"], 40)
+        self.assertEqual(api["counts"]["originals"], 126)
+        self.assertEqual(api["counts"]["scored"], 59)
+        self.assertEqual(api["counts"]["ai_upload_ok"], 128)
         self.assertNotEqual(
             api["counts"]["setlist_ready"],
             api["counts"]["storyboard_default_live"],
+        )
+        self.assertNotEqual(
+            api["counts"]["originals"],
+            api["counts"]["setlist_ready"],
+        )
+        self.assertNotEqual(
+            api["counts"]["originals"],
+            api["counts"]["storyboard_default_live"],
+        )
+        self.assertNotEqual(
+            api["counts"]["scored"],
+            api["counts"]["originals"],
+        )
+        self.assertNotEqual(
+            api["counts"]["ai_upload_ok"],
+            api["counts"]["originals"],
         )
         self.assertNotEqual(
             api["storyboard"]["default_live_setlist_name"],

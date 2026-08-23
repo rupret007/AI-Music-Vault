@@ -51,7 +51,7 @@ StoryBoard may *display* the whole library after an opt-in import. It must not p
 ## Setlists + ops (same file, not a second catalog)
 
 - **Library seed:** `songs[]` (StoryBoard merge key = `vault:catalog_import_v1:{id}`).
-- **Setlist seed:** default import prefers `setlist_ready_default_import` and writes **Vault default-live**. Opt-in parked/all still uses `setlist_ready` and writes **Vault setlist-ready**. Those counts stay distinct (40 keyed originals vs the 20-id published slice) and fail closed if a hand-edit conflates them. StoryBoard `SetlistItem.itemType` = `song`. Do **not** invent breaks, durations, or running order.
+- **Setlist seed:** default import prefers `setlist_ready_default_import` and writes **Vault default-live**. Opt-in parked/all still uses `setlist_ready` and writes **Vault setlist-ready**. Those counts stay distinct (40 keyed originals vs the 20-id published slice) and fail closed if a hand-edit conflates them. `counts.originals` / `counts.scored` / `counts.ai_upload_ok` stay catalog-true (126 / 59 / 128 today) and fail closed if omitted or collapsed into a setlist count. StoryBoard `SetlistItem.itemType` = `song`. Do **not** invent breaks, durations, or running order.
 - **Ops write-back:** drop `show_played` / `bounce` JSON into `events/` citing vault ids. Lanes in the feed are WIP slots, not a setlist. Remote catalog URLs are rejected on the StoryBoard side.
 
 ## What StoryBoard should not do
