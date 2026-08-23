@@ -1,7 +1,7 @@
 # Vault → StoryBoard (consolidated path)
 
 *2026-08-23 · Control-room pointer, not a new priority list.*
-*Importer-honest pass: fields StoryBoard actually reads after StoryBoard #5.*
+*Importer-honest pass: fields StoryBoard actually reads after StoryBoard #6.*
 
 **This vault is the song brain.** StoryBoard is the band-management OS that reads it. StoryLiner is promo only. There is no StoryDesk / StoryOps band OS, and this repo does not grow a new manager app or a fourth live band.
 
@@ -16,7 +16,7 @@
 ## Fields StoryBoard actually imports
 
 From `songs[]`: `id`, `title`, `project`, `is_original`, `key`, `bpm`, `bpm_int`, `vault_id`, `vault_ref`, `played_live`, `import_scope`.
-StoryBoard #5 also reads the published `setlist_ready_default_import` id list. An empty published slice stays empty.
+StoryBoard #6 also reads the published `setlist_ready_default_import` id list and names that draft **Vault default-live**. An empty published slice stays empty. Parked-named rows in the slice stay current-artist repertoire.
 
 | StoryBoard writes | Vault field | Do not |
 |---|---|---|
@@ -32,9 +32,9 @@ StoryBoard #5 also reads the published `setlist_ready_default_import` id list. A
 
 ## Default live catalog (do not invent a band)
 
-StoryBoard default import is the published **`setlist_ready_default_import`** slice (20 ids today). When that array is absent, fallback is **live repertoire**: project is Rad Dad or Jeff Story (or phrase-matches those names), **or** `played_live` records a Rad Dad play, gated by `setlist_ready`. An empty published slice stays empty — StoryBoard will not invent a band.
+StoryBoard default import is the published **`setlist_ready_default_import`** slice (20 ids today). StoryBoard names that draft **Vault default-live**. When that array is absent, fallback is **live repertoire**: project is Rad Dad or Jeff Story (or phrase-matches those names), **or** `played_live` records a Rad Dad play, gated by `setlist_ready` (draft **Vault setlist-ready**). An empty published slice stays empty — StoryBoard will not invent a band.
 
-Parked catalogs (Stalemate, Trailer Swift, Something Dirty) stay off unless Jeff passes `includeParked` / `includeAllProjects`. Covers stay out. Travis rows are `travis_books` — StoryBoard does not auto-pitch him.
+The published slice already includes parked-named Vault projects (Everyday / Stalemate, Drinking Song hybrid). Those rows stay on the current artist — not a fourth live band. Parked catalogs that are **not** in the published slice stay off unless Jeff passes `includeParked` / `includeAllProjects`. Covers stay out. Travis rows are `travis_books` — StoryBoard does not auto-pitch him.
 
 This vault labels **no** `artist_project` as the exact string `Rad Dad`. Songs *played* by Rad Dad still live under Stalemate / hybrid labels (`live_presence` ≠ project) and **do** enter default import via `played_live`. Jeff Story keyed originals in `setlist_ready` enter as well. That is the existing catalog, not a minted band. `setlist_ready_default_import` is that slice — not an invented running order.
 
@@ -51,7 +51,7 @@ StoryBoard may *display* the whole library after an opt-in import. It must not p
 ## Setlists + ops (same file, not a second catalog)
 
 - **Library seed:** `songs[]` (StoryBoard merge key = `vault:catalog_import_v1:{id}`).
-- **Setlist seed:** default import prefers `setlist_ready_default_import`. Opt-in parked/all still uses `setlist_ready`. StoryBoard `SetlistItem.itemType` = `song`. Do **not** invent breaks, durations, or running order.
+- **Setlist seed:** default import prefers `setlist_ready_default_import` and writes **Vault default-live**. Opt-in parked/all still uses `setlist_ready` and writes **Vault setlist-ready**. StoryBoard `SetlistItem.itemType` = `song`. Do **not** invent breaks, durations, or running order.
 - **Ops write-back:** drop `show_played` / `bounce` JSON into `events/` citing vault ids. Lanes in the feed are WIP slots, not a setlist. Remote catalog URLs are rejected on the StoryBoard side.
 
 ## What StoryBoard should not do

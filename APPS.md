@@ -32,10 +32,12 @@ Updated 2026-08-23 — consolidated path: **Vault → `data/app_api.json` → St
 
 ### StoryBoard Song mapping (importer-honest, 2026-08-23)
 
-Inspected `rupret007/StoryBoard` `packages/shared/src/catalog-import.ts` after StoryBoard #5.
+Inspected `rupret007/StoryBoard` `packages/shared/src/catalog-import.ts` after StoryBoard #6.
 The importer reads `songs[].id`, `title`, `project`, `is_original`, `key`, `bpm`,
 `bpm_int`, `vault_id`, `vault_ref`, `played_live`, `import_scope`, plus the published
 `setlist_ready_default_import` id list (and `setlist_ready` on opt-in).
+It names the published-slice draft **Vault default-live**. Parked-named rows in
+that slice stay current-artist repertoire — not a fourth live band.
 Prisma still has duration / vocalist / genre / URLs — those stay null.
 **StoryLiner is promo only** and does not consume this feed.
 
@@ -49,11 +51,11 @@ Prisma still has duration / vocalist / genre / URLs — those stay null.
 | `active` | `is_original !== false` | covers stay inactive |
 | `durationSeconds` / `leadVocalist` / `genre` / URLs | **null** | Jeff owns feel |
 
-**Default live is the published `setlist_ready_default_import` 20-id slice** (`import_scope=default_live`). StoryBoard #5 prefers that list when present; an empty published slice stays empty. Fallback when the array is absent: Rad Dad + Jeff Story + recorded Rad Dad plays, gated by `setlist_ready`. Parked: Stalemate, Trailer Swift, Something Dirty. Hybrid labels that phrase-match `rad dad` are live repertoire, not a fourth live band. `live_presence` is published as `played_live`. Travis rows are `travis_books`. Do not invent Rad Dad catalog rows.
+**Default live is the published `setlist_ready_default_import` 20-id slice** (`import_scope=default_live`). StoryBoard #6 prefers that list when present and names the draft **Vault default-live**; an empty published slice stays empty. Everyday (ST-0014, project Stalemate) and hybrid Drinking Song stay in that slice as current-artist repertoire — not a fourth live band. Fallback when the array is absent: Rad Dad + Jeff Story + recorded Rad Dad plays, gated by `setlist_ready` (draft **Vault setlist-ready**). Parked catalogs that are not in the published slice stay parked unless opted in. Hybrid labels that phrase-match `rad dad` are live repertoire, not a fourth live band. `live_presence` is published as `played_live`. Travis rows are `travis_books`. Do not invent Rad Dad catalog rows.
 
 Seed keyed originals from `setlist_ready`. Default import keeps `setlist_ready_default_import` (not an invented setlist). Merge on StoryBoard `sourceKey`, not on title. Field map is StoryBoard's `VAULT_STORYBOARD_FIELD_MAP` (`bpm_int`, notes ← `vault_ref`, `active = is_original !== false`).
 
-**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist.
+**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Default import writes **Vault default-live**; opt-in parked/all writes **Vault setlist-ready**. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist.
 
 **Ops:** StoryBoard show/booking events write back to `events/` (`show_played` with vault ids). That is the ops loop. No second catalog.
 
@@ -118,4 +120,4 @@ Prefer vault ids. Titles work as a fallback. Same shape for WebJam bounces (`{"e
 - Is **Andrea** the assistant named after the song "Andrea," or a separate thing?
 - Does `rad-dad-show-night` already store setlists in a structured file we can read directly?
 - StoryBoard library today: empty or hand-populated? (Import is a seed vs a merge on `vault:catalog_import_v1:{id}`.)
-- Should any vault `artist_project` be labeled **Rad Dad**, or does Jeff always import with `includeAllProjects` / `includeParked`? Default live is the published 20-id `setlist_ready_default_import` slice — we will not invent Rad Dad rows.
+- Should any vault `artist_project` be labeled **Rad Dad**, or does Jeff always import with `includeAllProjects` / `includeParked`? Default live is the published 20-id `setlist_ready_default_import` slice (including parked-named Everyday / hybrid rows as current-artist repertoire) — we will not invent Rad Dad rows or a fourth live band.
