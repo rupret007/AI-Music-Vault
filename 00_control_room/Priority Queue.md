@@ -3,6 +3,7 @@
 *Exporter-honest pass 2026-08-23: StoryBoard default live = Rad Dad (no vault rows labeled that way — do not invent them). Still these three songs. Still no new priorities.*
 *StoryBoard #5 honesty 2026-08-23: default import is the published `setlist_ready_default_import` 20-id slice (`travis_books`, field map `bpm_int` / `vault_ref`). Still these three songs. Still no new priorities.*
 *StoryBoard #6 honesty 2026-08-23: published slice includes parked-named Everyday / hybrid rows as current-artist repertoire; draft name is Vault default-live. Still these three songs. Still no new priorities.*
+*setlist_ready vs default-live count honesty 2026-08-23: `counts.setlist_ready` (40) stays distinct from the 20-id Vault default-live slice and fails closed if conflated. Still these three songs. Still no new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE

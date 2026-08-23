@@ -190,3 +190,13 @@ Unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
 - No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
+
+## setlist_ready vs default-live count honesty — 2026-08-23 (Cloud Agent, no audio)
+### Done
+1. After Vault #7 / StoryBoard #6, names were fail-closed (**Vault default-live** vs **Vault setlist-ready**) but `counts.setlist_ready` was not. A hand-edit could omit it or set it to 20 while `setlist_ready` still listed 40 keyed originals.
+2. Validator now requires `counts.setlist_ready`, matches the keyed-originals array, and refuses conflation with `counts.setlist_ready_default_import` / `counts.storyboard_default_live` when the slices differ. The two setlist names stay distinct.
+3. Verified leftovers that are already honest: field map vs live StoryBoard #6 importer; parked-named default-live is still only ST-0014 + JS-0001; JS-0128 stays in the published slice; ST-0001 (parked flagship) and ST-0002 (cover) stay out.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.

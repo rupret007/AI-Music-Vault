@@ -246,6 +246,11 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.setlist.opt_in_name must be 'Vault setlist-ready' "
                 "(includeParked / includeAllProjects / missing published slice)"
             )
+        if sl.get("default_import_name") == sl.get("opt_in_name"):
+            errors.append(
+                "storyboard.setlist.default_import_name must stay distinct from "
+                "opt_in_name — Vault default-live is not Vault setlist-ready"
+            )
         if sl.get("jeff_owns_order") is not True:
             errors.append("storyboard.setlist must leave running order to Jeff")
         if sb.get("prefers_published_default_import") is not True:
@@ -273,6 +278,22 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             errors.append(
                 "storyboard.setlist_ready_setlist_name must be "
                 "'Vault setlist-ready'"
+            )
+        if VAULT_DEFAULT_LIVE_SETLIST_NAME == VAULT_SETLIST_READY_SETLIST_NAME:
+            errors.append(
+                "Vault default-live and Vault setlist-ready names must stay "
+                "distinct (StoryBoard vaultSetlistIdentity uses two drafts)"
+            )
+        if (
+            sb.get("default_live_setlist_name")
+            and sb.get("setlist_ready_setlist_name")
+            and sb.get("default_live_setlist_name")
+            == sb.get("setlist_ready_setlist_name")
+        ):
+            errors.append(
+                "storyboard.default_live_setlist_name must stay distinct from "
+                "storyboard.setlist_ready_setlist_name — the published slice "
+                "is not the opt-in setlist_ready draft"
             )
         if sb.get("default_live_setlist_notes") != vault_setlist_identity(True)["notes"]:
             errors.append(
@@ -441,6 +462,7 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
 
     expected_counts = {
         "entities": len(ids),
+        "setlist_ready": len(ready_ids),
         "storyboard_default_live": 0,
         "storyboard_parked": 0,
         "storyboard_not_live_band": 0,
@@ -683,6 +705,22 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "counts.storyboard_default_live must equal "
                 "counts.setlist_ready_default_import — the published "
                 "slice is the default plan"
+            )
+        if (
+            len(ready_ids) != len(expected_default)
+            and counts.get("setlist_ready") is not None
+            and (
+                counts.get("setlist_ready")
+                == counts.get("setlist_ready_default_import")
+                or counts.get("setlist_ready")
+                == counts.get("storyboard_default_live")
+            )
+        ):
+            errors.append(
+                "counts.setlist_ready must not equal the default-live count "
+                "when the slices differ — StoryBoard names those drafts "
+                "'Vault setlist-ready' vs 'Vault default-live'. Do not hide "
+                "parked keyed originals or inflate the published slice."
             )
 
     expected_parked_named = parked_named_default_live_ids(

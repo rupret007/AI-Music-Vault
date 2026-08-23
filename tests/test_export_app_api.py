@@ -260,6 +260,17 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertEqual(len(published), 20)
         self.assertGreater(len(published), 0)
         self.assertTrue(all(sid in ready_ids for sid in published))
+        self.assertEqual(len(ready_ids), 40)
+        self.assertEqual(api["counts"]["setlist_ready"], 40)
+        self.assertNotEqual(len(ready_ids), len(published))
+        self.assertNotEqual(
+            api["counts"]["setlist_ready"],
+            api["counts"]["setlist_ready_default_import"],
+        )
+        self.assertNotEqual(
+            api["storyboard"]["default_live_setlist_name"],
+            api["storyboard"]["setlist_ready_setlist_name"],
+        )
         live = {
             song["id"]
             for song, decision in live_default_decisions(
