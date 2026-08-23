@@ -1,20 +1,35 @@
 name: catalog-validate
 
+# Same trigger/permission shape as rupret007/StoryBoard quality.yml (that one
+# actually gets a runner). Private-repo hosted runners still need billing.
 on:
-  push:
   pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: ${{ github.workspace }}
+    shell: bash
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Validate master catalog (fail closed)
-        run: python3 scripts/validate_catalog.py
+        run: python scripts/validate_catalog.py
+
       - name: Catalog validator unit tests
-        run: python3 -m unittest discover -s tests -v
+        run: python -m unittest discover -s tests -v
