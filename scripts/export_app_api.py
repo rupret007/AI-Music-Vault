@@ -7,10 +7,10 @@ StoryBoard is the band-management OS that consumes it.
 This script publishes ONE slim, stable-schema file — data/app_api.json —
 so StoryBoard does not hand-enter songs and we do not invent a second catalog.
 
-Field honesty: only emit StoryBoard-importable values on the fields
-catalog-import.ts actually reads (id, title, project, is_original, key, bpm).
-Not StoryDesk. Not StoryOps. StoryLiner is promo only. No new app.
-No fourth live band.
+Field honesty: emit StoryBoard-importable values on the fields
+catalog-import.ts actually reads (id, title, project, is_original, key,
+bpm, bpm_int, vault_id, vault_ref, played_live). Not StoryDesk. Not
+StoryOps. StoryLiner is promo only. No new app. No fourth live band.
 
 Run:  python3 scripts/export_app_api.py
 Check: python3 scripts/export_app_api.py --check
@@ -25,18 +25,23 @@ import os
 import sys
 
 from storyboard_contract import (
+    SCOPE_COVER,
     SCOPE_DEFAULT_LIVE,
     SCOPE_NOT_LIVE,
+    SCOPE_NOT_READY,
     SCOPE_PARKED,
+    SCOPE_BOOKER,
     bpm_int,
     bpm_raw_string,
-    import_scope,
+    default_decisions,
+    played_live_from_presence,
     source_key,
     storyboard_mapping,
     storyboard_parse_key,
+    vault_ref_for,
 )
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAT = os.path.join(HERE, "data", "master_catalog.json")
 OUT = os.path.join(HERE, "data", "app_api.json")
@@ -50,21 +55,6 @@ LANES = {
 }
 
 
-def _played_live(song: dict) -> list[str]:
-    events = song.get("live_presence") or []
-    if not isinstance(events, list):
-        return []
-    out = []
-    for event in events:
-        if not isinstance(event, dict):
-            continue
-        band = event.get("band")
-        date = event.get("date")
-        if band and date:
-            out.append(f"{band} ({date})")
-    return out
-
-
 def export_song(src: dict) -> dict:
     gate = src.get("ai_upload_ok", "") or ""
     sid = src["song_id"]
@@ -76,16 +66,16 @@ def export_song(src: dict) -> dict:
     return {
         "id": sid,
         "vault_id": sid,
-        "vault_ref": f"vault:{sid}",
+        "vault_ref": vault_ref_for(sid),
         "source_key": source_key(sid),
         "title": title,
         "alt_titles": src.get("alt_titles", []),
         "project": project,
-        "import_scope": import_scope(project),
+        "import_scope": None,
         "is_original": is_original,
         "writers": src.get("writers", []),
         "key": src.get("key", "") or "",
-        # StoryBoard reads `bpm` via parseBpm (clean int only).
+        # StoryBoard parseBpm prefers bpm_int, then bpm.
         "bpm": parsed_bpm,
         "bpm_raw": bpm_raw_string(raw_bpm),
         "bpm_int": parsed_bpm,
@@ -95,7 +85,7 @@ def export_song(src: dict) -> dict:
         "momentum": src.get("momentum"),
         "last_activity": src.get("last_activity", ""),
         "live_latest": src.get("live_latest", ""),
-        "played_live": _played_live(src),
+        "played_live": played_live_from_presence(src.get("live_presence")),
         "stage": src.get("stage", ""),
         "theme": src.get("theme", ""),
         "hook": src.get("hook", ""),
@@ -114,9 +104,28 @@ def _ready_row(song: dict) -> dict:
         "key": song["key"],
         "project": song["project"],
         "bpm": song["bpm"],
+        "bpm_int": song["bpm_int"],
         "vault_ref": song["vault_ref"],
         "import_scope": song["import_scope"],
     }
+
+
+def _assign_import_scopes(songs: list[dict], ready_ids: set[str]) -> dict[str, int]:
+    """Stamp StoryBoard default-plan reasons onto each exported song."""
+    scope_counts = {
+        SCOPE_DEFAULT_LIVE: 0,
+        SCOPE_PARKED: 0,
+        SCOPE_NOT_LIVE: 0,
+        SCOPE_NOT_READY: 0,
+        SCOPE_BOOKER: 0,
+        SCOPE_COVER: 0,
+    }
+    for song, decision in default_decisions(songs, ready_ids):
+        scope = decision.reason if not decision.include else SCOPE_DEFAULT_LIVE
+        song["import_scope"] = scope
+        if scope in scope_counts:
+            scope_counts[scope] += 1
+    return scope_counts
 
 
 def build_payload(cat: dict, generated: str | None = None) -> dict:
@@ -126,16 +135,11 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
         [s for s in originals if storyboard_parse_key(s["key"])],
         key=lambda s: -(s["momentum"] or 0),
     )
+    ready_ids = {s["id"] for s in setlist_ready}
+    scope_counts = _assign_import_scopes(songs, ready_ids)
     setlist_ready_default = [
         s for s in setlist_ready if s["import_scope"] == SCOPE_DEFAULT_LIVE
     ]
-    scope_counts = {
-        SCOPE_DEFAULT_LIVE: 0,
-        SCOPE_PARKED: 0,
-        SCOPE_NOT_LIVE: 0,
-    }
-    for song in songs:
-        scope_counts[song["import_scope"]] += 1
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -150,6 +154,9 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
             "storyboard_default_live": scope_counts[SCOPE_DEFAULT_LIVE],
             "storyboard_parked": scope_counts[SCOPE_PARKED],
             "storyboard_not_live_band": scope_counts[SCOPE_NOT_LIVE],
+            "storyboard_not_setlist_ready": scope_counts[SCOPE_NOT_READY],
+            "storyboard_booker": scope_counts[SCOPE_BOOKER],
+            "storyboard_cover": scope_counts[SCOPE_COVER],
             "setlist_ready": len(setlist_ready),
             "setlist_ready_default_import": len(setlist_ready_default),
         },
@@ -167,11 +174,12 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
             "audio": "No audio lives in this repo. Masters stay local + Drive.",
             "storyboard_import": (
                 "PRIMARY PATH: StoryBoard imports THIS file. It reads songs[] "
-                "fields id, title, project, is_original, key, bpm only. "
-                "Default live project is Rad Dad; parked catalogs are not a "
-                "fourth live band. StoryLiner is promo only. Jeff owns "
-                "setlist order, duration, and lead vocalist. Do not create "
-                "StoryDesk/StoryOps as a band OS. Do not invent a second catalog."
+                "id, title, project, is_original, key, bpm, bpm_int, vault_id, "
+                "vault_ref, played_live. Default live repertoire is Rad Dad + "
+                "Jeff Story + recorded Rad Dad plays, gated by setlist_ready. "
+                "Parked catalogs are not a fourth live band. Travis books. "
+                "StoryLiner is promo only. Jeff owns setlist order, duration, "
+                "and lead vocalist. Do not invent a second catalog."
             ),
         },
     }
@@ -237,11 +245,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"  {counts['setlist_ready']} setlist-ready originals "
-        f"({counts['setlist_ready_default_import']} default-live Rad Dad)"
+        f"({counts['setlist_ready_default_import']} default-live repertoire)"
     )
     print(
         f"  StoryBoard default import: {counts['storyboard_default_live']} live / "
         f"{counts['storyboard_parked']} parked / "
+        f"{counts['storyboard_not_setlist_ready']} not-ready / "
+        f"{counts['storyboard_cover']} cover / "
+        f"{counts['storyboard_booker']} booker / "
         f"{counts['storyboard_not_live_band']} not-live-band"
     )
     print("  primary consumer: StoryBoard (same songs[] — no second catalog)")

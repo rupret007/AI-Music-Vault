@@ -1,5 +1,5 @@
 {
- "schema_version": 2,
+ "schema_version": 3,
  "generated": "2026-08-23",
  "catalog_version": "1.6",
  "primary_consumer": "StoryBoard",
@@ -8,11 +8,14 @@
   "originals": 126,
   "scored": 59,
   "ai_upload_ok": 128,
-  "storyboard_default_live": 0,
-  "storyboard_parked": 43,
-  "storyboard_not_live_band": 107,
+  "storyboard_default_live": 20,
+  "storyboard_parked": 20,
+  "storyboard_not_live_band": 0,
+  "storyboard_not_setlist_ready": 86,
+  "storyboard_booker": 1,
+  "storyboard_cover": 23,
   "setlist_ready": 40,
-  "setlist_ready_default_import": 0
+  "setlist_ready_default_import": 20
  },
  "lanes": {
   "flagship": "ST-0001",
@@ -24,6 +27,7 @@
  "storyboard": {
   "consumer": "StoryBoard",
   "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
+  "inspected": "2026-08-23 after StoryBoard #4",
   "policy_version": "catalog_import_v1",
   "import_from": "songs",
   "setlist_seed": "setlist_ready",
@@ -41,19 +45,21 @@
   "storyliner_role": "promo only",
   "no_fourth_live_band": true,
   "do_not_invent_live_band": true,
+  "booker_policy": "travis_books",
   "reads": [
    "id",
    "title",
    "project",
    "is_original",
    "key",
-   "bpm"
+   "bpm",
+   "bpm_int",
+   "vault_id",
+   "vault_ref",
+   "played_live"
   ],
   "does_not_read": [
-   "bpm_int",
    "bpm_raw",
-   "vault_ref",
-   "vault_id",
    "source_key",
    "potential",
    "readiness",
@@ -67,15 +73,16 @@
    "next_action",
    "stage",
    "writers",
-   "import_scope"
+   "import_scope",
+   "alt_titles"
   ],
   "field_map": {
    "title": "title",
    "musicalKey": "key",
-   "bpm": "bpm",
-   "sourceKey": "vault:catalog_import_v1:{id}",
-   "notes": "constructed: source {id} · {project} · original|not original",
-   "active": "always true on import — not is_original"
+   "bpm": "bpm_int",
+   "sourceKey": "vault:catalog_import_v1:{vault_id ?? id}",
+   "notes": "vault_ref",
+   "active": "is_original !== false"
   },
   "leave_null": [
    "durationSeconds",
@@ -85,17 +92,22 @@
    "chartUrl"
   ],
   "why_null": "durationSeconds, leadVocalist, genre, lyricsUrl, and chartUrl are not in the vault. Do not invent them. Jeff owns feel and set-list.",
-  "merge_key": "vault:catalog_import_v1:{id}",
-  "bpm_note": "StoryBoard parseBpm accepts only a clean integer 20–400. `bpm` is pre-parsed (leading tempo). `bpm_raw` keeps catalog text such as '214 (cut)'. `bpm_int` is a compat alias; the importer does not read it.",
+  "merge_key": "vault:catalog_import_v1:{vault_id ?? id}",
+  "bpm_note": "StoryBoard parseBpm prefers songs[].bpm_int (clean integer 20–400), then songs[].bpm as an integer, then a leading 2–3 digit tempo. `bpm` and `bpm_int` are the same pre-parsed integer. `bpm_raw` keeps catalog text such as '214 (cut)'.",
   "live_catalog_projects": [
-   "Rad Dad"
+   "Rad Dad",
+   "Jeff Story"
   ],
   "parked_catalog_projects": [
    "Stalemate",
    "Trailer Swift",
    "Something Dirty"
   ],
-  "default_import": "Rad Dad rows only. This vault currently labels no song artist_project as Rad Dad — live_presence is not artist_project. Do not invent Rad Dad catalog rows. Jeff opts in with includeParked / includeAllProjects on the StoryBoard side.",
+  "booker_catalog_projects": [
+   "Travis",
+   "Travis Story"
+  ],
+  "default_import": "Live repertoire only: project is Rad Dad or Jeff Story, the project phrase-matches those names, or played_live records a Rad Dad play. When setlist_ready is present, default import keeps that slice. Parked catalogs (Stalemate, Trailer Swift, Something Dirty) stay parked unless Jeff passes includeParked / includeAllProjects. Covers stay out. Travis rows are travis_books — never auto-pitch. Do not invent Rad Dad catalog rows or a fourth live band.",
   "active_lanes": [
    "flagship",
    "quick_win",
@@ -107,7 +119,7 @@
    "seed_from": "setlist_ready",
    "default_import_from": "setlist_ready_default_import",
    "item_type": "song",
-   "link_by": "vault:catalog_import_v1:{id}",
+   "link_by": "vault:catalog_import_v1:{vault_id ?? id}",
    "jeff_owns_order": true,
    "do_not_invent": [
     "breaks",
@@ -167,7 +179,7 @@
    "title": "The Way I Love You",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Paco Estrada"
@@ -242,7 +254,7 @@
     "Manic?  No way!"
    ],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -273,7 +285,7 @@
    "title": "Better Than Now",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Sean (Stalemate bassist)"
@@ -480,7 +492,7 @@
    "title": "Planet Of The Flakes",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -580,7 +592,7 @@
    "title": "Everyday",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -741,7 +753,7 @@
     "Candy Lane (2017)"
    ],
    "project": "Stalemate / Something Dirty",
-   "import_scope": "not_live_band",
+   "import_scope": "parked_catalog",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -777,7 +789,7 @@
     "Something Dirty - Mom"
    ],
    "project": "Stalemate / Something Dirty",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Jeff Story",
@@ -809,7 +821,7 @@
    "title": "I'm Sorry I'm Crazy",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -840,7 +852,7 @@
    "title": "Life At The Bottom",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -871,7 +883,7 @@
    "title": "Highs and Lows",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -902,7 +914,7 @@
    "title": "I Need You",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -933,7 +945,7 @@
    "title": "Dystopian Choice",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -964,7 +976,7 @@
    "title": "Brave New World",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -995,7 +1007,7 @@
    "title": "Morgan The Wizard",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1026,7 +1038,7 @@
    "title": "The Prime Outline",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1057,7 +1069,7 @@
    "title": "Head in the Sand",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1121,7 +1133,7 @@
     "New Found Love"
    ],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1152,7 +1164,7 @@
    "title": "Another Bland Love Song",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1183,7 +1195,7 @@
    "title": "Drinking Song",
    "alt_titles": [],
    "project": "Something Dirty / Stalemate / Rad Dad",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1216,7 +1228,7 @@
    "title": "Going To New Mexico",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1247,7 +1259,7 @@
    "title": "Less Miserable",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1278,7 +1290,7 @@
    "title": "Thanksgiving",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1309,7 +1321,7 @@
    "title": "The Leaves Are Weak",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1340,7 +1352,7 @@
    "title": "A Better Way",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1371,7 +1383,7 @@
    "title": "31 Timberview",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1402,7 +1414,7 @@
    "title": "Better Together",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1433,7 +1445,7 @@
    "title": "Oui C'est Fou",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1464,7 +1476,7 @@
    "title": "90% / 99 Percent",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1495,7 +1507,7 @@
    "title": "August Heated Nights",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1526,7 +1538,7 @@
    "title": "Don't Look Bach",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1557,7 +1569,7 @@
    "title": "I Fall Down",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1588,7 +1600,7 @@
    "title": "Justify",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1619,7 +1631,7 @@
    "title": "Minor Lessons",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1650,7 +1662,7 @@
    "title": "Prevent The Fall",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1681,7 +1693,7 @@
    "title": "Starlight",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1712,7 +1724,7 @@
    "title": "Synonyms For Stubborn",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1743,7 +1755,7 @@
    "title": "Taking Flight",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1774,7 +1786,7 @@
    "title": "The Catalyst",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1805,7 +1817,7 @@
    "title": "Why Do I...",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1836,7 +1848,7 @@
    "title": "You Complete Me",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1867,7 +1879,7 @@
    "title": "Unjustified",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1898,7 +1910,7 @@
    "title": "A Simpler Life",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1929,7 +1941,7 @@
    "title": "Blindfolds",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1960,7 +1972,7 @@
    "title": "Bottom Of My Heart",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -1991,7 +2003,7 @@
    "title": "Drums of War",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2022,7 +2034,7 @@
    "title": "Get Outta The City",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2053,7 +2065,7 @@
    "title": "Go My Way",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Jeff Story"
@@ -2084,7 +2096,7 @@
    "title": "Heart Racing",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2115,7 +2127,7 @@
    "title": "Hey There",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "(original artist)"
@@ -2146,7 +2158,7 @@
    "title": "Independence Day",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2177,7 +2189,7 @@
    "title": "Insane",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2208,7 +2220,7 @@
    "title": "Life In America 2018",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2239,7 +2251,7 @@
    "title": "Mayhem",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2270,7 +2282,7 @@
    "title": "Misery",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2301,7 +2313,7 @@
    "title": "My Muse Abuse",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2332,7 +2344,7 @@
    "title": "Old You",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2363,7 +2375,7 @@
    "title": "Our Last Night (Moonlight Pride)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2394,7 +2406,7 @@
    "title": "Over 40",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2428,7 +2440,7 @@
     "Resist Lyrics"
    ],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2459,7 +2471,7 @@
    "title": "Talk To Me",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2490,7 +2502,7 @@
    "title": "The World's Gonna End",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2521,7 +2533,7 @@
    "title": "Unity",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2552,7 +2564,7 @@
    "title": "Unknown Song",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2583,7 +2595,7 @@
    "title": "Room At The Top",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "(original artist)"
@@ -2614,7 +2626,7 @@
    "title": "Andrea (lyric rev 2023)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2645,7 +2657,7 @@
    "title": "Jettison",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2676,7 +2688,7 @@
    "title": "This Can't Be",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2707,7 +2719,7 @@
    "title": "My Mom Says We're Cool",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2738,7 +2750,7 @@
    "title": "I'm A Loser",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2769,7 +2781,7 @@
    "title": "A New Girlfriend",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2800,7 +2812,7 @@
    "title": "Untrue",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2831,7 +2843,7 @@
    "title": "The Sky Is Blue",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2862,7 +2874,7 @@
    "title": "Over 18",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2893,7 +2905,7 @@
    "title": "Andrea",
    "alt_titles": [],
    "project": "Stalemate",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2924,7 +2936,7 @@
    "title": "I Hate This Part",
    "alt_titles": [],
    "project": "Something Dirty",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2957,7 +2969,7 @@
    "title": "I'm OK",
    "alt_titles": [],
    "project": "Something Dirty",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -2988,7 +3000,7 @@
    "title": "Love In A Pill",
    "alt_titles": [],
    "project": "Something Dirty",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3052,7 +3064,7 @@
    "title": "Day In The Life",
    "alt_titles": [],
    "project": "Something Dirty",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3182,7 +3194,7 @@
    "title": "Dr Pepper",
    "alt_titles": [],
    "project": "Something Dirty",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3248,7 +3260,7 @@
    "title": "Our Life",
    "alt_titles": [],
    "project": "Something Dirty",
-   "import_scope": "parked_catalog",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3279,7 +3291,7 @@
    "title": "Deadweight",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3310,7 +3322,7 @@
    "title": "She's Not All There",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3341,7 +3353,7 @@
    "title": "Rock Brigade",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3372,7 +3384,7 @@
    "title": "Captain Freedom's Workout",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3403,7 +3415,7 @@
    "title": "Catharsis",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3434,7 +3446,7 @@
    "title": "Fool",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3465,7 +3477,7 @@
    "title": "Guns, Glory and Goners",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3496,7 +3508,7 @@
    "title": "mp3.com",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3527,7 +3539,7 @@
    "title": "Rockin' R",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3558,7 +3570,7 @@
    "title": "Scapegoat",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3589,7 +3601,7 @@
    "title": "Searching",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3620,7 +3632,7 @@
    "title": "The End",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3651,7 +3663,7 @@
    "title": "Castle (Chains of Pain)",
    "alt_titles": [],
    "project": "Dustin Duffy (Stalemate Split)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -3682,7 +3694,7 @@
    "title": "Dorivalland Song",
    "alt_titles": [],
    "project": "collab: dver.artist",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "dver.artist",
@@ -3714,7 +3726,7 @@
    "title": "Airtime",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3747,7 +3759,7 @@
     "Shine On"
    ],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3778,7 +3790,7 @@
    "title": "Suddenly Stranded",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3809,7 +3821,7 @@
    "title": "Political Circus",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3840,7 +3852,7 @@
    "title": "Run Away",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3874,7 +3886,7 @@
     "Sunburnt Country?"
    ],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3905,7 +3917,7 @@
    "title": "Four Walls",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3936,7 +3948,7 @@
    "title": "Blue Skies Fade",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Jeff Story",
@@ -3968,7 +3980,7 @@
    "title": "Home on the Lake",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -3999,7 +4011,7 @@
    "title": "Champ Elysisis",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4030,7 +4042,7 @@
    "title": "Dah",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4061,7 +4073,7 @@
    "title": "Everything's Beautiful",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4092,7 +4104,7 @@
    "title": "Home",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4123,7 +4135,7 @@
    "title": "Bom Bom",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Jeff Story"
@@ -4154,7 +4166,7 @@
    "title": "Your New Boyfriend",
    "alt_titles": [],
    "project": "Travis Story",
-   "import_scope": "not_live_band",
+   "import_scope": "travis_books",
    "is_original": false,
    "writers": [
     "Travis Story"
@@ -4185,7 +4197,7 @@
    "title": "TAD project (Wrapped in Linen / Rise of the Unicorn)",
    "alt_titles": [],
    "project": "Dustin Duffy (TAD)",
-   "import_scope": "not_live_band",
+   "import_scope": "cover_not_active",
    "is_original": false,
    "writers": [
     "Dustin Duffy"
@@ -4216,7 +4228,7 @@
    "title": "Older",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4247,7 +4259,7 @@
    "title": "Brown Eye Surprise",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4278,7 +4290,7 @@
    "title": "Over You",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4309,7 +4321,7 @@
    "title": "Beautiful Morning",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4340,7 +4352,7 @@
    "title": "Kids Can't Fly",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4371,7 +4383,7 @@
    "title": "Take The Abuse",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4402,7 +4414,7 @@
    "title": "New Act",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4433,7 +4445,7 @@
    "title": "Poolside",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4464,7 +4476,7 @@
    "title": "It's Alright",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4497,7 +4509,7 @@
    "title": "B4L",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4528,7 +4540,7 @@
    "title": "Been Loving You (working title)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4559,7 +4571,7 @@
    "title": "I Fall Pretty Down / City's Gone (working title)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4590,7 +4602,7 @@
    "title": "Don't Put Your Life Away (working title)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4621,7 +4633,7 @@
    "title": "A Place Where You Might (working title)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4652,7 +4664,7 @@
    "title": "Anyone Can See / Here Is The Church (working title)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4683,7 +4695,7 @@
    "title": "Chasing Rainbows",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4714,7 +4726,7 @@
    "title": "The Way That You Love Me",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4745,7 +4757,7 @@
    "title": "Happy (working title)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4776,7 +4788,7 @@
    "title": "Find My Island (working title)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "default_live",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4807,7 +4819,7 @@
    "title": "A New Hope (working title)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4838,7 +4850,7 @@
    "title": "Anthem Part 2 (working title)",
    "alt_titles": [],
    "project": "Jeff Story",
-   "import_scope": "not_live_band",
+   "import_scope": "not_setlist_ready",
    "is_original": true,
    "writers": [
     "Jeff Story"
@@ -4869,6 +4881,7 @@
    "key": "A live / F on song list",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0007",
    "import_scope": "parked_catalog"
   },
@@ -4878,6 +4891,7 @@
    "key": "A",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0003",
    "import_scope": "parked_catalog"
   },
@@ -4887,6 +4901,7 @@
    "key": "E (live, Eb tuning)",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0001",
    "import_scope": "parked_catalog"
   },
@@ -4896,6 +4911,7 @@
    "key": "A/A# (varies by chart)",
    "project": "Stalemate",
    "bpm": 145,
+   "bpm_int": 145,
    "vault_ref": "vault:ST-0006",
    "import_scope": "parked_catalog"
   },
@@ -4905,8 +4921,9 @@
    "key": "C",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0014",
-   "import_scope": "parked_catalog"
+   "import_scope": "default_live"
   },
   {
    "id": "JS-0001",
@@ -4914,8 +4931,9 @@
    "key": "Am",
    "project": "Something Dirty / Stalemate / Rad Dad",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:JS-0001",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "ST-0008",
@@ -4923,6 +4941,7 @@
    "key": "C doc / G live",
    "project": "Stalemate",
    "bpm": 212,
+   "bpm_int": 212,
    "vault_ref": "vault:ST-0008",
    "import_scope": "parked_catalog"
   },
@@ -4932,8 +4951,9 @@
    "key": "C#",
    "project": "Jeff Story",
    "bpm": 129,
+   "bpm_int": 129,
    "vault_ref": "vault:JS-0128",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "ST-0009",
@@ -4941,6 +4961,7 @@
    "key": "Am",
    "project": "Stalemate",
    "bpm": 123,
+   "bpm_int": 123,
    "vault_ref": "vault:ST-0009",
    "import_scope": "parked_catalog"
   },
@@ -4950,6 +4971,7 @@
    "key": "C",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0015",
    "import_scope": "parked_catalog"
   },
@@ -4959,8 +4981,9 @@
    "key": "A",
    "project": "Stalemate / Something Dirty",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0019",
-   "import_scope": "not_live_band"
+   "import_scope": "parked_catalog"
   },
   {
    "id": "ST-0016",
@@ -4968,6 +4991,7 @@
    "key": "B (list) / G+A charts",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0016",
    "import_scope": "parked_catalog"
   },
@@ -4977,6 +5001,7 @@
    "key": "E",
    "project": "Stalemate",
    "bpm": 150,
+   "bpm_int": 150,
    "vault_ref": "vault:ST-0010",
    "import_scope": "parked_catalog"
   },
@@ -4986,8 +5011,9 @@
    "key": "G",
    "project": "Jeff Story",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0032",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "JS-0131",
@@ -4995,8 +5021,9 @@
    "key": "C",
    "project": "Jeff Story",
    "bpm": 103,
+   "bpm_int": 103,
    "vault_ref": "vault:JS-0131",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "ST-0013",
@@ -5004,6 +5031,7 @@
    "key": "E",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0013",
    "import_scope": "parked_catalog"
   },
@@ -5013,8 +5041,9 @@
    "key": "C",
    "project": "Jeff Story",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:JS-0004",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "ST-0022",
@@ -5022,8 +5051,9 @@
    "key": "G",
    "project": "Jeff Story",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0022",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "JS-0002",
@@ -5031,8 +5061,9 @@
    "key": "C",
    "project": "Jeff Story",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:JS-0002",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "SD-0006",
@@ -5040,6 +5071,7 @@
    "key": "B",
    "project": "Something Dirty",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:SD-0006",
    "import_scope": "parked_catalog"
   },
@@ -5049,8 +5081,9 @@
    "key": "C",
    "project": "Jeff Story",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:JS-0003",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "ST-0012",
@@ -5058,6 +5091,7 @@
    "key": "F# (live)",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0012",
    "import_scope": "parked_catalog"
   },
@@ -5067,6 +5101,7 @@
    "key": "G",
    "project": "Something Dirty",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:SD-0004",
    "import_scope": "parked_catalog"
   },
@@ -5076,8 +5111,9 @@
    "key": "B",
    "project": "Jeff Story",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0029",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "JS-0132",
@@ -5085,8 +5121,9 @@
    "key": "C",
    "project": "Jeff Story",
    "bpm": 215,
+   "bpm_int": 215,
    "vault_ref": "vault:JS-0132",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "JS-0133",
@@ -5094,8 +5131,9 @@
    "key": "G#m",
    "project": "Jeff Story",
    "bpm": 161,
+   "bpm_int": 161,
    "vault_ref": "vault:JS-0133",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "ST-0017",
@@ -5103,6 +5141,7 @@
    "key": "Em",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0017",
    "import_scope": "parked_catalog"
   },
@@ -5112,8 +5151,9 @@
    "key": "A#",
    "project": "Jeff Story",
    "bpm": 103,
+   "bpm_int": 103,
    "vault_ref": "vault:JS-0130",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "ST-0021",
@@ -5121,8 +5161,9 @@
    "key": "B",
    "project": "Jeff Story",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0021",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "JS-0134",
@@ -5130,8 +5171,9 @@
    "key": "G",
    "project": "Jeff Story",
    "bpm": 136,
+   "bpm_int": 136,
    "vault_ref": "vault:JS-0134",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "ST-0018",
@@ -5139,6 +5181,7 @@
    "key": "D",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0018",
    "import_scope": "parked_catalog"
   },
@@ -5148,8 +5191,9 @@
    "key": "Am",
    "project": "Jeff Story",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0031",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "SD-0007",
@@ -5157,6 +5201,7 @@
    "key": "A",
    "project": "Something Dirty",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:SD-0007",
    "import_scope": "parked_catalog"
   },
@@ -5166,6 +5211,7 @@
    "key": "Em",
    "project": "Something Dirty",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:SD-0008",
    "import_scope": "parked_catalog"
   },
@@ -5175,6 +5221,7 @@
    "key": "C",
    "project": "Something Dirty",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:SD-0010",
    "import_scope": "parked_catalog"
   },
@@ -5184,8 +5231,9 @@
    "key": "Dm",
    "project": "Jeff Story",
    "bpm": 185,
+   "bpm_int": 185,
    "vault_ref": "vault:JS-0137",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "ST-0030",
@@ -5193,6 +5241,7 @@
    "key": "Bb",
    "project": "Stalemate",
    "bpm": null,
+   "bpm_int": null,
    "vault_ref": "vault:ST-0030",
    "import_scope": "parked_catalog"
   },
@@ -5202,8 +5251,9 @@
    "key": "A#",
    "project": "Jeff Story",
    "bpm": 112,
+   "bpm_int": 112,
    "vault_ref": "vault:JS-0135",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "JS-0136",
@@ -5211,8 +5261,9 @@
    "key": "D#",
    "project": "Jeff Story",
    "bpm": 108,
+   "bpm_int": 108,
    "vault_ref": "vault:JS-0136",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   },
   {
    "id": "JS-0138",
@@ -5220,15 +5271,217 @@
    "key": "C#m",
    "project": "Jeff Story",
    "bpm": 92,
+   "bpm_int": 92,
    "vault_ref": "vault:JS-0138",
-   "import_scope": "not_live_band"
+   "import_scope": "default_live"
   }
  ],
- "setlist_ready_default_import": [],
+ "setlist_ready_default_import": [
+  {
+   "id": "ST-0014",
+   "title": "Everyday",
+   "key": "C",
+   "project": "Stalemate",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:ST-0014",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0001",
+   "title": "Drinking Song",
+   "key": "Am",
+   "project": "Something Dirty / Stalemate / Rad Dad",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:JS-0001",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0128",
+   "title": "It's Alright",
+   "key": "C#",
+   "project": "Jeff Story",
+   "bpm": 129,
+   "bpm_int": 129,
+   "vault_ref": "vault:JS-0128",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "ST-0032",
+   "title": "Another Bland Love Song",
+   "key": "G",
+   "project": "Jeff Story",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:ST-0032",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0131",
+   "title": "I Fall Pretty Down / City's Gone (working title)",
+   "key": "C",
+   "project": "Jeff Story",
+   "bpm": 103,
+   "bpm_int": 103,
+   "vault_ref": "vault:JS-0131",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0004",
+   "title": "Thanksgiving",
+   "key": "C",
+   "project": "Jeff Story",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:JS-0004",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "ST-0022",
+   "title": "Life At The Bottom",
+   "key": "G",
+   "project": "Jeff Story",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:ST-0022",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0002",
+   "title": "Going To New Mexico",
+   "key": "C",
+   "project": "Jeff Story",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:JS-0002",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0003",
+   "title": "Less Miserable",
+   "key": "C",
+   "project": "Jeff Story",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:JS-0003",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "ST-0029",
+   "title": "Head in the Sand",
+   "key": "B",
+   "project": "Jeff Story",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:ST-0029",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0132",
+   "title": "Don't Put Your Life Away (working title)",
+   "key": "C",
+   "project": "Jeff Story",
+   "bpm": 215,
+   "bpm_int": 215,
+   "vault_ref": "vault:JS-0132",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0133",
+   "title": "A Place Where You Might (working title)",
+   "key": "G#m",
+   "project": "Jeff Story",
+   "bpm": 161,
+   "bpm_int": 161,
+   "vault_ref": "vault:JS-0133",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0130",
+   "title": "Been Loving You (working title)",
+   "key": "A#",
+   "project": "Jeff Story",
+   "bpm": 103,
+   "bpm_int": 103,
+   "vault_ref": "vault:JS-0130",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "ST-0021",
+   "title": "I'm Sorry I'm Crazy",
+   "key": "B",
+   "project": "Jeff Story",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:ST-0021",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0134",
+   "title": "Anyone Can See / Here Is The Church (working title)",
+   "key": "G",
+   "project": "Jeff Story",
+   "bpm": 136,
+   "bpm_int": 136,
+   "vault_ref": "vault:JS-0134",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "ST-0031",
+   "title": "Newfound Love",
+   "key": "Am",
+   "project": "Jeff Story",
+   "bpm": null,
+   "bpm_int": null,
+   "vault_ref": "vault:ST-0031",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0137",
+   "title": "Happy (working title)",
+   "key": "Dm",
+   "project": "Jeff Story",
+   "bpm": 185,
+   "bpm_int": 185,
+   "vault_ref": "vault:JS-0137",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0135",
+   "title": "Chasing Rainbows",
+   "key": "A#",
+   "project": "Jeff Story",
+   "bpm": 112,
+   "bpm_int": 112,
+   "vault_ref": "vault:JS-0135",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0136",
+   "title": "The Way That You Love Me",
+   "key": "D#",
+   "project": "Jeff Story",
+   "bpm": 108,
+   "bpm_int": 108,
+   "vault_ref": "vault:JS-0136",
+   "import_scope": "default_live"
+  },
+  {
+   "id": "JS-0138",
+   "title": "Find My Island (working title)",
+   "key": "C#m",
+   "project": "Jeff Story",
+   "bpm": 92,
+   "bpm_int": 92,
+   "vault_ref": "vault:JS-0138",
+   "import_scope": "default_live"
+  }
+ ],
  "notes": {
   "scores": "potential = how good; readiness = how close to done; momentum = how alive in Jeff's hands. Never merge them.",
   "rights": "ai_upload_ok=false means NEVER send this song's audio or lyrics to an AI music service. Covers, co-writes and collaborators' songs are all false.",
   "audio": "No audio lives in this repo. Masters stay local + Drive.",
-  "storyboard_import": "PRIMARY PATH: StoryBoard imports THIS file. It reads songs[] fields id, title, project, is_original, key, bpm only. Default live project is Rad Dad; parked catalogs are not a fourth live band. StoryLiner is promo only. Jeff owns setlist order, duration, and lead vocalist. Do not create StoryDesk/StoryOps as a band OS. Do not invent a second catalog."
+  "storyboard_import": "PRIMARY PATH: StoryBoard imports THIS file. It reads songs[] id, title, project, is_original, key, bpm, bpm_int, vault_id, vault_ref, played_live. Default live repertoire is Rad Dad + Jeff Story + recorded Rad Dad plays, gated by setlist_ready. Parked catalogs are not a fourth live band. Travis books. StoryLiner is promo only. Jeff owns setlist order, duration, and lead vocalist. Do not invent a second catalog."
  }
 }
