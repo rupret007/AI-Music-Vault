@@ -1,7 +1,8 @@
 name: catalog-validate
 
-# Same trigger/permission shape as rupret007/StoryBoard quality.yml (that one
-# actually gets a runner). Private-repo hosted runners still need billing.
+# Mirrors rupret007/StoryBoard .github/workflows/quality.yml trigger + permissions
+# (that public workflow gets a hosted runner). No expression in defaults —
+# ${{ github.workspace }} at workflow-level caused a 0-job "workflow file issue".
 on:
   pull_request:
   push:
@@ -9,11 +10,6 @@ on:
 
 permissions:
   contents: read
-
-defaults:
-  run:
-    working-directory: ${{ github.workspace }}
-    shell: bash
 
 jobs:
   validate:
