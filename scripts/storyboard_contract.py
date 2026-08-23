@@ -2,8 +2,9 @@
 """
 StoryBoard import contract — what catalog-import.ts actually does.
 
-Inspected 2026-08-23 from rupret007/StoryBoard main after PR #4
-(`packages/shared/src/catalog-import.ts`).
+Inspected 2026-08-23 from rupret007/StoryBoard main after PR #5
+(`packages/shared/src/catalog-import.ts`). Vault #5 published schema 3;
+StoryBoard #5 consumes that published default-live slice.
 
 Vault remains the catalog. StoryBoard remains the band OS.
 StoryLiner is promo only. Parked catalogs are not a fourth live band.
@@ -18,17 +19,29 @@ from typing import NamedTuple
 CATALOG_IMPORT_POLICY_VERSION = "catalog_import_v1"
 
 # StoryBoard LIVE_CATALOG_PROJECTS / PARKED / BOOKER (normalized).
-# Default import is live repertoire: Rad Dad, Jeff Story, or a recorded
-# Rad Dad play — and, when setlist_ready is present, only those ids.
-# Parked catalogs stay parked unless Jeff opts in on the StoryBoard side.
-# Phrase match: "Something Dirty / Stalemate / Rad Dad" is live (has rad dad),
-# not a new band.
+# When setlist_ready_default_import is present, that published id list is
+# the default plan (empty published slice stays empty). Fallback when the
+# array is absent: Rad Dad, Jeff Story, or a recorded Rad Dad play — and,
+# when setlist_ready is present, only those ids. Parked catalogs stay
+# parked unless Jeff opts in. Phrase match: "Something Dirty / Stalemate /
+# Rad Dad" is live (has rad dad), not a new band.
 LIVE_CATALOG_PROJECTS = ("rad dad", "jeff story")
 PARKED_CATALOG_PROJECTS = ("stalemate", "trailer swift", "something dirty")
 BOOKER_CATALOG_PROJECTS = ("travis", "travis story")
 CATALOG_BOOKER_POLICY = "travis_books"
 
+# StoryBoard CATALOG_IMPORT_SCOPES + travis_books (RECOGNIZED_IMPORT_SCOPES).
+CATALOG_IMPORT_SCOPES = (
+    "default_live",
+    "parked_catalog",
+    "not_live_band",
+    "not_setlist_ready",
+    "cover_not_active",
+)
+RECOGNIZED_IMPORT_SCOPES = CATALOG_IMPORT_SCOPES + (CATALOG_BOOKER_POLICY,)
+
 # Fields StoryBoard normalizeVaultSong + vaultSongDraft + decideVaultSong read.
+# StoryBoard #5 also reads import_scope (publishedDefaultIds / declared scopes).
 IMPORTER_READS = (
     "id",
     "title",
@@ -40,6 +53,7 @@ IMPORTER_READS = (
     "vault_id",
     "vault_ref",
     "played_live",
+    "import_scope",
 )
 IMPORTER_DOES_NOT_READ = (
     "bpm_raw",
@@ -56,9 +70,26 @@ IMPORTER_DOES_NOT_READ = (
     "next_action",
     "stage",
     "writers",
-    "import_scope",
     "alt_titles",
 )
+# Top-level keys planCatalogImport consults on a schema-3 feed.
+IMPORTER_CATALOG_READS = (
+    "songs",
+    "setlist_ready",
+    "setlist_ready_default_import",
+    "storyboard.field_map",
+    "lanes",
+)
+
+# Live StoryBoard VAULT_STORYBOARD_FIELD_MAP (schema 3 honesty).
+VAULT_STORYBOARD_FIELD_MAP = {
+    "title": "title",
+    "musicalKey": "key",
+    "bpm": "bpm_int",
+    "sourceKey": f"vault:{CATALOG_IMPORT_POLICY_VERSION}:{{vault_id ?? id}}",
+    "notes": "vault_ref",
+    "active": "is_original !== false",
+}
 
 # Prisma Song fields StoryBoard has but does not take from this feed.
 LEAVE_NULL = ("durationSeconds", "leadVocalist", "genre", "lyricsUrl", "chartUrl")
@@ -72,6 +103,7 @@ MAX_NOTES_LEN = 2000
 MAX_VAULT_REF_LEN = 120
 MAX_PLAYED_LIVE = 50
 MAX_SONGS = 2000
+MAX_IMPORT_SCOPE_LEN = 40
 BPM_MIN = 20
 BPM_MAX = 400
 
@@ -121,8 +153,52 @@ def is_live_project(project) -> bool:
     return has_phrase(tokens, "rad dad") or has_phrase(tokens, "jeff story")
 
 
-def is_parked_project(project) -> bool:
-    """Match StoryBoard isParkedProject()."""
+def as_text(value):
+    """Match StoryBoard asText() — non-empty trim, or finite number."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        return text or None
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float) and value == value and value not in (
+        float("inf"),
+        float("-inf"),
+    ):
+        return str(int(value)) if value.is_integer() else str(value)
+    return None
+
+
+def recognized_import_scope(declared=None) -> str | None:
+    """Match StoryBoard recognizedImportScope()."""
+    text = as_text(declared)
+    if not text:
+        return None
+    normalized = re.sub(r"[^a-z0-9]+", "_", text.lower())
+    if normalized in RECOGNIZED_IMPORT_SCOPES:
+        return normalized
+    return None
+
+
+def catalog_import_scope(project, declared=None) -> str:
+    """Match StoryBoard catalogImportScope() — project + declared, no played_live."""
+    if is_booker_project(project):
+        return CATALOG_BOOKER_POLICY
+    declared_scope = recognized_import_scope(declared)
+    if declared_scope:
+        return declared_scope
+    if is_live_project(project):
+        return SCOPE_DEFAULT_LIVE
+    if is_parked_project(project):
+        return SCOPE_PARKED
+    return SCOPE_NOT_LIVE
+
+
+def is_parked_project(project, declared=None) -> bool:
+    """Match StoryBoard isParkedProject() — declared parked_catalog wins."""
+    if recognized_import_scope(declared) == SCOPE_PARKED:
+        return True
     normalized = normalize_project(project)
     if normalized in PARKED_CATALOG_PROJECTS:
         return True
@@ -190,19 +266,55 @@ def decide_vault_song(
     include_all_projects: bool = False,
     has_ready_list: bool = False,
     in_ready_set: bool = False,
+    published_default_ids: set[str] | None = None,
+    has_declared_scopes: bool = False,
 ) -> Decision:
-    """Match StoryBoard decideVaultSong()."""
+    """Match StoryBoard decideVaultSong() after #5.
+
+    Export computes the slice with published_default_ids=None and
+    has_declared_scopes=False (the #4 fallback). Live StoryBoard prefers
+    the published setlist_ready_default_import id set when that array is
+    present — including when it is empty.
+    """
     project = song.get("project")
-    if is_booker_project(project):
+    declared = recognized_import_scope(song.get("import_scope"))
+    if is_booker_project(project) or declared == CATALOG_BOOKER_POLICY:
         return Decision(False, SCOPE_BOOKER)
-    if not include_all_projects and song.get("is_original") is False:
+    if not include_all_projects and (
+        song.get("is_original") is False or declared == SCOPE_COVER
+    ):
         return Decision(False, SCOPE_COVER)
-
-    live = is_live_repertoire(project, song.get("played_live"))
-    parked = is_parked_project(project)
-
     if include_all_projects:
         return Decision(True, "include_all")
+
+    parked = is_parked_project(project, song.get("import_scope"))
+    live = is_live_repertoire(project, song.get("played_live"))
+
+    if published_default_ids is not None:
+        if song.get("id") in published_default_ids:
+            return Decision(True, SCOPE_DEFAULT_LIVE)
+        if include_parked and parked:
+            return Decision(True, "include_parked")
+        if declared and declared != SCOPE_DEFAULT_LIVE:
+            return Decision(False, declared)
+        if parked:
+            return Decision(False, SCOPE_PARKED)
+        reason = (
+            SCOPE_NOT_READY
+            if has_ready_list or len(published_default_ids) == 0
+            else SCOPE_NOT_LIVE
+        )
+        return Decision(False, reason)
+
+    if has_declared_scopes:
+        scope = catalog_import_scope(project, song.get("import_scope"))
+        if scope == SCOPE_DEFAULT_LIVE:
+            return Decision(True, SCOPE_DEFAULT_LIVE)
+        if scope == SCOPE_PARKED:
+            if include_parked:
+                return Decision(True, "include_parked")
+            return Decision(False, SCOPE_PARKED)
+        return Decision(False, scope)
 
     if has_ready_list and in_ready_set:
         if parked and not live and not include_parked:
@@ -224,7 +336,7 @@ def decide_vault_song(
 
 
 def default_decisions(songs: list[dict], ready_ids: set[str]) -> list[tuple[dict, Decision]]:
-    """Default StoryBoard plan: includeParked/includeAllProjects false."""
+    """Fallback plan used to *compute* the published slice (no published ids)."""
     has_ready = bool(ready_ids)
     out: list[tuple[dict, Decision]] = []
     for song in songs:
@@ -236,6 +348,36 @@ def default_decisions(songs: list[dict], ready_ids: set[str]) -> list[tuple[dict
                     song,
                     has_ready_list=has_ready,
                     in_ready_set=sid in ready_ids,
+                ),
+            )
+        )
+    return out
+
+
+def live_default_decisions(
+    songs: list[dict],
+    ready_ids: set[str],
+    published_default_ids: set[str] | None,
+) -> list[tuple[dict, Decision]]:
+    """Live StoryBoard #5 default plan (includeParked/includeAllProjects false).
+
+    published_default_ids is None when setlist_ready_default_import is absent.
+    An empty set means the array is present and empty — import stays empty.
+    """
+    has_ready = bool(ready_ids)
+    has_declared = any(recognized_import_scope(s.get("import_scope")) for s in songs)
+    out: list[tuple[dict, Decision]] = []
+    for song in songs:
+        sid = song.get("id")
+        out.append(
+            (
+                song,
+                decide_vault_song(
+                    song,
+                    has_ready_list=has_ready,
+                    in_ready_set=sid in ready_ids,
+                    published_default_ids=published_default_ids,
+                    has_declared_scopes=has_declared,
                 ),
             )
         )
@@ -354,7 +496,7 @@ def storyboard_mapping() -> dict:
     return {
         "consumer": "StoryBoard",
         "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
-        "inspected": "2026-08-23 after StoryBoard #4",
+        "inspected": "2026-08-23 after StoryBoard #5",
         "policy_version": CATALOG_IMPORT_POLICY_VERSION,
         "import_from": "songs",
         "setlist_seed": "setlist_ready",
@@ -365,16 +507,12 @@ def storyboard_mapping() -> dict:
         "no_fourth_live_band": True,
         "do_not_invent_live_band": True,
         "booker_policy": CATALOG_BOOKER_POLICY,
+        "prefers_published_default_import": True,
+        "empty_published_slice_stays_empty": True,
         "reads": list(IMPORTER_READS),
         "does_not_read": list(IMPORTER_DOES_NOT_READ),
-        "field_map": {
-            "title": "title",
-            "musicalKey": "key",
-            "bpm": "bpm_int",
-            "sourceKey": f"vault:{CATALOG_IMPORT_POLICY_VERSION}:{{vault_id ?? id}}",
-            "notes": "vault_ref",
-            "active": "is_original !== false",
-        },
+        "catalog_reads": list(IMPORTER_CATALOG_READS),
+        "field_map": dict(VAULT_STORYBOARD_FIELD_MAP),
         "leave_null": list(LEAVE_NULL),
         "why_null": (
             "durationSeconds, leadVocalist, genre, lyricsUrl, and chartUrl "
@@ -391,13 +529,15 @@ def storyboard_mapping() -> dict:
         "parked_catalog_projects": ["Stalemate", "Trailer Swift", "Something Dirty"],
         "booker_catalog_projects": ["Travis", "Travis Story"],
         "default_import": (
-            "Live repertoire only: project is Rad Dad or Jeff Story, the project "
-            "phrase-matches those names, or played_live records a Rad Dad play. "
-            "When setlist_ready is present, default import keeps that slice. "
-            "Parked catalogs (Stalemate, Trailer Swift, Something Dirty) stay "
-            "parked unless Jeff passes includeParked / includeAllProjects. "
-            "Covers stay out. Travis rows are travis_books — never auto-pitch. "
-            "Do not invent Rad Dad catalog rows or a fourth live band."
+            "Published setlist_ready_default_import is the default plan when "
+            "present (empty published slice stays empty — StoryBoard will not "
+            "recompute a live band). Fallback when that array is absent: live "
+            "repertoire (Rad Dad / Jeff Story / recorded Rad Dad plays) gated "
+            "by setlist_ready. Parked catalogs (Stalemate, Trailer Swift, "
+            "Something Dirty) stay parked unless Jeff passes includeParked / "
+            "includeAllProjects. Covers stay out. Travis rows are "
+            "travis_books — never auto-pitch. Do not invent Rad Dad catalog "
+            "rows or a fourth live band."
         ),
         "active_lanes": ["flagship", "quick_win", "experimental"],
         "active_lane_cap": 3,
@@ -405,6 +545,7 @@ def storyboard_mapping() -> dict:
         "setlist": {
             "seed_from": "setlist_ready",
             "default_import_from": "setlist_ready_default_import",
+            "prefers_default_import_from": True,
             "item_type": "song",
             "link_by": f"vault:{CATALOG_IMPORT_POLICY_VERSION}:{{vault_id ?? id}}",
             "jeff_owns_order": True,
