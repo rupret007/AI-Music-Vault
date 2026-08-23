@@ -9,6 +9,8 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
+from export_app_api import build_payload  # noqa: E402
+from storyboard_contract import import_scope, storyboard_parse_bpm  # noqa: E402
 from validate_catalog import (  # noqa: E402
     ACTIVE_LANES,
     PROTECTED_LANES,
@@ -75,28 +77,7 @@ def fixture():
 def extras_ok(cat=None):
     cat = cat or fixture()
     return {
-        "app_api": {
-            "primary_consumer": "StoryBoard",
-            "lanes": {**ACTIVE_LANES, **PROTECTED_LANES},
-            "storyboard": {
-                "import_from": "songs",
-                "second_catalog": False,
-                "active_lane_cap": 3,
-                "protected_opus": "JS-0107",
-                "not_band_os": ["StoryDesk", "StoryOps"],
-                "setlist": {
-                    "seed_from": "setlist_ready",
-                    "jeff_owns_order": True,
-                },
-            },
-            "songs": [
-                {
-                    "id": s["song_id"],
-                    "ai_upload_ok": str(s["ai_upload_ok"]).startswith("YES"),
-                }
-                for s in cat["songs"]
-            ],
-        },
+        "app_api": build_payload(cat),
         "vm_matches": {"ST-0001": ["uid-a", "uid-b"]},
         "priority_queue": (
             "ACTIVE (max 3 — unchanged)\n"
@@ -232,6 +213,156 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertEqual(bpm_int("214 (cut)"), 214)
         self.assertIsNone(bpm_int(""))
         self.assertIsNone(bpm_int("Eb tuning"))
+
+    def test_storyboard_parse_bpm_is_strict(self):
+        """The importer drops annotated tempos; export must pre-parse."""
+        self.assertEqual(storyboard_parse_bpm(214), 214)
+        self.assertEqual(storyboard_parse_bpm("145"), 145)
+        self.assertIsNone(storyboard_parse_bpm("214 (cut)"))
+        self.assertIsNone(storyboard_parse_bpm(""))
+        self.assertIsNone(storyboard_parse_bpm("Eb tuning"))
+        self.assertIsNone(storyboard_parse_bpm(True))
+
+    def test_hybrid_project_is_not_a_live_band(self):
+        self.assertEqual(import_scope("Rad Dad"), "default_live")
+        self.assertEqual(import_scope("Stalemate"), "parked_catalog")
+        self.assertEqual(import_scope("Trailer Swift"), "parked_catalog")
+        self.assertEqual(import_scope("Something Dirty"), "parked_catalog")
+        self.assertEqual(
+            import_scope("Something Dirty / Stalemate / Rad Dad"),
+            "not_live_band",
+        )
+        self.assertEqual(import_scope("Jeff Story"), "not_live_band")
+
+    def test_missing_app_api_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"] = None
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("app_api.json is required" in e for e in errors), errors)
+
+    def test_validate_without_extras_fails_closed(self):
+        errors = validate(fixture())
+        self.assertTrue(any("app_api.json is required" in e for e in errors), errors)
+
+    def test_field_map_bpm_int_lie_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["field_map"]["bpm"] = "bpm_int"
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("does not read bpm_int" in e for e in errors), errors)
+
+    def test_field_map_active_is_original_lie_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["field_map"]["active"] = "is_original"
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("active=true" in e for e in errors), errors)
+
+    def test_field_map_notes_vault_ref_lie_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["field_map"]["notes"] = "vault_ref"
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("constructs notes" in e for e in errors), errors)
+
+    def test_annotated_bpm_in_feed_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["songs"][0]["bpm"] = "214 (cut)"
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("StoryBoard-importable" in e or "StoryBoard-parseable" in e for e in errors), errors)
+
+    def test_title_mismatch_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["songs"][0]["title"] = "Not The Flag"
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("title does not match" in e for e in errors), errors)
+
+    def test_fourth_live_band_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["live_catalog_projects"] = [
+            "Rad Dad",
+            "Stalemate",
+        ]
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("fourth live band" in e for e in errors), errors)
+
+    def test_storyliner_as_consumer_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["primary_consumer"] = "StoryLiner"
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("promo only" in e or "StoryBoard" in e for e in errors), errors)
+
+    def test_yes_gate_with_cowriter_fails(self):
+        cat = fixture()
+        cat["songs"].append(
+            song(
+                "JS-0998",
+                "Shared Tune",
+                writers=["Jeff Story", "Greg Baldia"],
+            )
+        )
+        cat["original_song_entities"] = 6
+        errors = validate(cat, extras_ok(cat))
+        self.assertTrue(
+            any("JS-0998" in e and "writers=['Jeff Story']" in e for e in errors),
+            errors,
+        )
+
+    def test_score_bool_fails(self):
+        cat = fixture()
+        cat["songs"][0]["potential"] = True
+        errors = validate(cat, extras_ok(cat))
+        self.assertTrue(any("potential=True" in e for e in errors), errors)
+
+    def test_score_string_fails(self):
+        cat = fixture()
+        cat["songs"][0]["readiness"] = "90"
+        errors = validate(cat, extras_ok(cat))
+        self.assertTrue(any("readiness='90'" in e for e in errors), errors)
+
+    def test_live_presence_incomplete_fails(self):
+        cat = fixture()
+        cat["songs"][0]["live_presence"] = [{"band": "Rad Dad"}]
+        errors = validate(cat, extras_ok(cat))
+        self.assertTrue(any("band and date" in e for e in errors), errors)
+
+    def test_setlist_ready_unknown_id_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["setlist_ready"].append({"id": "JS-9999", "title": "Nope"})
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("unknown id" in e for e in errors), errors)
+
+    def test_setlist_ready_non_original_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["setlist_ready"].append(
+            {"id": "JS-0107", "title": "Blue Skies Fade", "project": "Stalemate", "key": "A"}
+        )
+        extra["app_api"]["setlist_ready_default_import"] = []
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("not an original" in e for e in errors), errors)
+
+    def test_invented_default_live_setlist_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["setlist_ready_default_import"] = [
+            {"id": "ST-0001", "title": "Turn Over The Flag"}
+        ]
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("do not invent a live band" in e for e in errors), errors)
+
+    def test_missing_vm_matches_fails_closed(self):
+        extra = extras_ok()
+        extra["vm_matches"] = None
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("vm_matches.json is missing" in e for e in errors), errors)
+
+    def test_old_schema_version_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["schema_version"] = 1
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("schema_version must be 2" in e for e in errors), errors)
+
+    def test_merge_key_vault_id_lie_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["merge_key"] = "vault_id"
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("catalog_import_v1" in e for e in errors), errors)
 
     def test_real_repo_catalog_passes(self):
         """Live spine must stay green after this pass — no weakening the check."""

@@ -29,3 +29,6 @@ jobs:
 
       - name: Catalog validator unit tests
         run: python -m unittest discover -s tests -v
+
+      - name: StoryBoard export stays honest
+        run: python scripts/export_app_api.py --check

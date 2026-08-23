@@ -7,14 +7,36 @@ StoryBoard is the band-management OS that consumes it.
 This script publishes ONE slim, stable-schema file — data/app_api.json —
 so StoryBoard does not hand-enter songs and we do not invent a second catalog.
 
-Not StoryDesk. Not StoryOps. No new app in this repo.
+Field honesty: only emit StoryBoard-importable values on the fields
+catalog-import.ts actually reads (id, title, project, is_original, key, bpm).
+Not StoryDesk. Not StoryOps. StoryLiner is promo only. No new app.
+No fourth live band.
 
 Run:  python3 scripts/export_app_api.py
+Check: python3 scripts/export_app_api.py --check
 Out:  data/app_api.json
 """
-import json, os, re, datetime
+from __future__ import annotations
 
-SCHEMA_VERSION = 1
+import argparse
+import datetime
+import json
+import os
+import sys
+
+from storyboard_contract import (
+    SCOPE_DEFAULT_LIVE,
+    SCOPE_NOT_LIVE,
+    SCOPE_PARKED,
+    bpm_int,
+    bpm_raw_string,
+    import_scope,
+    source_key,
+    storyboard_mapping,
+    storyboard_parse_key,
+)
+
+SCHEMA_VERSION = 2
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAT = os.path.join(HERE, "data", "master_catalog.json")
 OUT = os.path.join(HERE, "data", "app_api.json")
@@ -27,106 +49,97 @@ LANES = {
     "opus": "JS-0107",          # Blue Skies Fade
 }
 
-# StoryBoard Song (prisma): title, durationSeconds?, musicalKey?, bpm?,
-# leadVocalist?, genre?, notes?, lyricsUrl?, chartUrl?, active
-STORYBOARD = {
-    "consumer": "StoryBoard",
-    "import_from": "songs",
-    "setlist_seed": "setlist_ready",
-    "second_catalog": False,
-    "not_band_os": ["StoryDesk", "StoryOps"],
-    "field_map": {
-        "title": "title",
-        "musicalKey": "key",
-        "bpm": "bpm_int",
-        "active": "is_original",
-        "notes": "vault_ref",
-    },
-    "leave_null": ["durationSeconds", "leadVocalist"],
-    "why_null": (
-        "durationSeconds and leadVocalist are not in the vault. "
-        "Do not invent them. Jeff owns feel and set-list."
-    ),
-    "merge_key": "vault_id",
-    "active_lanes": ["flagship", "quick_win", "experimental"],
-    "active_lane_cap": 3,
-    "protected_opus": "JS-0107",
-    # StoryBoard Setlist + ops consume the same feed. Jeff owns order/feel.
-    "setlist": {
-        "seed_from": "setlist_ready",
-        "item_type": "song",
-        "link_by": "vault_id",
-        "jeff_owns_order": True,
-        "do_not_invent": ["breaks", "running_order", "lead_vocalist", "duration"],
-    },
-    "ops": {
-        "write_back": "events/",
-        "show_played_songs": "vault_id preferred, title fallback",
-        "lanes_are_not_a_setlist": True,
-    },
-}
+
+def _played_live(song: dict) -> list[str]:
+    events = song.get("live_presence") or []
+    if not isinstance(events, list):
+        return []
+    out = []
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        band = event.get("band")
+        date = event.get("date")
+        if band and date:
+            out.append(f"{band} ({date})")
+    return out
 
 
-def bpm_int(raw):
-    """StoryBoard wants Int?. Parse a leading 2–3 digit tempo; else null."""
-    if raw is None or raw == "":
-        return None
-    if isinstance(raw, bool):
-        return None
-    if isinstance(raw, (int, float)):
-        n = int(raw)
-        return n if 20 <= n <= 400 else None
-    m = re.match(r"\s*(\d{2,3})\b", str(raw))
-    if not m:
-        return None
-    n = int(m.group(1))
-    return n if 20 <= n <= 400 else None
+def export_song(src: dict) -> dict:
+    gate = src.get("ai_upload_ok", "") or ""
+    sid = src["song_id"]
+    title = src["canonical_title"]
+    project = src.get("artist_project", "")
+    is_original = src.get("classification") == "original"
+    raw_bpm = src.get("bpm")
+    parsed_bpm = bpm_int(raw_bpm)
+    return {
+        "id": sid,
+        "vault_id": sid,
+        "vault_ref": f"vault:{sid}",
+        "source_key": source_key(sid),
+        "title": title,
+        "alt_titles": src.get("alt_titles", []),
+        "project": project,
+        "import_scope": import_scope(project),
+        "is_original": is_original,
+        "writers": src.get("writers", []),
+        "key": src.get("key", "") or "",
+        # StoryBoard reads `bpm` via parseBpm (clean int only).
+        "bpm": parsed_bpm,
+        "bpm_raw": bpm_raw_string(raw_bpm),
+        "bpm_int": parsed_bpm,
+        "duration_seconds": None,
+        "potential": src.get("potential"),
+        "readiness": src.get("readiness"),
+        "momentum": src.get("momentum"),
+        "last_activity": src.get("last_activity", ""),
+        "live_latest": src.get("live_latest", ""),
+        "played_live": _played_live(src),
+        "stage": src.get("stage", ""),
+        "theme": src.get("theme", ""),
+        "hook": src.get("hook", ""),
+        "next_action": src.get("next_action", ""),
+        # machine-readable rights gate: only True means an AI service is OK,
+        # and only for Jeff's SOLO recordings, privately. See README rule 3.
+        "ai_upload_ok": str(gate).startswith("YES"),
+        "ai_upload_note": gate,
+    }
 
 
-def main():
-    cat = json.load(open(CAT))
-    songs = []
-    for s in cat["songs"]:
-        gate = s.get("ai_upload_ok", "") or ""
-        sid = s["song_id"]
-        songs.append({
-            "id": sid,
-            "vault_id": sid,
-            "vault_ref": f"vault:{sid}",
-            "title": s["canonical_title"],
-            "alt_titles": s.get("alt_titles", []),
-            "project": s.get("artist_project", ""),
-            "is_original": s.get("classification") == "original",
-            "writers": s.get("writers", []),
-            "key": s.get("key", "") or "",
-            "bpm": s.get("bpm", "") or "",
-            "bpm_int": bpm_int(s.get("bpm")),
-            "duration_seconds": None,
-            "potential": s.get("potential"),
-            "readiness": s.get("readiness"),
-            "momentum": s.get("momentum"),
-            "last_activity": s.get("last_activity", ""),
-            "live_latest": s.get("live_latest", ""),
-            "played_live": [f"{e['band']} ({e['date']})"
-                            for e in s.get("live_presence", [])],
-            "stage": s.get("stage", ""),
-            "theme": s.get("theme", ""),
-            "hook": s.get("hook", ""),
-            "next_action": s.get("next_action", ""),
-            # machine-readable rights gate: only True means an AI service is OK,
-            # and only for Jeff's SOLO recordings, privately. See README rule 3.
-            "ai_upload_ok": gate.startswith("YES"),
-            "ai_upload_note": gate,
-        })
+def _ready_row(song: dict) -> dict:
+    return {
+        "id": song["id"],
+        "title": song["title"],
+        "key": song["key"],
+        "project": song["project"],
+        "bpm": song["bpm"],
+        "vault_ref": song["vault_ref"],
+        "import_scope": song["import_scope"],
+    }
 
+
+def build_payload(cat: dict, generated: str | None = None) -> dict:
+    songs = [export_song(src) for src in cat["songs"]]
     originals = [s for s in songs if s["is_original"]]
     setlist_ready = sorted(
-        [s for s in originals if s["key"]],
-        key=lambda s: -(s["momentum"] or 0))
+        [s for s in originals if storyboard_parse_key(s["key"])],
+        key=lambda s: -(s["momentum"] or 0),
+    )
+    setlist_ready_default = [
+        s for s in setlist_ready if s["import_scope"] == SCOPE_DEFAULT_LIVE
+    ]
+    scope_counts = {
+        SCOPE_DEFAULT_LIVE: 0,
+        SCOPE_PARKED: 0,
+        SCOPE_NOT_LIVE: 0,
+    }
+    for song in songs:
+        scope_counts[song["import_scope"]] += 1
 
-    payload = {
+    return {
         "schema_version": SCHEMA_VERSION,
-        "generated": datetime.date.today().isoformat(),
+        "generated": generated or datetime.date.today().isoformat(),
         "catalog_version": cat.get("version", ""),
         "primary_consumer": "StoryBoard",
         "counts": {
@@ -134,13 +147,17 @@ def main():
             "originals": len(originals),
             "scored": sum(1 for s in songs if s["potential"]),
             "ai_upload_ok": sum(1 for s in songs if s["ai_upload_ok"]),
+            "storyboard_default_live": scope_counts[SCOPE_DEFAULT_LIVE],
+            "storyboard_parked": scope_counts[SCOPE_PARKED],
+            "storyboard_not_live_band": scope_counts[SCOPE_NOT_LIVE],
+            "setlist_ready": len(setlist_ready),
+            "setlist_ready_default_import": len(setlist_ready_default),
         },
         "lanes": LANES,
-        "storyboard": STORYBOARD,
+        "storyboard": storyboard_mapping(),
         "songs": songs,
-        "setlist_ready": [{"id": s["id"], "title": s["title"], "key": s["key"],
-                           "project": s["project"], "bpm_int": s["bpm_int"],
-                           "vault_ref": s["vault_ref"]} for s in setlist_ready],
+        "setlist_ready": [_ready_row(s) for s in setlist_ready],
+        "setlist_ready_default_import": [_ready_row(s) for s in setlist_ready_default],
         "notes": {
             "scores": "potential = how good; readiness = how close to done; "
                       "momentum = how alive in Jeff's hands. Never merge them.",
@@ -149,23 +166,87 @@ def main():
                       "collaborators' songs are all false.",
             "audio": "No audio lives in this repo. Masters stay local + Drive.",
             "storyboard_import": (
-                "PRIMARY PATH: StoryBoard imports THIS file. Use songs[] "
-                "(or setlist_ready for keyed originals). See the storyboard "
-                "object for the Song-model field map. Do not create "
-                "StoryDesk/StoryOps as a band OS. Do not invent a second "
-                "catalog. Three active songs only; Blue Skies Fade is protected."
+                "PRIMARY PATH: StoryBoard imports THIS file. It reads songs[] "
+                "fields id, title, project, is_original, key, bpm only. "
+                "Default live project is Rad Dad; parked catalogs are not a "
+                "fourth live band. StoryLiner is promo only. Jeff owns "
+                "setlist order, duration, and lead vocalist. Do not create "
+                "StoryDesk/StoryOps as a band OS. Do not invent a second catalog."
             ),
         },
     }
-    with open(OUT, "w") as f:
-        json.dump(payload, f, indent=1, ensure_ascii=False)
-    c = payload["counts"]
+
+
+def comparable(payload: dict) -> dict:
+    """Drop the date stamp so --check is stable across midnight CI."""
+    out = dict(payload)
+    out.pop("generated", None)
+    return out
+
+
+def write_payload(payload: dict, path: str = OUT) -> None:
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=1, ensure_ascii=False)
+        handle.write("\n")
+
+
+def check_committed(cat: dict, path: str = OUT) -> list[str]:
+    if not os.path.exists(path):
+        return [f"missing StoryBoard feed at {path}"]
+    with open(path, encoding="utf-8") as handle:
+        committed = json.load(handle)
+    expected = comparable(build_payload(cat, generated=committed.get("generated")))
+    actual = comparable(committed)
+    if expected == actual:
+        return []
+    return [
+        "data/app_api.json is stale vs scripts/export_app_api.py — "
+        "re-run python3 scripts/export_app_api.py"
+    ]
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Export the StoryBoard catalog feed")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="fail if data/app_api.json does not match a fresh export",
+    )
+    args = parser.parse_args(argv)
+
+    with open(CAT, encoding="utf-8") as handle:
+        cat = json.load(handle)
+
+    if args.check:
+        errors = check_committed(cat)
+        if errors:
+            print("export CHECK FAILED", file=sys.stderr)
+            for err in errors:
+                print(f"  • {err}", file=sys.stderr)
+            return 1
+        print(f"export OK — {OUT} matches scripts/export_app_api.py")
+        return 0
+
+    payload = build_payload(cat)
+    write_payload(payload)
+    counts = payload["counts"]
     print(f"wrote {OUT}")
-    print(f"  {c['entities']} entities · {c['originals']} originals · "
-          f"{c['scored']} scored · {c['ai_upload_ok']} AI-eligible")
-    print(f"  {len(setlist_ready)} setlist-ready originals (have a known key)")
+    print(
+        f"  {counts['entities']} entities · {counts['originals']} originals · "
+        f"{counts['scored']} scored · {counts['ai_upload_ok']} AI-eligible"
+    )
+    print(
+        f"  {counts['setlist_ready']} setlist-ready originals "
+        f"({counts['setlist_ready_default_import']} default-live Rad Dad)"
+    )
+    print(
+        f"  StoryBoard default import: {counts['storyboard_default_live']} live / "
+        f"{counts['storyboard_parked']} parked / "
+        f"{counts['storyboard_not_live_band']} not-live-band"
+    )
     print("  primary consumer: StoryBoard (same songs[] — no second catalog)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

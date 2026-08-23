@@ -156,3 +156,17 @@ AWAITING JEFF: Mystery Gem verdict · Manic lead guitar · workbench Terminal pa
 
 ### Next continuation point
 Same as before this pass: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard can now be wired to `data/app_api.json` on its side — that work lives in the StoryBoard repo, not here.
+
+## Export honesty pass — 2026-08-23 (Cloud Agent, no audio)
+### Done
+1. Re-inspected StoryBoard `catalog-import.ts`. Corrected `app_api.json` / `APPS.md` / Vault→StoryBoard map: `bpm` is the import field (pre-parsed int), notes and `sourceKey` are constructed, `active` is always true on import.
+2. Published `import_scope` + `setlist_ready_default_import`. Default live (Rad Dad) is empty — `live_presence` is not `artist_project`. No invented live band.
+3. Stronger `validate_catalog.py` + export `--check`. Architecture lock: Vault=catalog, StoryBoard=band OS, StoryLiner=promo only, no fourth live band.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. Three-active-song cap unchanged. Blue Skies Fade untouched.
+- Did not relabel any `artist_project` as Rad Dad.
+
+### Next continuation point
+Unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import flags (`includeParked` / `includeAllProjects` / a future Rad Dad label) stay Jeff's call.
