@@ -22,10 +22,12 @@ from export_app_api import (  # noqa: E402
 )
 from storyboard_contract import (  # noqa: E402
     CATALOG_IMPORT_POLICY_VERSION,
+    VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
     clean_title,
     default_decisions,
     import_scope,
+    live_default_decisions,
     parse_bpm,
     source_key,
     storyboard_mapping,
@@ -62,6 +64,7 @@ class ExportHonestyTests(unittest.TestCase):
 
     def test_field_map_matches_importer(self):
         mapping = storyboard_mapping()
+        self.assertEqual(mapping["field_map"], dict(VAULT_STORYBOARD_FIELD_MAP))
         self.assertEqual(mapping["field_map"]["bpm"], "bpm_int")
         self.assertEqual(mapping["field_map"]["musicalKey"], "key")
         self.assertIn("is_original", mapping["field_map"]["active"])
@@ -70,7 +73,14 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertEqual(mapping["storyliner_role"], "promo only")
         self.assertEqual(mapping["booker_policy"], "travis_books")
         self.assertTrue(mapping["no_fourth_live_band"])
+        self.assertTrue(mapping["prefers_published_default_import"])
+        self.assertTrue(mapping["empty_published_slice_stays_empty"])
+        self.assertIn("import_scope", mapping["reads"])
+        self.assertNotIn("import_scope", mapping["does_not_read"])
+        self.assertIn("setlist_ready_default_import", mapping["catalog_reads"])
+        self.assertIn("StoryBoard #5", mapping["inspected"])
         self.assertEqual(mapping["live_catalog_projects"], ["Rad Dad", "Jeff Story"])
+        self.assertTrue(mapping["setlist"]["prefers_default_import_from"])
 
     def test_default_live_setlist_is_empty_without_live_repertoire(self):
         payload = build_payload(fixture())
@@ -214,8 +224,20 @@ class ExportHonestyTests(unittest.TestCase):
         published = {row["id"] for row in api["setlist_ready_default_import"]}
         self.assertEqual(published, planned)
         self.assertEqual(len(published), api["counts"]["storyboard_default_live"])
+        self.assertEqual(len(published), api["counts"]["setlist_ready_default_import"])
+        self.assertEqual(len(published), 20)
         self.assertGreater(len(published), 0)
         self.assertTrue(all(sid in ready_ids for sid in published))
+        live = {
+            song["id"]
+            for song, decision in live_default_decisions(
+                api["songs"], ready_ids, published
+            )
+            if decision.include
+        }
+        self.assertEqual(live, published)
+        self.assertIn("import_scope", api["storyboard"]["reads"])
+        self.assertNotIn("import_scope", api["storyboard"]["does_not_read"])
 
     def test_bpm_int_alias(self):
         self.assertEqual(bpm_int(103), 103)

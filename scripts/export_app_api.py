@@ -9,8 +9,10 @@ so StoryBoard does not hand-enter songs and we do not invent a second catalog.
 
 Field honesty: emit StoryBoard-importable values on the fields
 catalog-import.ts actually reads (id, title, project, is_original, key,
-bpm, bpm_int, vault_id, vault_ref, played_live). Not StoryDesk. Not
-StoryOps. StoryLiner is promo only. No new app. No fourth live band.
+bpm, bpm_int, vault_id, vault_ref, played_live, import_scope). StoryBoard
+#5 prefers the published setlist_ready_default_import slice. Not
+StoryDesk. Not StoryOps. StoryLiner is promo only. No new app. No fourth
+live band.
 
 Run:  python3 scripts/export_app_api.py
 Check: python3 scripts/export_app_api.py --check
@@ -175,11 +177,14 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
             "storyboard_import": (
                 "PRIMARY PATH: StoryBoard imports THIS file. It reads songs[] "
                 "id, title, project, is_original, key, bpm, bpm_int, vault_id, "
-                "vault_ref, played_live. Default live repertoire is Rad Dad + "
-                "Jeff Story + recorded Rad Dad plays, gated by setlist_ready. "
-                "Parked catalogs are not a fourth live band. Travis books. "
-                "StoryLiner is promo only. Jeff owns setlist order, duration, "
-                "and lead vocalist. Do not invent a second catalog."
+                "vault_ref, played_live, import_scope. Default live is the "
+                "published setlist_ready_default_import slice (empty published "
+                "slice stays empty). Fallback when that array is absent: Rad "
+                "Dad + Jeff Story + recorded Rad Dad plays, gated by "
+                "setlist_ready. Parked catalogs are not a fourth live band. "
+                "Travis books. StoryLiner is promo only. Jeff owns setlist "
+                "order, duration, and lead vocalist. Do not invent a second "
+                "catalog."
             ),
         },
     }

@@ -27,7 +27,7 @@
  "storyboard": {
   "consumer": "StoryBoard",
   "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
-  "inspected": "2026-08-23 after StoryBoard #4",
+  "inspected": "2026-08-23 after StoryBoard #5",
   "policy_version": "catalog_import_v1",
   "import_from": "songs",
   "setlist_seed": "setlist_ready",
@@ -46,6 +46,8 @@
   "no_fourth_live_band": true,
   "do_not_invent_live_band": true,
   "booker_policy": "travis_books",
+  "prefers_published_default_import": true,
+  "empty_published_slice_stays_empty": true,
   "reads": [
    "id",
    "title",
@@ -56,7 +58,8 @@
    "bpm_int",
    "vault_id",
    "vault_ref",
-   "played_live"
+   "played_live",
+   "import_scope"
   ],
   "does_not_read": [
    "bpm_raw",
@@ -73,8 +76,14 @@
    "next_action",
    "stage",
    "writers",
-   "import_scope",
    "alt_titles"
+  ],
+  "catalog_reads": [
+   "songs",
+   "setlist_ready",
+   "setlist_ready_default_import",
+   "storyboard.field_map",
+   "lanes"
   ],
   "field_map": {
    "title": "title",
@@ -107,7 +116,7 @@
    "Travis",
    "Travis Story"
   ],
-  "default_import": "Live repertoire only: project is Rad Dad or Jeff Story, the project phrase-matches those names, or played_live records a Rad Dad play. When setlist_ready is present, default import keeps that slice. Parked catalogs (Stalemate, Trailer Swift, Something Dirty) stay parked unless Jeff passes includeParked / includeAllProjects. Covers stay out. Travis rows are travis_books — never auto-pitch. Do not invent Rad Dad catalog rows or a fourth live band.",
+  "default_import": "Published setlist_ready_default_import is the default plan when present (empty published slice stays empty — StoryBoard will not recompute a live band). Fallback when that array is absent: live repertoire (Rad Dad / Jeff Story / recorded Rad Dad plays) gated by setlist_ready. Parked catalogs (Stalemate, Trailer Swift, Something Dirty) stay parked unless Jeff passes includeParked / includeAllProjects. Covers stay out. Travis rows are travis_books — never auto-pitch. Do not invent Rad Dad catalog rows or a fourth live band.",
   "active_lanes": [
    "flagship",
    "quick_win",
@@ -118,6 +127,7 @@
   "setlist": {
    "seed_from": "setlist_ready",
    "default_import_from": "setlist_ready_default_import",
+   "prefers_default_import_from": true,
    "item_type": "song",
    "link_by": "vault:catalog_import_v1:{vault_id ?? id}",
    "jeff_owns_order": true,
@@ -5482,6 +5492,6 @@
   "scores": "potential = how good; readiness = how close to done; momentum = how alive in Jeff's hands. Never merge them.",
   "rights": "ai_upload_ok=false means NEVER send this song's audio or lyrics to an AI music service. Covers, co-writes and collaborators' songs are all false.",
   "audio": "No audio lives in this repo. Masters stay local + Drive.",
-  "storyboard_import": "PRIMARY PATH: StoryBoard imports THIS file. It reads songs[] id, title, project, is_original, key, bpm, bpm_int, vault_id, vault_ref, played_live. Default live repertoire is Rad Dad + Jeff Story + recorded Rad Dad plays, gated by setlist_ready. Parked catalogs are not a fourth live band. Travis books. StoryLiner is promo only. Jeff owns setlist order, duration, and lead vocalist. Do not invent a second catalog."
+  "storyboard_import": "PRIMARY PATH: StoryBoard imports THIS file. It reads songs[] id, title, project, is_original, key, bpm, bpm_int, vault_id, vault_ref, played_live, import_scope. Default live is the published setlist_ready_default_import slice (empty published slice stays empty). Fallback when that array is absent: Rad Dad + Jeff Story + recorded Rad Dad plays, gated by setlist_ready. Parked catalogs are not a fourth live band. Travis books. StoryLiner is promo only. Jeff owns setlist order, duration, and lead vocalist. Do not invent a second catalog."
  }
 }

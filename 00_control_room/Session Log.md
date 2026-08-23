@@ -170,3 +170,13 @@ Same as before this pass: Manic guitar · EXP-001 when Chrome connects · Needs 
 
 ### Next continuation point
 Unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import flags (`includeParked` / `includeAllProjects` / a future Rad Dad label) stay Jeff's call.
+
+## StoryBoard #5 published-slice honesty — 2026-08-23 (Cloud Agent, no audio)
+### Done
+1. Re-inspected live StoryBoard `catalog-import.ts` after StoryBoard #5. The importer now prefers published `setlist_ready_default_import` and reads `import_scope`. Vault #5 still listed `import_scope` under `does_not_read` and described default import as the #4 fallback only.
+2. Contract + export + validator now match that planner: field map = `VAULT_STORYBOARD_FIELD_MAP`, `travis_books`, schema 3, 20-id slice must equal `import_scope=default_live` and the live planner. Empty published slice stays empty.
+3. README no longer claims the default seed is empty.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.

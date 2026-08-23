@@ -11,9 +11,13 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from export_app_api import build_payload  # noqa: E402
 from storyboard_contract import (  # noqa: E402
+    VAULT_STORYBOARD_FIELD_MAP,
+    catalog_import_scope,
     decide_vault_song,
     import_scope,
+    live_default_decisions,
     parse_bpm,
+    recognized_import_scope,
     storyboard_parse_bpm,
 )
 from validate_catalog import (  # noqa: E402
@@ -452,6 +456,92 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
 
+    def test_does_not_read_cannot_hide_import_scope(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["does_not_read"] = list(
+            extra["app_api"]["storyboard"]["does_not_read"]
+        ) + ["import_scope"]
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("must not claim import_scope" in e for e in errors),
+            errors,
+        )
+
+    def test_field_map_must_match_live_vault_map(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["field_map"]["sourceKey"] = "vault_id"
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("VAULT_STORYBOARD_FIELD_MAP" in e or "sourceKey" in e for e in errors),
+            errors,
+        )
+
+    def test_inspected_must_name_storyboard_5(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["inspected"] = "2026-08-23 after StoryBoard #4"
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("StoryBoard #5" in e for e in errors), errors)
+
+    def test_missing_default_import_from_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["setlist"].pop("default_import_from")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("default_import_from" in e for e in errors),
+            errors,
+        )
+
+    def test_empty_published_slice_with_default_live_stamps_fails(self):
+        cat = fixture()
+        cat["songs"][0]["artist_project"] = "Jeff Story"
+        extra = extras_ok(cat)
+        extra["app_api"]["setlist_ready_default_import"] = []
+        extra["app_api"]["counts"]["setlist_ready_default_import"] = 0
+        extra["app_api"]["counts"]["storyboard_default_live"] = 0
+        extra["app_api"]["songs"][0]["import_scope"] = "default_live"
+        errors = validate(cat, extra)
+        self.assertTrue(
+            any(
+                "empty" in e and ("default_live" in e or "published" in e)
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_published_slice_row_must_be_default_live(self):
+        cat = fixture()
+        cat["songs"][0]["artist_project"] = "Jeff Story"
+        extra = extras_ok(cat)
+        extra["app_api"]["setlist_ready_default_import"][0]["import_scope"] = (
+            "parked_catalog"
+        )
+        errors = validate(cat, extra)
+        self.assertTrue(
+            any("import_scope=default_live" in e for e in errors),
+            errors,
+        )
+
+    def test_missing_setlist_ready_default_import_count_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"].pop("setlist_ready_default_import")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any(
+                "counts.setlist_ready_default_import is required" in e
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_unrecognized_import_scope_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["songs"][0]["import_scope"] = "rad_dad_only"
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("not a StoryBoard-recognized scope" in e for e in errors),
+            errors,
+        )
+
     def test_zero_default_live_count_when_planner_keeps_songs_fails(self):
         cat = fixture()
         cat["songs"][0]["artist_project"] = "Jeff Story"
@@ -504,6 +594,72 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertTrue(decision.include)
 
+    def test_live_planner_empty_published_slice_stays_empty(self):
+        """StoryBoard #5: present-but-empty setlist_ready_default_import wins."""
+        songs = [
+            {
+                "id": "JS-0001",
+                "project": "Jeff Story",
+                "is_original": True,
+                "import_scope": "not_live_band",
+                "played_live": ["Rad Dad (2026-05)"],
+            },
+            {
+                "id": "ST-0001",
+                "project": "Stalemate",
+                "is_original": True,
+                "import_scope": "parked_catalog",
+            },
+        ]
+        planned = {
+            rec["id"]
+            for rec, decision in live_default_decisions(
+                songs, {"JS-0001", "ST-0001"}, set()
+            )
+            if decision.include
+        }
+        self.assertEqual(planned, set())
+
+    def test_live_planner_prefers_published_ids(self):
+        songs = [
+            {
+                "id": "JS-0128",
+                "project": "Jeff Story",
+                "is_original": True,
+                "import_scope": "default_live",
+            },
+            {
+                "id": "ST-0014",
+                "project": "Stalemate",
+                "is_original": True,
+                "import_scope": "default_live",
+                "played_live": ["Rad Dad (2026-05)"],
+            },
+            {
+                "id": "ST-0001",
+                "project": "Stalemate",
+                "is_original": True,
+                "import_scope": "parked_catalog",
+            },
+        ]
+        planned = {
+            rec["id"]
+            for rec, decision in live_default_decisions(
+                songs, {"JS-0128", "ST-0014", "ST-0001"}, {"JS-0128", "ST-0014"}
+            )
+            if decision.include
+        }
+        self.assertEqual(planned, {"JS-0128", "ST-0014"})
+
+    def test_catalog_import_scope_honors_declared_not_live(self):
+        self.assertEqual(catalog_import_scope("Jeff Story"), "default_live")
+        self.assertEqual(
+            catalog_import_scope("Jeff Story", "not_live_band"),
+            "not_live_band",
+        )
+        self.assertEqual(recognized_import_scope("travis_books"), "travis_books")
+        self.assertIsNone(recognized_import_scope("rad_dad_only"))
+
     def test_real_repo_catalog_passes(self):
         """Live spine must stay green after this pass — no weakening the check."""
         from validate_catalog import load_repo
@@ -511,14 +667,30 @@ class ValidateCatalogTests(unittest.TestCase):
         cat, extra = load_repo(ROOT)
         errors = validate(cat, extra)
         self.assertEqual(errors, [], errors)
-        default_ids = {
-            row["id"] for row in extra["app_api"]["setlist_ready_default_import"]
-        }
-        self.assertGreater(len(default_ids), 0)
+        api = extra["app_api"]
+        default_ids = {row["id"] for row in api["setlist_ready_default_import"]}
+        self.assertEqual(len(default_ids), 20)
+        self.assertEqual(api["counts"]["setlist_ready_default_import"], 20)
+        self.assertEqual(api["counts"]["storyboard_default_live"], 20)
+        self.assertEqual(api["schema_version"], 3)
+        self.assertEqual(api["storyboard"]["field_map"], dict(VAULT_STORYBOARD_FIELD_MAP))
+        self.assertEqual(api["storyboard"]["booker_policy"], "travis_books")
+        self.assertIn("import_scope", api["storyboard"]["reads"])
+        self.assertNotIn("import_scope", api["storyboard"]["does_not_read"])
+        self.assertTrue(api["storyboard"]["prefers_published_default_import"])
         self.assertIn("JS-0128", default_ids)
         self.assertIn("ST-0014", default_ids)
         self.assertNotIn("ST-0001", default_ids)
         self.assertNotIn("ST-0002", default_ids)
+        ready_ids = {row["id"] for row in api["setlist_ready"]}
+        live_ids = {
+            rec["id"]
+            for rec, decision in live_default_decisions(
+                api["songs"], ready_ids, default_ids
+            )
+            if decision.include
+        }
+        self.assertEqual(live_ids, default_ids)
 
 
 if __name__ == "__main__":

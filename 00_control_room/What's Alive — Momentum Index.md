@@ -1,6 +1,6 @@
 # WHAT'S ALIVE — the Momentum Index
 *2026-08-20 · A new layer of logic for "what do I work on next." Every original now carries a **momentum score (0-100)**: when you last touched it (55%), how many separate times you've returned to it (30%), and how many years it's stayed with you (15%). Computed from every dated trace — memo dates, doc revisions, mixes, bounces. Potential says how good a song is; momentum says how alive it is in YOUR hands. The magic is in crossing them.*
-*2026-08-23: three lanes unchanged (Turn Over The Flag / Manic / Long Long Drive). StoryBoard may display this index; it does not get to promote a fourth active song or invent a fourth live band. Default StoryBoard import is live repertoire from the existing catalog, not a new WIP lane.*
+*2026-08-23: three lanes unchanged (Turn Over The Flag / Manic / Long Long Drive). StoryBoard may display this index; it does not get to promote a fourth active song or invent a fourth live band. Default StoryBoard import is the published 20-id slice, not a new WIP lane.*
 
 ## The four quadrants
 

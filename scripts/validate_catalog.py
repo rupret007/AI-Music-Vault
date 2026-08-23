@@ -22,9 +22,11 @@ import sys
 from storyboard_contract import (
     BOOKER_CATALOG_PROJECTS,
     CATALOG_BOOKER_POLICY,
+    IMPORTER_CATALOG_READS,
     IMPORTER_READS,
     LIVE_CATALOG_PROJECTS,
     MAX_ID_LEN,
+    MAX_IMPORT_SCOPE_LEN,
     MAX_KEY_LEN,
     MAX_PLAYED_LIVE,
     MAX_SONGS,
@@ -34,14 +36,17 @@ from storyboard_contract import (
     PARKED_CATALOG_PROJECTS,
     SCOPE_DEFAULT_LIVE,
     SKIP_REASON_TO_COUNT,
+    VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
     bpm_raw_string,
     default_decisions,
     imported_active,
     imported_notes,
+    live_default_decisions,
     normalize_project,
     parse_bpm,
     played_live_from_presence,
+    recognized_import_scope,
     source_key,
     storyboard_parse_key,
     vault_ref_for,
@@ -160,7 +165,7 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
 
     if api.get("schema_version") != 3:
         errors.append(
-            "app_api.json schema_version must be 3 (StoryBoard #4 importer-honest)"
+            "app_api.json schema_version must be 3 (StoryBoard #5 importer-honest)"
         )
     if api.get("primary_consumer") != "StoryBoard":
         errors.append("app_api.json primary_consumer must be StoryBoard")
@@ -215,8 +220,34 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         sl = sb.get("setlist") or {}
         if sl.get("seed_from") != "setlist_ready":
             errors.append("storyboard.setlist must seed from setlist_ready")
+        if sl.get("default_import_from") != "setlist_ready_default_import":
+            errors.append(
+                "storyboard.setlist.default_import_from must be "
+                "setlist_ready_default_import — StoryBoard #5 prefers that "
+                "published slice for the default setlist"
+            )
+        if sl.get("prefers_default_import_from") is not True:
+            errors.append(
+                "storyboard.setlist.prefers_default_import_from must be true"
+            )
         if sl.get("jeff_owns_order") is not True:
             errors.append("storyboard.setlist must leave running order to Jeff")
+        if sb.get("prefers_published_default_import") is not True:
+            errors.append(
+                "storyboard.prefers_published_default_import must be true — "
+                "StoryBoard #5 uses setlist_ready_default_import when present"
+            )
+        if sb.get("empty_published_slice_stays_empty") is not True:
+            errors.append(
+                "storyboard.empty_published_slice_stays_empty must be true — "
+                "an empty published slice is not recomputed into a live band"
+            )
+        inspected = str(sb.get("inspected") or "")
+        if "StoryBoard #5" not in inspected:
+            errors.append(
+                "storyboard.inspected must name StoryBoard #5 "
+                "(live importer prefers the published default-live slice)"
+            )
         banned = {str(n).lower() for n in (sb.get("not_band_os") or [])}
         if "storydesk" not in banned or "storyops" not in banned:
             errors.append("storyboard mapping must name StoryDesk/StoryOps as not-band-os")
@@ -249,6 +280,12 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.booker_catalog_projects must include Travis / Travis Story"
             )
         fmap = sb.get("field_map") or {}
+        if fmap != dict(VAULT_STORYBOARD_FIELD_MAP):
+            errors.append(
+                "storyboard.field_map must match StoryBoard "
+                "VAULT_STORYBOARD_FIELD_MAP (title, musicalKey, bpm=bpm_int, "
+                "sourceKey, notes=vault_ref, active=is_original !== false)"
+            )
         if fmap.get("bpm") != "bpm_int":
             errors.append(
                 "storyboard.field_map.bpm must be 'bpm_int' — "
@@ -268,6 +305,11 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             )
         if fmap.get("title") != "title":
             errors.append("storyboard.field_map.title must point at songs[].title")
+        if fmap.get("sourceKey") != VAULT_STORYBOARD_FIELD_MAP["sourceKey"]:
+            errors.append(
+                "storyboard.field_map.sourceKey must be "
+                "vault:catalog_import_v1:{vault_id ?? id}"
+            )
         merge = str(sb.get("merge_key") or "")
         if "catalog_import_v1" not in merge:
             errors.append(
@@ -278,15 +320,21 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             errors.append(
                 "storyboard.reads must list exactly the fields StoryBoard reads: "
                 "id, title, project, is_original, key, bpm, bpm_int, vault_id, "
-                "vault_ref, played_live"
+                "vault_ref, played_live, import_scope"
             )
         unread = {str(x) for x in (sb.get("does_not_read") or [])}
-        for field in ("bpm_int", "vault_ref", "vault_id", "played_live"):
+        for field in ("bpm_int", "vault_ref", "vault_id", "played_live", "import_scope"):
             if field in unread:
                 errors.append(
                     f"storyboard.does_not_read must not claim {field} — "
                     "StoryBoard reads it"
                 )
+        catalog_reads = list(sb.get("catalog_reads") or [])
+        if catalog_reads != list(IMPORTER_CATALOG_READS):
+            errors.append(
+                "storyboard.catalog_reads must list songs, setlist_ready, "
+                "setlist_ready_default_import, storyboard.field_map, lanes"
+            )
 
     dumped = json.dumps(api).lower()
     if '"consumer": "storydesk"' in dumped or '"consumer": "storyops"' in dumped:
@@ -448,6 +496,17 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 f"app_api {loc}: import_scope={rec.get('import_scope')!r} "
                 f"expected {want_scope}"
             )
+        scope_text = rec.get("import_scope")
+        if scope_text is not None and len(str(scope_text)) > MAX_IMPORT_SCOPE_LEN:
+            errors.append(
+                f"app_api {loc}: import_scope exceeds StoryBoard max "
+                f"{MAX_IMPORT_SCOPE_LEN} (importer would reject the whole file)"
+            )
+        if scope_text not in (None, "") and recognized_import_scope(scope_text) is None:
+            errors.append(
+                f"app_api {loc}: import_scope={scope_text!r} is not a "
+                "StoryBoard-recognized scope"
+            )
         if rec.get("source_key") != source_key(src["song_id"]):
             errors.append(
                 f"app_api {loc}: source_key is not vault:catalog_import_v1:{{id}}"
@@ -490,6 +549,91 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         errors.append(
             f"setlist_ready_default_import invents ids not in setlist_ready: {invented}"
         )
+
+    declared_live = {
+        rec.get("id")
+        for rec in api_songs
+        if isinstance(rec, dict) and rec.get("import_scope") == SCOPE_DEFAULT_LIVE
+    }
+    published_set = {sid for sid in actual_default if sid}
+    if declared_live != published_set:
+        errors.append(
+            "setlist_ready_default_import ids must be exactly the songs "
+            "stamped import_scope=default_live — StoryBoard #5 prefers that "
+            "published slice and will not invent or hide live repertoire"
+        )
+    if not published_set and declared_live:
+        errors.append(
+            "empty setlist_ready_default_import is a lie when songs are "
+            "stamped default_live — StoryBoard #5 keeps an empty published "
+            "slice empty and will not recompute a live band"
+        )
+
+    for item in default_ready:
+        if not isinstance(item, dict):
+            errors.append("setlist_ready_default_import items must be objects")
+            continue
+        rid = item.get("id")
+        if item.get("import_scope") != SCOPE_DEFAULT_LIVE:
+            errors.append(
+                f"setlist_ready_default_import {rid} must have "
+                "import_scope=default_live"
+            )
+
+    api_by_id = {rec.get("id"): rec for rec in api_songs if isinstance(rec, dict)}
+    for item in ready:
+        if not isinstance(item, dict):
+            continue
+        rid = item.get("id")
+        song_rec = api_by_id.get(rid)
+        if (
+            song_rec
+            and "import_scope" in item
+            and item.get("import_scope") != song_rec.get("import_scope")
+        ):
+            errors.append(
+                f"setlist_ready {rid} import_scope does not match songs[]"
+            )
+
+    live_planned = {
+        rec.get("id")
+        for rec, decision in live_default_decisions(
+            [r for r in api_songs if isinstance(r, dict)],
+            set(ready_ids),
+            set(actual_default),
+        )
+        if decision.include
+    }
+    if live_planned != published_set:
+        errors.append(
+            "live StoryBoard planner (published setlist_ready_default_import) "
+            f"would select {sorted(live_planned)} but the published slice is "
+            f"{sorted(published_set)} — do not invent or hide the default-live ids"
+        )
+
+    if isinstance(counts, dict):
+        if "setlist_ready_default_import" not in counts:
+            errors.append(
+                "app_api.json counts.setlist_ready_default_import is required "
+                "(fail closed)"
+            )
+        elif counts.get("setlist_ready_default_import") != len(expected_default):
+            errors.append(
+                f"app_api.json counts.setlist_ready_default_import="
+                f"{counts.get('setlist_ready_default_import')!r} "
+                f"expected {len(expected_default)}"
+            )
+        if (
+            counts.get("storyboard_default_live") is not None
+            and counts.get("setlist_ready_default_import") is not None
+            and counts.get("storyboard_default_live")
+            != counts.get("setlist_ready_default_import")
+        ):
+            errors.append(
+                "counts.storyboard_default_live must equal "
+                "counts.setlist_ready_default_import — the published "
+                "slice is the default plan"
+            )
 
     return errors
 
