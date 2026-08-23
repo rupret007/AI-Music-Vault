@@ -96,6 +96,6 @@ The vault is the **song brain**. **StoryBoard** is the band-management OS that c
 
 ## Current state
 
-Catalog v1.6 · 150 entities (126 originals) · 916 memos transcribed, 372 matched · 59 songs scored · 6-track Stalemate album ~16 small items from done. StoryBoard import: `data/app_api.json`. Validate: `python3 scripts/validate_catalog.py`.
+Catalog v1.6 · 150 entities (126 originals) · 916 memos transcribed, 372 matched · 59 songs scored · 6-track Stalemate album ~16 small items from done. StoryBoard import: `data/app_api.json` (40 setlist-ready keyed originals; 20-id Vault default-live slice). Validate: `python3 scripts/validate_catalog.py`.
 
 *Maintained with Claude in the "2026 Song Organization" project. Sessions append to the Decision Log and Session Log — read those first to pick up where the last one left off.*

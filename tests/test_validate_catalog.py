@@ -603,6 +603,63 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
 
+    def test_missing_setlist_ready_count_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"].pop("setlist_ready")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.setlist_ready is required" in e for e in errors),
+            errors,
+        )
+
+    def test_stale_setlist_ready_count_fails(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"]["setlist_ready"] = 0
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.setlist_ready=" in e and "expected" in e for e in errors),
+            errors,
+        )
+
+    def test_setlist_ready_count_cannot_conflate_with_default_live(self):
+        """Hand-edit must not make the 5 keyed originals look like the 1 live row."""
+        cat = fixture()
+        cat["songs"][0]["artist_project"] = "Jeff Story"
+        extra = extras_ok(cat)
+        extra["app_api"]["counts"]["setlist_ready"] = extra["app_api"]["counts"][
+            "storyboard_default_live"
+        ]
+        errors = validate(cat, extra)
+        self.assertTrue(
+            any(
+                "counts.setlist_ready" in e
+                and ("expected" in e or "must not equal the default-live" in e)
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_setlist_names_must_stay_distinct(self):
+        self.assertNotEqual(
+            VAULT_DEFAULT_LIVE_SETLIST_NAME,
+            VAULT_SETLIST_READY_SETLIST_NAME,
+        )
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["setlist_ready_setlist_name"] = (
+            VAULT_DEFAULT_LIVE_SETLIST_NAME
+        )
+        extra["app_api"]["storyboard"]["setlist"]["opt_in_name"] = (
+            VAULT_DEFAULT_LIVE_SETLIST_NAME
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any(
+                "distinct" in e or "Vault setlist-ready" in e
+                for e in errors
+            ),
+            errors,
+        )
+
     def test_unrecognized_import_scope_fails(self):
         extra = extras_ok()
         extra["app_api"]["songs"][0]["import_scope"] = "rad_dad_only"
@@ -740,9 +797,20 @@ class ValidateCatalogTests(unittest.TestCase):
         api = extra["app_api"]
         default_order = [row["id"] for row in api["setlist_ready_default_import"]]
         default_ids = set(default_order)
+        ready_ids = {row["id"] for row in api["setlist_ready"]}
         self.assertEqual(len(default_ids), 20)
         self.assertEqual(api["counts"]["setlist_ready_default_import"], 20)
         self.assertEqual(api["counts"]["storyboard_default_live"], 20)
+        self.assertEqual(len(ready_ids), 40)
+        self.assertEqual(api["counts"]["setlist_ready"], 40)
+        self.assertNotEqual(
+            api["counts"]["setlist_ready"],
+            api["counts"]["storyboard_default_live"],
+        )
+        self.assertNotEqual(
+            api["storyboard"]["default_live_setlist_name"],
+            api["storyboard"]["setlist_ready_setlist_name"],
+        )
         self.assertEqual(api["schema_version"], 3)
         self.assertEqual(api["storyboard"]["field_map"], dict(VAULT_STORYBOARD_FIELD_MAP))
         self.assertEqual(api["storyboard"]["booker_policy"], "travis_books")
@@ -765,7 +833,6 @@ class ValidateCatalogTests(unittest.TestCase):
             api["storyboard"]["parked_named_in_default_live_stay_current_artist"]
         )
         self.assertIn("StoryBoard #6", api["storyboard"]["inspected"])
-        ready_ids = {row["id"] for row in api["setlist_ready"]}
         live_ids = {
             rec["id"]
             for rec, decision in live_default_decisions(
