@@ -10,9 +10,10 @@ so StoryBoard does not hand-enter songs and we do not invent a second catalog.
 Field honesty: emit StoryBoard-importable values on the fields
 catalog-import.ts actually reads (id, title, project, is_original, key,
 bpm, bpm_int, vault_id, vault_ref, played_live, import_scope). StoryBoard
-#5 prefers the published setlist_ready_default_import slice. Not
-StoryDesk. Not StoryOps. StoryLiner is promo only. No new app. No fourth
-live band.
+#6 prefers the published setlist_ready_default_import slice and names
+that draft "Vault default-live". Parked-named rows in that slice stay
+current-artist repertoire, not a fourth live band. Not StoryDesk. Not
+StoryOps. StoryLiner is promo only. No new app. No fourth live band.
 
 Run:  python3 scripts/export_app_api.py
 Check: python3 scripts/export_app_api.py --check
@@ -36,6 +37,7 @@ from storyboard_contract import (
     bpm_int,
     bpm_raw_string,
     default_decisions,
+    parked_named_default_live_ids,
     played_live_from_presence,
     source_key,
     storyboard_mapping,
@@ -142,6 +144,9 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
     setlist_ready_default = [
         s for s in setlist_ready if s["import_scope"] == SCOPE_DEFAULT_LIVE
     ]
+    parked_named_ids = parked_named_default_live_ids(
+        songs, [s["id"] for s in setlist_ready_default]
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -154,6 +159,7 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
             "scored": sum(1 for s in songs if s["potential"]),
             "ai_upload_ok": sum(1 for s in songs if s["ai_upload_ok"]),
             "storyboard_default_live": scope_counts[SCOPE_DEFAULT_LIVE],
+            "storyboard_default_live_parked_named": len(parked_named_ids),
             "storyboard_parked": scope_counts[SCOPE_PARKED],
             "storyboard_not_live_band": scope_counts[SCOPE_NOT_LIVE],
             "storyboard_not_setlist_ready": scope_counts[SCOPE_NOT_READY],
@@ -163,7 +169,7 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
             "setlist_ready_default_import": len(setlist_ready_default),
         },
         "lanes": LANES,
-        "storyboard": storyboard_mapping(),
+        "storyboard": storyboard_mapping(parked_named_ids),
         "songs": songs,
         "setlist_ready": [_ready_row(s) for s in setlist_ready],
         "setlist_ready_default_import": [_ready_row(s) for s in setlist_ready_default],
@@ -179,9 +185,13 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
                 "id, title, project, is_original, key, bpm, bpm_int, vault_id, "
                 "vault_ref, played_live, import_scope. Default live is the "
                 "published setlist_ready_default_import slice (empty published "
-                "slice stays empty). Fallback when that array is absent: Rad "
+                "slice stays empty). StoryBoard names that draft 'Vault "
+                "default-live'. Parked-named rows in that slice (Everyday / "
+                "Stalemate, hybrids) stay current-artist repertoire — not a "
+                "fourth live band. Fallback when that array is absent: Rad "
                 "Dad + Jeff Story + recorded Rad Dad plays, gated by "
-                "setlist_ready. Parked catalogs are not a fourth live band. "
+                "setlist_ready ('Vault setlist-ready'). Parked catalogs that "
+                "are not in the published slice are not a fourth live band. "
                 "Travis books. StoryLiner is promo only. Jeff owns setlist "
                 "order, duration, and lead vocalist. Do not invent a second "
                 "catalog."
@@ -254,6 +264,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"  StoryBoard default import: {counts['storyboard_default_live']} live / "
+        f"{counts['storyboard_default_live_parked_named']} parked-named "
+        f"(current artist) / "
         f"{counts['storyboard_parked']} parked / "
         f"{counts['storyboard_not_setlist_ready']} not-ready / "
         f"{counts['storyboard_cover']} cover / "

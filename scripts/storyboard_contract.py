@@ -2,9 +2,11 @@
 """
 StoryBoard import contract — what catalog-import.ts actually does.
 
-Inspected 2026-08-23 from rupret007/StoryBoard main after PR #5
-(`packages/shared/src/catalog-import.ts`). Vault #5 published schema 3;
-StoryBoard #5 consumes that published default-live slice.
+Inspected 2026-08-23 from rupret007/StoryBoard main after PR #6
+(`packages/shared/src/catalog-import.ts`). Vault #6 published the
+schema-3 default-live slice; StoryBoard #6 consumes it and names the
+draft setlist "Vault default-live". Parked-named rows in that slice
+(Everyday / Stalemate, hybrids) stay current-artist repertoire.
 
 Vault remains the catalog. StoryBoard remains the band OS.
 StoryLiner is promo only. Parked catalogs are not a fourth live band.
@@ -22,13 +24,31 @@ CATALOG_IMPORT_POLICY_VERSION = "catalog_import_v1"
 # When setlist_ready_default_import is present, that published id list is
 # the default plan (empty published slice stays empty). Fallback when the
 # array is absent: Rad Dad, Jeff Story, or a recorded Rad Dad play — and,
-# when setlist_ready is present, only those ids. Parked catalogs stay
-# parked unless Jeff opts in. Phrase match: "Something Dirty / Stalemate /
-# Rad Dad" is live (has rad dad), not a new band.
+# when setlist_ready is present, only those ids. Parked catalogs that are
+# NOT in the published slice stay parked unless Jeff opts in. Phrase
+# match: "Something Dirty / Stalemate / Rad Dad" is live (has rad dad)
+# and also parked-named — current artist, not a new band.
 LIVE_CATALOG_PROJECTS = ("rad dad", "jeff story")
 PARKED_CATALOG_PROJECTS = ("stalemate", "trailer swift", "something dirty")
 BOOKER_CATALOG_PROJECTS = ("travis", "travis story")
 CATALOG_BOOKER_POLICY = "travis_books"
+
+# StoryBoard vaultSetlistIdentity() after #6.
+VAULT_DEFAULT_LIVE_SETLIST_NAME = "Vault default-live"
+VAULT_SETLIST_READY_SETLIST_NAME = "Vault setlist-ready"
+PARKED_NAMED_IN_DEFAULT_LIVE_WARNING = (
+    "Published default-live includes songs whose Vault project is a parked "
+    "catalog name. They stay on the current artist — not a fourth live band."
+)
+DEFAULT_LIVE_SETLIST_NOTES = (
+    "Published Vault setlist_ready_default_import / default_live slice. "
+    "Current artist only — not a fourth live band. Not a booking pitch. "
+    "Lanes are not a setlist. Jeff owns running order."
+)
+SETLIST_READY_SETLIST_NOTES = (
+    "Playable Vault originals already selected for the live band. "
+    "Not a booking pitch. Lanes are not a setlist. Jeff owns running order."
+)
 
 # StoryBoard CATALOG_IMPORT_SCOPES + travis_books (RECOGNIZED_IMPORT_SCOPES).
 CATALOG_IMPORT_SCOPES = (
@@ -195,10 +215,8 @@ def catalog_import_scope(project, declared=None) -> str:
     return SCOPE_NOT_LIVE
 
 
-def is_parked_project(project, declared=None) -> bool:
-    """Match StoryBoard isParkedProject() — declared parked_catalog wins."""
-    if recognized_import_scope(declared) == SCOPE_PARKED:
-        return True
+def project_name_looks_parked(project) -> bool:
+    """Match StoryBoard projectNameLooksParked() — name only, not declared scope."""
     normalized = normalize_project(project)
     if normalized in PARKED_CATALOG_PROJECTS:
         return True
@@ -208,6 +226,37 @@ def is_parked_project(project, declared=None) -> bool:
         or has_phrase(tokens, "trailer swift")
         or has_phrase(tokens, "something dirty")
     )
+
+
+def is_parked_project(project, declared=None) -> bool:
+    """Match StoryBoard isParkedProject() — declared parked_catalog wins."""
+    if recognized_import_scope(declared) == SCOPE_PARKED:
+        return True
+    return project_name_looks_parked(project)
+
+
+def vault_setlist_identity(used_published_default: bool) -> dict:
+    """Match StoryBoard vaultSetlistIdentity() after #6."""
+    if used_published_default:
+        return {
+            "name": VAULT_DEFAULT_LIVE_SETLIST_NAME,
+            "notes": clip_notes(DEFAULT_LIVE_SETLIST_NOTES),
+        }
+    return {
+        "name": VAULT_SETLIST_READY_SETLIST_NAME,
+        "notes": clip_notes(SETLIST_READY_SETLIST_NOTES),
+    }
+
+
+def parked_named_default_live_ids(songs: list[dict], published_ids) -> list[str]:
+    """Published-slice ids whose Vault project name looks parked (StoryBoard #6)."""
+    by_id = {song.get("id"): song for song in songs if isinstance(song, dict)}
+    out: list[str] = []
+    for sid in published_ids:
+        rec = by_id.get(sid)
+        if rec and project_name_looks_parked(rec.get("project")):
+            out.append(sid)
+    return out
 
 
 def is_booker_project(project) -> bool:
@@ -491,12 +540,13 @@ def imported_active(is_original) -> bool:
     return is_original is not False
 
 
-def storyboard_mapping() -> dict:
+def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
     """Honest mapping object published on app_api.json → storyboard."""
+    parked_named_ids = list(default_live_parked_named_ids or [])
     return {
         "consumer": "StoryBoard",
         "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
-        "inspected": "2026-08-23 after StoryBoard #5",
+        "inspected": "2026-08-23 after StoryBoard #6",
         "policy_version": CATALOG_IMPORT_POLICY_VERSION,
         "import_from": "songs",
         "setlist_seed": "setlist_ready",
@@ -509,6 +559,13 @@ def storyboard_mapping() -> dict:
         "booker_policy": CATALOG_BOOKER_POLICY,
         "prefers_published_default_import": True,
         "empty_published_slice_stays_empty": True,
+        "parked_named_in_default_live_stay_current_artist": True,
+        "default_live_setlist_name": VAULT_DEFAULT_LIVE_SETLIST_NAME,
+        "setlist_ready_setlist_name": VAULT_SETLIST_READY_SETLIST_NAME,
+        "default_live_setlist_notes": vault_setlist_identity(True)["notes"],
+        "setlist_ready_setlist_notes": vault_setlist_identity(False)["notes"],
+        "parked_named_in_default_live_warning": PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
+        "default_live_parked_named_ids": parked_named_ids,
         "reads": list(IMPORTER_READS),
         "does_not_read": list(IMPORTER_DOES_NOT_READ),
         "catalog_reads": list(IMPORTER_CATALOG_READS),
@@ -531,13 +588,16 @@ def storyboard_mapping() -> dict:
         "default_import": (
             "Published setlist_ready_default_import is the default plan when "
             "present (empty published slice stays empty — StoryBoard will not "
-            "recompute a live band). Fallback when that array is absent: live "
-            "repertoire (Rad Dad / Jeff Story / recorded Rad Dad plays) gated "
-            "by setlist_ready. Parked catalogs (Stalemate, Trailer Swift, "
-            "Something Dirty) stay parked unless Jeff passes includeParked / "
-            "includeAllProjects. Covers stay out. Travis rows are "
-            "travis_books — never auto-pitch. Do not invent Rad Dad catalog "
-            "rows or a fourth live band."
+            "recompute a live band). StoryBoard names that draft setlist "
+            "'Vault default-live'. Songs whose Vault project is a parked "
+            "catalog name (Everyday / Stalemate, hybrids) stay on the current "
+            "artist — not a fourth live band. Fallback when that array is "
+            "absent: live repertoire (Rad Dad / Jeff Story / recorded Rad Dad "
+            "plays) gated by setlist_ready; that draft is 'Vault setlist-ready'. "
+            "Parked catalogs that are not in the published slice stay parked "
+            "unless Jeff passes includeParked / includeAllProjects. Covers stay "
+            "out. Travis rows are travis_books — never auto-pitch. Do not invent "
+            "Rad Dad catalog rows or a fourth live band."
         ),
         "active_lanes": ["flagship", "quick_win", "experimental"],
         "active_lane_cap": 3,
@@ -546,6 +606,8 @@ def storyboard_mapping() -> dict:
             "seed_from": "setlist_ready",
             "default_import_from": "setlist_ready_default_import",
             "prefers_default_import_from": True,
+            "default_import_name": VAULT_DEFAULT_LIVE_SETLIST_NAME,
+            "opt_in_name": VAULT_SETLIST_READY_SETLIST_NAME,
             "item_type": "song",
             "link_by": f"vault:{CATALOG_IMPORT_POLICY_VERSION}:{{vault_id ?? id}}",
             "jeff_owns_order": True,

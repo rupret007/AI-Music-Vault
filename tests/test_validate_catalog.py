@@ -11,14 +11,20 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from export_app_api import build_payload  # noqa: E402
 from storyboard_contract import (  # noqa: E402
+    PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
+    VAULT_DEFAULT_LIVE_SETLIST_NAME,
+    VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_STORYBOARD_FIELD_MAP,
     catalog_import_scope,
     decide_vault_song,
     import_scope,
     live_default_decisions,
+    parked_named_default_live_ids,
     parse_bpm,
+    project_name_looks_parked,
     recognized_import_scope,
     storyboard_parse_bpm,
+    vault_setlist_identity,
 )
 from validate_catalog import (  # noqa: E402
     ACTIVE_LANES,
@@ -476,11 +482,75 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
 
-    def test_inspected_must_name_storyboard_5(self):
+    def test_inspected_must_name_storyboard_6(self):
         extra = extras_ok()
-        extra["app_api"]["storyboard"]["inspected"] = "2026-08-23 after StoryBoard #4"
+        extra["app_api"]["storyboard"]["inspected"] = "2026-08-23 after StoryBoard #5"
         errors = validate(fixture(), extra)
-        self.assertTrue(any("StoryBoard #5" in e for e in errors), errors)
+        self.assertTrue(any("StoryBoard #6" in e for e in errors), errors)
+
+    def test_default_setlist_name_must_be_vault_default_live(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["default_live_setlist_name"] = (
+            VAULT_SETLIST_READY_SETLIST_NAME
+        )
+        extra["app_api"]["storyboard"]["setlist"]["default_import_name"] = (
+            VAULT_SETLIST_READY_SETLIST_NAME
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("Vault default-live" in e for e in errors),
+            errors,
+        )
+
+    def test_missing_parked_named_count_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"].pop("storyboard_default_live_parked_named")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any(
+                "counts.storyboard_default_live_parked_named is required" in e
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_hidden_parked_named_default_live_fails(self):
+        cat = fixture()
+        cat["songs"][0]["live_presence"] = [{"band": "Rad Dad", "date": "2026-05"}]
+        extra = extras_ok(cat)
+        extra["app_api"]["storyboard"]["default_live_parked_named_ids"] = []
+        extra["app_api"]["counts"]["storyboard_default_live_parked_named"] = 0
+        errors = validate(cat, extra)
+        self.assertTrue(
+            any("parked-named" in e or "current-artist" in e for e in errors),
+            errors,
+        )
+
+    def test_project_name_looks_parked_matches_importer(self):
+        self.assertTrue(project_name_looks_parked("Stalemate"))
+        self.assertTrue(project_name_looks_parked("Trailer Swift"))
+        self.assertTrue(project_name_looks_parked("Something Dirty"))
+        self.assertTrue(
+            project_name_looks_parked("Something Dirty / Stalemate / Rad Dad")
+        )
+        self.assertFalse(project_name_looks_parked("Jeff Story"))
+        self.assertFalse(project_name_looks_parked("Rad Dad"))
+        self.assertEqual(
+            vault_setlist_identity(True)["name"],
+            VAULT_DEFAULT_LIVE_SETLIST_NAME,
+        )
+        self.assertEqual(
+            vault_setlist_identity(False)["name"],
+            VAULT_SETLIST_READY_SETLIST_NAME,
+        )
+        self.assertEqual(
+            PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
+            (
+                "Published default-live includes songs whose Vault project is a "
+                "parked catalog name. They stay on the current artist — not a "
+                "fourth live band."
+            ),
+        )
 
     def test_missing_default_import_from_fails(self):
         extra = extras_ok()
@@ -668,7 +738,8 @@ class ValidateCatalogTests(unittest.TestCase):
         errors = validate(cat, extra)
         self.assertEqual(errors, [], errors)
         api = extra["app_api"]
-        default_ids = {row["id"] for row in api["setlist_ready_default_import"]}
+        default_order = [row["id"] for row in api["setlist_ready_default_import"]]
+        default_ids = set(default_order)
         self.assertEqual(len(default_ids), 20)
         self.assertEqual(api["counts"]["setlist_ready_default_import"], 20)
         self.assertEqual(api["counts"]["storyboard_default_live"], 20)
@@ -682,6 +753,18 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn("ST-0014", default_ids)
         self.assertNotIn("ST-0001", default_ids)
         self.assertNotIn("ST-0002", default_ids)
+        parked_named = parked_named_default_live_ids(api["songs"], default_order)
+        self.assertEqual(set(parked_named), {"ST-0014", "JS-0001"})
+        self.assertEqual(api["storyboard"]["default_live_parked_named_ids"], parked_named)
+        self.assertEqual(api["counts"]["storyboard_default_live_parked_named"], 2)
+        self.assertEqual(
+            api["storyboard"]["default_live_setlist_name"],
+            VAULT_DEFAULT_LIVE_SETLIST_NAME,
+        )
+        self.assertTrue(
+            api["storyboard"]["parked_named_in_default_live_stay_current_artist"]
+        )
+        self.assertIn("StoryBoard #6", api["storyboard"]["inspected"])
         ready_ids = {row["id"] for row in api["setlist_ready"]}
         live_ids = {
             rec["id"]

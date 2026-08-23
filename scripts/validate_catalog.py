@@ -34,8 +34,11 @@ from storyboard_contract import (
     MAX_VAULT_REF_LEN,
     MAX_WRITERS,
     PARKED_CATALOG_PROJECTS,
+    PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
     SCOPE_DEFAULT_LIVE,
     SKIP_REASON_TO_COUNT,
+    VAULT_DEFAULT_LIVE_SETLIST_NAME,
+    VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
     bpm_raw_string,
@@ -44,12 +47,14 @@ from storyboard_contract import (
     imported_notes,
     live_default_decisions,
     normalize_project,
+    parked_named_default_live_ids,
     parse_bpm,
     played_live_from_presence,
     recognized_import_scope,
     source_key,
     storyboard_parse_key,
     vault_ref_for,
+    vault_setlist_identity,
 )
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -230,23 +235,68 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             errors.append(
                 "storyboard.setlist.prefers_default_import_from must be true"
             )
+        if sl.get("default_import_name") != VAULT_DEFAULT_LIVE_SETLIST_NAME:
+            errors.append(
+                "storyboard.setlist.default_import_name must be "
+                "'Vault default-live' — StoryBoard #6 names the published-slice "
+                "draft that, not generic setlist-ready"
+            )
+        if sl.get("opt_in_name") != VAULT_SETLIST_READY_SETLIST_NAME:
+            errors.append(
+                "storyboard.setlist.opt_in_name must be 'Vault setlist-ready' "
+                "(includeParked / includeAllProjects / missing published slice)"
+            )
         if sl.get("jeff_owns_order") is not True:
             errors.append("storyboard.setlist must leave running order to Jeff")
         if sb.get("prefers_published_default_import") is not True:
             errors.append(
                 "storyboard.prefers_published_default_import must be true — "
-                "StoryBoard #5 uses setlist_ready_default_import when present"
+                "StoryBoard #6 uses setlist_ready_default_import when present"
             )
         if sb.get("empty_published_slice_stays_empty") is not True:
             errors.append(
                 "storyboard.empty_published_slice_stays_empty must be true — "
                 "an empty published slice is not recomputed into a live band"
             )
-        inspected = str(sb.get("inspected") or "")
-        if "StoryBoard #5" not in inspected:
+        if sb.get("parked_named_in_default_live_stay_current_artist") is not True:
             errors.append(
-                "storyboard.inspected must name StoryBoard #5 "
-                "(live importer prefers the published default-live slice)"
+                "storyboard.parked_named_in_default_live_stay_current_artist "
+                "must be true — Everyday / Stalemate rows in the published "
+                "slice stay current-artist repertoire, not a fourth live band"
+            )
+        if sb.get("default_live_setlist_name") != VAULT_DEFAULT_LIVE_SETLIST_NAME:
+            errors.append(
+                "storyboard.default_live_setlist_name must be "
+                "'Vault default-live' (StoryBoard vaultSetlistIdentity)"
+            )
+        if sb.get("setlist_ready_setlist_name") != VAULT_SETLIST_READY_SETLIST_NAME:
+            errors.append(
+                "storyboard.setlist_ready_setlist_name must be "
+                "'Vault setlist-ready'"
+            )
+        if sb.get("default_live_setlist_notes") != vault_setlist_identity(True)["notes"]:
+            errors.append(
+                "storyboard.default_live_setlist_notes must match StoryBoard "
+                "vaultSetlistIdentity(true)"
+            )
+        if sb.get("setlist_ready_setlist_notes") != vault_setlist_identity(False)["notes"]:
+            errors.append(
+                "storyboard.setlist_ready_setlist_notes must match StoryBoard "
+                "vaultSetlistIdentity(false)"
+            )
+        if sb.get("parked_named_in_default_live_warning") != (
+            PARKED_NAMED_IN_DEFAULT_LIVE_WARNING
+        ):
+            errors.append(
+                "storyboard.parked_named_in_default_live_warning must match "
+                "the StoryBoard #6 parked-named dry-run warning"
+            )
+        inspected = str(sb.get("inspected") or "")
+        if "StoryBoard #6" not in inspected:
+            errors.append(
+                "storyboard.inspected must name StoryBoard #6 "
+                "(live importer names Vault default-live and warns on "
+                "parked-named published-slice rows)"
             )
         banned = {str(n).lower() for n in (sb.get("not_band_os") or [])}
         if "storydesk" not in banned or "storyops" not in banned:
@@ -633,6 +683,63 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "counts.storyboard_default_live must equal "
                 "counts.setlist_ready_default_import — the published "
                 "slice is the default plan"
+            )
+
+    expected_parked_named = parked_named_default_live_ids(
+        [r for r in api_songs if isinstance(r, dict)],
+        [sid for sid in actual_default if sid],
+    )
+    published_parked_named = sb.get("default_live_parked_named_ids")
+    if not isinstance(published_parked_named, list):
+        errors.append(
+            "storyboard.default_live_parked_named_ids is required "
+            "(fail closed — StoryBoard #6 warns on parked-named published rows)"
+        )
+        published_parked_named = []
+    elif published_parked_named != expected_parked_named:
+        errors.append(
+            "storyboard.default_live_parked_named_ids must be the published "
+            "default-live ids whose Vault project name looks parked "
+            f"(expected {expected_parked_named}, got {published_parked_named}) "
+            "— Everyday / Stalemate stays current-artist, not a fourth band"
+        )
+    invented_parked_named = [
+        sid for sid in published_parked_named if sid not in published_set
+    ]
+    if invented_parked_named:
+        errors.append(
+            "default_live_parked_named_ids invents ids not in the published "
+            f"slice: {invented_parked_named}"
+        )
+    if expected_parked_named and published_parked_named == []:
+        errors.append(
+            "empty default_live_parked_named_ids is a lie — the published "
+            "slice includes parked-named Vault projects that StoryBoard #6 "
+            "keeps on the current artist"
+        )
+    if isinstance(counts, dict):
+        if "storyboard_default_live_parked_named" not in counts:
+            errors.append(
+                "app_api.json counts.storyboard_default_live_parked_named "
+                "is required (fail closed)"
+            )
+        elif counts.get("storyboard_default_live_parked_named") != len(
+            expected_parked_named
+        ):
+            errors.append(
+                "app_api.json counts.storyboard_default_live_parked_named="
+                f"{counts.get('storyboard_default_live_parked_named')!r} "
+                f"expected {len(expected_parked_named)}"
+            )
+        if (
+            counts.get("storyboard_default_live_parked_named") == 0
+            and expected_parked_named
+        ):
+            errors.append(
+                "counts.storyboard_default_live_parked_named=0 is a lie — "
+                "StoryBoard #6 warns when the published slice includes "
+                "parked-named Vault projects. Do not hide Everyday / "
+                "Stalemate as a missing song or a fourth live band."
             )
 
     return errors

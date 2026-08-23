@@ -22,12 +22,15 @@ from export_app_api import (  # noqa: E402
 )
 from storyboard_contract import (  # noqa: E402
     CATALOG_IMPORT_POLICY_VERSION,
+    VAULT_DEFAULT_LIVE_SETLIST_NAME,
+    VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
     clean_title,
     default_decisions,
     import_scope,
     live_default_decisions,
+    parked_named_default_live_ids,
     parse_bpm,
     source_key,
     storyboard_mapping,
@@ -75,10 +78,23 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertTrue(mapping["no_fourth_live_band"])
         self.assertTrue(mapping["prefers_published_default_import"])
         self.assertTrue(mapping["empty_published_slice_stays_empty"])
+        self.assertTrue(mapping["parked_named_in_default_live_stay_current_artist"])
+        self.assertEqual(
+            mapping["default_live_setlist_name"],
+            VAULT_DEFAULT_LIVE_SETLIST_NAME,
+        )
+        self.assertEqual(
+            mapping["setlist_ready_setlist_name"],
+            VAULT_SETLIST_READY_SETLIST_NAME,
+        )
+        self.assertEqual(
+            mapping["setlist"]["default_import_name"],
+            VAULT_DEFAULT_LIVE_SETLIST_NAME,
+        )
         self.assertIn("import_scope", mapping["reads"])
         self.assertNotIn("import_scope", mapping["does_not_read"])
         self.assertIn("setlist_ready_default_import", mapping["catalog_reads"])
-        self.assertIn("StoryBoard #5", mapping["inspected"])
+        self.assertIn("StoryBoard #6", mapping["inspected"])
         self.assertEqual(mapping["live_catalog_projects"], ["Rad Dad", "Jeff Story"])
         self.assertTrue(mapping["setlist"]["prefers_default_import_from"])
 
@@ -123,6 +139,22 @@ class ExportHonestyTests(unittest.TestCase):
             [row["id"] for row in payload["setlist_ready_default_import"]],
             ["ST-0001"],
         )
+        self.assertEqual(
+            payload["storyboard"]["default_live_parked_named_ids"],
+            ["ST-0001"],
+        )
+        self.assertEqual(payload["counts"]["storyboard_default_live_parked_named"], 1)
+
+    def test_jeff_story_default_live_is_not_parked_named(self):
+        cat = fixture()
+        cat["songs"][0]["artist_project"] = "Jeff Story"
+        payload = build_payload(cat)
+        self.assertEqual(
+            [row["id"] for row in payload["setlist_ready_default_import"]],
+            ["ST-0001"],
+        )
+        self.assertEqual(payload["storyboard"]["default_live_parked_named_ids"], [])
+        self.assertEqual(payload["counts"]["storyboard_default_live_parked_named"], 0)
 
     def test_travis_is_booker_not_a_live_band(self):
         cat = fixture()
@@ -238,6 +270,15 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertEqual(live, published)
         self.assertIn("import_scope", api["storyboard"]["reads"])
         self.assertNotIn("import_scope", api["storyboard"]["does_not_read"])
+        published_order = [row["id"] for row in api["setlist_ready_default_import"]]
+        parked_named = parked_named_default_live_ids(api["songs"], published_order)
+        self.assertEqual(set(parked_named), {"ST-0014", "JS-0001"})
+        self.assertEqual(api["storyboard"]["default_live_parked_named_ids"], parked_named)
+        self.assertEqual(api["counts"]["storyboard_default_live_parked_named"], 2)
+        self.assertEqual(
+            api["storyboard"]["default_live_setlist_name"],
+            VAULT_DEFAULT_LIVE_SETLIST_NAME,
+        )
 
     def test_bpm_int_alias(self):
         self.assertEqual(bpm_int(103), 103)

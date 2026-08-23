@@ -180,3 +180,13 @@ Unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
 - No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
+
+## StoryBoard #6 parked-named default-live honesty — 2026-08-23 (Cloud Agent, no audio)
+### Done
+1. Re-inspected live StoryBoard `catalog-import.ts` after StoryBoard #6. The importer names the published-slice draft **Vault default-live** and warns when that slice includes parked-named Vault projects (Everyday / Stalemate, hybrids). Vault #6 still said parked catalogs stay off default import.
+2. Contract + export + validator now publish `default_live_parked_named_ids`, the StoryBoard setlist names, and fail closed if those rows are hidden or treated as a fourth live band.
+3. Everyday (ST-0014) and Drinking Song (JS-0001) stay in the 20-id slice as current-artist repertoire.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
