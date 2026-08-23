@@ -92,7 +92,7 @@ See [`00_control_room/Rights and AI Provenance.md`](00_control_room/Rights%20and
 
 ## Related projects
 
-The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — not a second catalog, not StoryDesk/StoryOps). See [`APPS.md`](APPS.md).
+The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — StoryBoard reads `id` / `title` / `project` / `is_original` / `key` / `bpm`; default live catalog is Rad Dad, currently unlabeled so the default seed is empty; not a second catalog, not StoryDesk/StoryOps, StoryLiner is promo only). See [`APPS.md`](APPS.md).
 
 ## Current state
 

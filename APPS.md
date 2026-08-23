@@ -30,23 +30,28 @@ Updated 2026-08-23 — consolidated path: **Vault → `data/app_api.json` → St
 | **Three active songs** | Flagship ST-0001 · Quick win ST-0004 · Experimental ST-0009. On deck JS-0128. Opus JS-0107 (Blue Skies Fade, protected). |
 | **No audio here** | Masters stay local + Drive. The feed carries titles, keys, scores, gates — never files. |
 
-### StoryBoard Song mapping (inspected 2026-08-23)
+### StoryBoard Song mapping (importer-honest, 2026-08-23)
 
-StoryBoard `Song` fields: `title`, `durationSeconds?`, `musicalKey?`, `bpm?` (int), `leadVocalist?`, `genre?`, `notes?`, `lyricsUrl?`, `chartUrl?`, `active`.
+Inspected `rupret007/StoryBoard` `packages/shared/src/catalog-import.ts`.
+The importer **reads only** `songs[].id`, `title`, `project`, `is_original`, `key`, `bpm`
+(plus `setlist_ready` id/title/key/project). Prisma still has duration / vocalist / genre /
+URLs — those stay null. **StoryLiner is promo only** and does not consume this feed.
 
-| StoryBoard field | Come from `app_api.json` | Do not |
+| StoryBoard writes | From this feed | Honesty |
 |---|---|---|
-| `title` | `songs[].title` | rewrite Jeff's title |
-| `musicalKey` | `songs[].key` (string; empty → null) | invent a key |
-| `bpm` | `songs[].bpm_int` (parsed leading int, or null) | force-parse "214 (cut)" into a lie — `bpm_int` is already null-safe |
-| `active` | `songs[].is_original` (covers/collabs stay inactive unless Jeff says otherwise) | auto-activate the whole book |
-| `notes` | `songs[].vault_ref` (`vault:ST-0004`) so a re-import can merge | drop the vault id |
-| `durationSeconds` | **null** — not in the vault | guess a runtime |
-| `leadVocalist` | **null** — Jeff owns feel / who sings it | invent a singer |
+| `title` | `songs[].title` | do not rewrite Jeff's title |
+| `musicalKey` | `songs[].key` (trim; max 30; empty → null) | do not invent a key |
+| `bpm` | `songs[].bpm` (**integer or null**) | StoryBoard `parseBpm` rejects `"214 (cut)"`. Export pre-parses into `bpm` and keeps the annotation on `bpm_raw`. `bpm_int` is a compat alias the importer does **not** read. |
+| `sourceKey` | constructed `vault:catalog_import_v1:{id}` | not `vault_id` / `vault_ref` |
+| `notes` | constructed `source {id} · {project} · original\|not original` | not `vault_ref` |
+| `active` | **always true** on import | not `is_original` |
+| `durationSeconds` / `leadVocalist` / `genre` / URLs | **null** | Jeff owns feel |
 
-Seed a playable library from `setlist_ready` (originals that already have a key). Full seed = `songs[]`. Merge on `vault_id` / `vault_ref`, not on title.
+**Default live catalog is Rad Dad only.** Parked: Stalemate, Trailer Swift, Something Dirty. Hybrid labels (`Something Dirty / Stalemate / Rad Dad`) are `not_live_band`, not a fourth live band. `live_presence` is not `artist_project` — this vault currently has **zero** rows labeled Rad Dad, so a default StoryBoard import seeds an empty library until Jeff opts in (`includeParked` / `includeAllProjects`) or labels a project. Do not invent Rad Dad catalog rows.
 
-**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs (`setlist_ready` / `songs[]`). Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist.
+Seed keyed originals from `setlist_ready`. What default import actually keeps is `setlist_ready_default_import` (empty today). Merge on StoryBoard `sourceKey`, not on title.
+
+**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist.
 
 **Ops:** StoryBoard show/booking events write back to `events/` (`show_played` with vault ids). That is the ops loop. No second catalog.
 
@@ -110,4 +115,5 @@ Prefer vault ids. Titles work as a fallback. Same shape for WebJam bounces (`{"e
 - ~~StoryBoard song-library schema?~~ **RESOLVED 2026-08-23** (inspected `prisma` `Song`): title / musicalKey / bpm / durationSeconds / leadVocalist / active. Mapping is in `data/app_api.json` → `storyboard`. Duration and lead vocalist stay null until Jeff supplies them.
 - Is **Andrea** the assistant named after the song "Andrea," or a separate thing?
 - Does `rad-dad-show-night` already store setlists in a structured file we can read directly?
-- StoryBoard library today: empty or hand-populated? (Import is a seed vs a merge on `vault:` notes.)
+- StoryBoard library today: empty or hand-populated? (Import is a seed vs a merge on `vault:catalog_import_v1:{id}`.)
+- Should any vault `artist_project` be labeled **Rad Dad**, or does Jeff always import with `includeAllProjects` / `includeParked`? Default live is empty until that call is made — we will not invent the rows.

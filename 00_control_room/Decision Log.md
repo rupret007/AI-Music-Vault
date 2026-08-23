@@ -64,3 +64,8 @@
 49. **Catalog validator + CI added** (`scripts/validate_catalog.py`). Fail closed on duplicate IDs, score range, gate/rights mismatch, missing original next_action, three-lane cap, protected opus, `app_api.json` drift, audio files in-repo.
 50. **StoryBoard is the band OS consumer.** Vault stays the song brain. Import file is `data/app_api.json` (same `songs[]`, mapping under `storyboard`). Not StoryDesk, not StoryOps, no new app. Duration and lead vocalist stay null — Jeff owns feel/set-list.
 51. **Counts reconciled:** 150 entities, 126 `classification==original`, 128 YES / 20 NO / 2 NEEDS CONSENT, vm_matches 372/88. Dashboard builder paths un-bitrotted to this repo. Three active songs unchanged. Blue Skies Fade untouched.
+
+## 2026-08-23 — StoryBoard export honesty (no audio, no new songs, no new band)
+52. **`app_api.json` field map was wrong vs StoryBoard `catalog-import.ts`.** The importer reads `bpm` (clean int only), constructs `sourceKey` as `vault:catalog_import_v1:{id}`, constructs notes from id/project/original, and sets `active=true`. It does not read `bpm_int`, `vault_ref`, or `is_original` as `active`. Export + docs corrected; `schema_version` 2.
+53. **Default StoryBoard live catalog is Rad Dad; this vault labels zero songs that way.** Songs *played* by Rad Dad stay on their catalog projects. `setlist_ready_default_import` is empty on purpose. Do not invent Rad Dad rows. Parked catalogs are not a fourth live band. StoryLiner stays promo only.
+54. **Validator fail-closed on the new contract:** missing `app_api.json`, annotated BPM left in `bpm`, field-map lies, fourth live project, YES gate with a co-writer, incomplete `live_presence`, setlist-ready drift, stale export (`--check`). No Music.ai spend. Three active songs unchanged.

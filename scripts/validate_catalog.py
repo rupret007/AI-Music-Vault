@@ -19,6 +19,23 @@ import os
 import re
 import sys
 
+from storyboard_contract import (
+    LIVE_CATALOG_PROJECTS,
+    MAX_ID_LEN,
+    MAX_KEY_LEN,
+    MAX_TITLE_LEN,
+    MAX_WRITERS,
+    PARKED_CATALOG_PROJECTS,
+    SCOPE_DEFAULT_LIVE,
+    bpm_int,
+    bpm_raw_string,
+    import_scope,
+    normalize_project,
+    source_key,
+    storyboard_parse_bpm,
+    storyboard_parse_key,
+)
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAT_PATH = os.path.join(HERE, "data", "master_catalog.json")
 API_PATH = os.path.join(HERE, "data", "app_api.json")
@@ -120,6 +137,250 @@ def score_ok(value) -> bool:
     return 0 <= value <= 100
 
 
+def _as_norm_set(values) -> set[str]:
+    if not isinstance(values, list):
+        return set()
+    return {normalize_project(v) for v in values}
+
+
+def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
+    """Fail closed on StoryBoard-feed drift and importer-field dishonesty."""
+    errors: list[str] = []
+
+    if api.get("schema_version") != 2:
+        errors.append("app_api.json schema_version must be 2 (StoryBoard-importer-honest)")
+    if api.get("primary_consumer") != "StoryBoard":
+        errors.append("app_api.json primary_consumer must be StoryBoard")
+    consumer = str(api.get("primary_consumer") or "").lower()
+    if "storyliner" in consumer:
+        errors.append("StoryLiner is promo only — not a catalog consumer")
+
+    api_songs = api.get("songs")
+    if not isinstance(api_songs, list) or not api_songs:
+        errors.append("app_api.json songs must be a non-empty list")
+        api_songs = []
+    if any(not isinstance(rec, dict) for rec in api_songs):
+        errors.append("app_api.json songs[] must contain only objects")
+
+    api_ids = [rec.get("id") for rec in api_songs if isinstance(rec, dict)]
+    if None in api_ids or "" in api_ids:
+        errors.append("app_api.json songs[] contains a blank id")
+    if set(api_ids) != set(ids):
+        errors.append("app_api.json song ids do not match master_catalog.json")
+    dup_api = {sid for sid in api_ids if sid and api_ids.count(sid) > 1}
+    if dup_api:
+        errors.append(f"app_api.json duplicate song ids: {sorted(dup_api)}")
+
+    lanes = api.get("lanes") or {}
+    expected_lanes = {**ACTIVE_LANES, **PROTECTED_LANES}
+    if lanes != expected_lanes:
+        errors.append(f"app_api.json lanes drifted: {lanes} != {expected_lanes}")
+    if len(lanes) != 5:
+        errors.append("app_api.json must expose 3 active lanes + on_deck + opus only")
+    extra_active = [k for k in lanes if k not in expected_lanes]
+    if extra_active:
+        errors.append(f"app_api.json invented extra lanes: {extra_active}")
+
+    sb = api.get("storyboard")
+    if not isinstance(sb, dict):
+        errors.append("app_api.json missing storyboard mapping object")
+        sb = {}
+    else:
+        if sb.get("import_from") != "songs":
+            errors.append("StoryBoard must import from songs[] — no second catalog")
+        if sb.get("second_catalog"):
+            errors.append("storyboard.second_catalog must be false")
+        if sb.get("active_lane_cap") != 3:
+            errors.append("storyboard.active_lane_cap must stay 3")
+        if sb.get("protected_opus") != PROTECTED_LANES["opus"]:
+            errors.append("storyboard.protected_opus must stay JS-0107")
+        sl = sb.get("setlist") or {}
+        if sl.get("seed_from") != "setlist_ready":
+            errors.append("storyboard.setlist must seed from setlist_ready")
+        if sl.get("jeff_owns_order") is not True:
+            errors.append("storyboard.setlist must leave running order to Jeff")
+        banned = {str(n).lower() for n in (sb.get("not_band_os") or [])}
+        if "storydesk" not in banned or "storyops" not in banned:
+            errors.append("storyboard mapping must name StoryDesk/StoryOps as not-band-os")
+        if str(sb.get("storyliner_role") or "").lower() != "promo only":
+            errors.append("storyboard.storyliner_role must be 'promo only'")
+        if sb.get("no_fourth_live_band") is not True:
+            errors.append("storyboard.no_fourth_live_band must be true")
+        live_projects = sb.get("live_catalog_projects")
+        live_norm = _as_norm_set(live_projects)
+        if live_norm != set(LIVE_CATALOG_PROJECTS):
+            errors.append(
+                "storyboard.live_catalog_projects must be exactly Rad Dad "
+                "(no fourth live band)"
+            )
+        parked_norm = _as_norm_set(sb.get("parked_catalog_projects"))
+        if not set(PARKED_CATALOG_PROJECTS) <= parked_norm:
+            errors.append(
+                "storyboard.parked_catalog_projects must include "
+                "Stalemate, Trailer Swift, Something Dirty"
+            )
+        fmap = sb.get("field_map") or {}
+        if fmap.get("bpm") == "bpm_int":
+            errors.append(
+                "storyboard.field_map.bpm must be 'bpm' — StoryBoard does not read bpm_int"
+            )
+        if fmap.get("bpm") != "bpm":
+            errors.append("storyboard.field_map.bpm must point at songs[].bpm")
+        if fmap.get("musicalKey") != "key":
+            errors.append("storyboard.field_map.musicalKey must point at songs[].key")
+        if fmap.get("active") == "is_original":
+            errors.append(
+                "storyboard.field_map.active must not claim is_original — "
+                "StoryBoard sets active=true on import"
+            )
+        if fmap.get("notes") == "vault_ref":
+            errors.append(
+                "storyboard.field_map.notes must not claim vault_ref — "
+                "StoryBoard constructs notes from id/project/is_original"
+            )
+        if fmap.get("title") != "title":
+            errors.append("storyboard.field_map.title must point at songs[].title")
+        merge = str(sb.get("merge_key") or "")
+        if "catalog_import_v1" not in merge:
+            errors.append(
+                "storyboard.merge_key must be vault:catalog_import_v1:{id} "
+                "(StoryBoard sourceKey), not vault_id/vault_ref"
+            )
+
+    dumped = json.dumps(api).lower()
+    if '"consumer": "storydesk"' in dumped or '"consumer": "storyops"' in dumped:
+        errors.append("app_api.json must not name StoryDesk/StoryOps as a consumer")
+
+    expected_scopes = {SCOPE_DEFAULT_LIVE: 0, "parked_catalog": 0, "not_live_band": 0}
+    for src in by_id.values():
+        expected_scopes[import_scope(src.get("artist_project"))] += 1
+
+    counts = api.get("counts")
+    if not isinstance(counts, dict):
+        errors.append("app_api.json missing counts object")
+    else:
+        if counts.get("entities") not in (None, len(ids)):
+            errors.append(
+                f"app_api.json counts.entities={counts.get('entities')} "
+                f"but catalog has {len(ids)} songs"
+            )
+        if counts.get("storyboard_default_live") not in (
+            None,
+            expected_scopes[SCOPE_DEFAULT_LIVE],
+        ):
+            errors.append(
+                "app_api.json counts.storyboard_default_live does not match "
+                "Rad Dad-labeled rows"
+            )
+        if counts.get("storyboard_parked") not in (None, expected_scopes["parked_catalog"]):
+            errors.append("app_api.json counts.storyboard_parked drifted")
+        if counts.get("storyboard_not_live_band") not in (
+            None,
+            expected_scopes["not_live_band"],
+        ):
+            errors.append("app_api.json counts.storyboard_not_live_band drifted")
+
+    for rec in api_songs:
+        if not isinstance(rec, dict):
+            continue
+        loc = rec.get("id") or "app_api.songs[]"
+        src = by_id.get(rec.get("id"))
+        if not src:
+            continue
+        if rec.get("title") != src.get("canonical_title"):
+            errors.append(f"app_api {loc}: title does not match catalog")
+        if rec.get("project") != src.get("artist_project"):
+            errors.append(f"app_api {loc}: project does not match catalog")
+        want_original = src.get("classification") == "original"
+        if rec.get("is_original") is not want_original:
+            errors.append(f"app_api {loc}: is_original does not match catalog")
+        if rec.get("key") != (src.get("key", "") or ""):
+            errors.append(f"app_api {loc}: key does not match catalog")
+        want_bpm = bpm_int(src.get("bpm"))
+        if rec.get("bpm") != want_bpm:
+            errors.append(
+                f"app_api {loc}: bpm={rec.get('bpm')!r} is not the StoryBoard-importable "
+                f"integer {want_bpm!r}"
+            )
+        if storyboard_parse_bpm(rec.get("bpm")) != want_bpm:
+            errors.append(
+                f"app_api {loc}: bpm={rec.get('bpm')!r} is not StoryBoard-parseable "
+                "(annotated strings import as null)"
+            )
+        if rec.get("bpm_int") not in (None, want_bpm):
+            errors.append(f"app_api {loc}: bpm_int drifted from bpm")
+        if rec.get("bpm_raw") not in (None, bpm_raw_string(src.get("bpm"))):
+            errors.append(f"app_api {loc}: bpm_raw does not match catalog bpm text")
+        want_scope = import_scope(src.get("artist_project"))
+        if rec.get("import_scope") != want_scope:
+            errors.append(
+                f"app_api {loc}: import_scope={rec.get('import_scope')!r} "
+                f"expected {want_scope}"
+            )
+        if rec.get("source_key") not in (None, source_key(src["song_id"])):
+            errors.append(f"app_api {loc}: source_key is not vault:catalog_import_v1:{{id}}")
+        want_gate = gate_class(src.get("ai_upload_ok")) == "YES"
+        if rec.get("ai_upload_ok") is not want_gate:
+            errors.append(
+                f"app_api {loc}: ai_upload_ok={rec.get('ai_upload_ok')!r} "
+                "does not match catalog gate"
+            )
+        if rec.get("duration_seconds") not in (None,):
+            errors.append(f"app_api {loc}: duration_seconds must stay null")
+        imported_key = storyboard_parse_key(rec.get("key"))
+        if imported_key and len(str(rec.get("key") or "")) > MAX_KEY_LEN:
+            errors.append(f"app_api {loc}: key would truncate on StoryBoard import")
+
+    ready = api.get("setlist_ready")
+    if not isinstance(ready, list):
+        errors.append("app_api.json setlist_ready must be a list")
+        ready = []
+    ready_ids: list[str] = []
+    for item in ready:
+        if not isinstance(item, dict):
+            errors.append("setlist_ready items must be objects")
+            continue
+        rid = item.get("id")
+        src = by_id.get(rid)
+        if not src:
+            errors.append(f"setlist_ready unknown id {rid!r}")
+            continue
+        ready_ids.append(rid)
+        if src.get("classification") != "original":
+            errors.append(f"setlist_ready {rid} is not an original")
+        if not storyboard_parse_key(src.get("key")):
+            errors.append(f"setlist_ready {rid} has no importable key")
+        if item.get("title") not in (None, src.get("canonical_title")):
+            errors.append(f"setlist_ready {rid} title does not match catalog")
+        if item.get("project") not in (None, src.get("artist_project")):
+            errors.append(f"setlist_ready {rid} project does not match catalog")
+    if len(ready_ids) != len(set(ready_ids)):
+        errors.append("setlist_ready contains duplicate ids")
+
+    default_ready = api.get("setlist_ready_default_import")
+    if not isinstance(default_ready, list):
+        errors.append("app_api.json setlist_ready_default_import must be a list")
+        default_ready = []
+    expected_default = {
+        sid
+        for sid in ready_ids
+        if import_scope(by_id[sid].get("artist_project")) == SCOPE_DEFAULT_LIVE
+    }
+    actual_default = {
+        item.get("id")
+        for item in default_ready
+        if isinstance(item, dict)
+    }
+    if actual_default != expected_default:
+        errors.append(
+            "setlist_ready_default_import must be the Rad Dad slice of setlist_ready "
+            "(empty until Jeff labels a song artist_project as Rad Dad; "
+            "do not invent a live band)"
+        )
+
+    return errors
+
+
 def validate(cat: dict, extras: dict | None = None) -> list[str]:
     """Return a list of error strings. Empty list = pass."""
     extras = extras or {}
@@ -202,6 +463,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 f"(got {song.get('ai_upload_ok')!r})"
             )
 
+        if g == "YES" and writers != ["Jeff Story"]:
+            errors.append(
+                f"{loc}: AI-upload YES is only valid for writers=['Jeff Story'] "
+                f"(got {writers!r})"
+            )
+
         if g == "YES" and forbidden_yes(song):
             errors.append(
                 f"{loc}: classification {song.get('classification')!r} "
@@ -214,6 +481,32 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
         live = song.get("live_presence")
         if live not in (None, []) and not isinstance(live, list):
             errors.append(f"{loc}: live_presence must be a list when present")
+        elif isinstance(live, list):
+            for j, event in enumerate(live):
+                if not isinstance(event, dict):
+                    errors.append(f"{loc}: live_presence[{j}] must be an object")
+                    continue
+                if not str(event.get("band") or "").strip() or not str(
+                    event.get("date") or ""
+                ).strip():
+                    errors.append(
+                        f"{loc}: live_presence[{j}] needs non-empty band and date"
+                    )
+
+        sid_text = sid if isinstance(sid, str) else ""
+        title_text = str(title or "")
+        if sid_text and len(sid_text) > MAX_ID_LEN:
+            errors.append(f"{loc}: song_id exceeds StoryBoard max {MAX_ID_LEN}")
+        if title_text and len(title_text) > MAX_TITLE_LEN:
+            errors.append(f"{loc}: canonical_title exceeds StoryBoard max {MAX_TITLE_LEN}")
+        if isinstance(writers, list) and len(writers) > MAX_WRITERS:
+            errors.append(f"{loc}: writers exceeds StoryBoard max {MAX_WRITERS}")
+        key_text = str(song.get("key") or "").strip()
+        if len(key_text) > MAX_KEY_LEN:
+            errors.append(
+                f"{loc}: key {key_text!r} is longer than StoryBoard musicalKey "
+                f"max {MAX_KEY_LEN} and would truncate on import"
+            )
 
     dups = {sid for sid in ids if ids.count(sid) > 1}
     if dups:
@@ -256,7 +549,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
 
     vm_matches = extras.get("vm_matches")
     pool = cat.get("voice_memo_pool")
+    if isinstance(pool, dict) and vm_matches is None:
+        errors.append("voice_memo_pool is present but vm_matches.json is missing")
     if isinstance(vm_matches, dict) and isinstance(pool, dict):
+        bad_lists = [k for k, v in vm_matches.items() if not isinstance(v, list)]
+        if bad_lists:
+            errors.append(f"vm_matches values must be lists: {sorted(bad_lists)}")
         matched = sum(len(v) for v in vm_matches.values() if isinstance(v, list))
         if pool.get("matched") != matched:
             errors.append(
@@ -273,57 +571,14 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(f"vm_matches points at unknown song_id values: {unknown}")
 
     api = extras.get("app_api")
-    if isinstance(api, dict):
-        api_songs = api.get("songs") or []
-        api_ids = [s.get("id") for s in api_songs if isinstance(s, dict)]
-        if set(api_ids) != set(ids):
-            errors.append("app_api.json song ids do not match master_catalog.json")
-        lanes = api.get("lanes") or {}
-        expected_lanes = {**ACTIVE_LANES, **PROTECTED_LANES}
-        if lanes != expected_lanes:
-            errors.append(f"app_api.json lanes drifted: {lanes} != {expected_lanes}")
-        if len(lanes) != 5:
-            errors.append("app_api.json must expose 3 active lanes + on_deck + opus only")
-        extra_active = [k for k in lanes if k not in expected_lanes]
-        if extra_active:
-            errors.append(f"app_api.json invented extra lanes: {extra_active}")
-        if api.get("primary_consumer") != "StoryBoard":
-            errors.append("app_api.json primary_consumer must be StoryBoard")
-        sb = api.get("storyboard")
-        if not isinstance(sb, dict):
-            errors.append("app_api.json missing storyboard mapping object")
-        else:
-            if sb.get("import_from") != "songs":
-                errors.append("StoryBoard must import from songs[] — no second catalog")
-            if sb.get("second_catalog"):
-                errors.append("storyboard.second_catalog must be false")
-            if sb.get("active_lane_cap") != 3:
-                errors.append("storyboard.active_lane_cap must stay 3")
-            if sb.get("protected_opus") != PROTECTED_LANES["opus"]:
-                errors.append("storyboard.protected_opus must stay JS-0107")
-            sl = sb.get("setlist") or {}
-            if sl.get("seed_from") != "setlist_ready":
-                errors.append("storyboard.setlist must seed from setlist_ready")
-            if sl.get("jeff_owns_order") is not True:
-                errors.append("storyboard.setlist must leave running order to Jeff")
-            banned = {n.lower() for n in (sb.get("not_band_os") or [])}
-            if "storydesk" not in banned or "storyops" not in banned:
-                errors.append("storyboard mapping must name StoryDesk/StoryOps as not-band-os")
-        dumped = json.dumps(api).lower()
-        if '"consumer": "storydesk"' in dumped or '"consumer": "storyops"' in dumped:
-            errors.append("app_api.json must not name StoryDesk/StoryOps as a consumer")
-        for rec in api_songs:
-            if not isinstance(rec, dict):
-                continue
-            src = by_id.get(rec.get("id"))
-            if not src:
-                continue
-            want = gate_class(src.get("ai_upload_ok")) == "YES"
-            if rec.get("ai_upload_ok") is not want:
-                errors.append(
-                    f"app_api {rec.get('id')}: ai_upload_ok={rec.get('ai_upload_ok')!r} "
-                    "does not match catalog gate"
-                )
+    if api is None:
+        errors.append(
+            "app_api.json is required (StoryBoard feed); fail closed when missing"
+        )
+    elif not isinstance(api, dict):
+        errors.append("app_api.json must be an object")
+    else:
+        errors.extend(_validate_app_api(api, ids, by_id))
 
     pq = extras.get("priority_queue")
     if isinstance(pq, str) and pq.strip():
@@ -406,7 +661,11 @@ def main() -> int:
     if not os.path.exists(CAT_PATH):
         print(f"ERROR: missing catalog at {CAT_PATH}", file=sys.stderr)
         return 1
-    cat, extras = load_repo(HERE)
+    try:
+        cat, extras = load_repo(HERE)
+    except json.JSONDecodeError as exc:
+        print(f"ERROR: invalid JSON (fail closed): {exc}", file=sys.stderr)
+        return 1
     errors = validate(cat, extras)
     songs = cat.get("songs") or []
     originals = sum(1 for s in songs if s.get("classification") == "original")
