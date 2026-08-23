@@ -364,6 +364,33 @@ class ValidateCatalogTests(unittest.TestCase):
         errors = validate(fixture(), extra)
         self.assertTrue(any("catalog_import_v1" in e for e in errors), errors)
 
+    def test_missing_source_key_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["songs"][0].pop("source_key")
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("source_key" in e for e in errors), errors)
+
+    def test_missing_bpm_raw_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["songs"][0].pop("bpm_raw")
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("bpm_raw" in e for e in errors), errors)
+
+    def test_missing_default_live_count_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["counts"].pop("storyboard_default_live")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("counts.storyboard_default_live is required" in e for e in errors),
+            errors,
+        )
+
+    def test_storyboard_reads_must_match_importer(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["reads"] = ["id", "title"]
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("storyboard.reads" in e for e in errors), errors)
+
     def test_real_repo_catalog_passes(self):
         """Live spine must stay green after this pass — no weakening the check."""
         from validate_catalog import load_repo
