@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Jeff Story Master Song Catalog builder — v1 (2026-08-18).
+"""HISTORICAL one-shot (2026-08-18). Do not re-run — it writes a Cowork path
+that is not this repo. Current spine: data/master_catalog.json
+Validate with: python3 scripts/validate_catalog.py
+
+Jeff Story Master Song Catalog builder — v1 (2026-08-18).
 Entity resolution from: Google Drive inventory (357 records), 10 key doc texts,
 SoundCloud public inventory (44/189 tracks). AUDIO NEVER LISTENED TO — all audio
 status is 'metadata only'. Lyric evaluations are based on actual document text."""

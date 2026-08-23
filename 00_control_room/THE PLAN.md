@@ -1,5 +1,6 @@
 # THE PLAN — one page, so you never have to hold this in your head again
 *Jeff Story Song Vault · 2026-08-18 · This page is the answer to "it's overwhelming." It is my job to remember everything below. Your job is one small action at a time.*
+*2026-08-23 note: counts below are the Session 1 snapshot (141). Current spine is catalog v1.6 / 150 entities — see README. Three active songs unchanged (Turn Over The Flag / Manic / Long Long Drive). Band OS = StoryBoard reading `data/app_api.json`, not StoryDesk/StoryOps. Do not treat this page as a fourth priority list.*
 
 ## What exists (you are not scattered — you are prolific)
 27 years of songwriting, now in one catalog: **141 song entities** (57 scored from complete lyric reading), **93 covers** filed separately, **916 voice memos** captured and matched, **5 band identities** untangled, and a discography that was never written down until today:

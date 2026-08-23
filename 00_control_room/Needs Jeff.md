@@ -1,4 +1,5 @@
 # Needs Jeff — max 5 items (updated 2026-08-20, transcript pass)
+*2026-08-23: still these five. No new questions, no new WIP. StoryBoard import does not need a Jeff answer — mapping is documented.*
 
 1. **It's Alright — 2 lines, 60 seconds.** Play any Feb-2022 "It's alright" memo and tell me: (a) the first two chorus lines (Whisper heard "you know I heard the love and tears / is equal to the..." — clearly wrong), and (b) is verse 2 really "It's noisy and Something Dirty" (the band name)? Answering this FINISHES the lyric of a song your band already plays.
 2. **Gem verdict #1: play "Crescent Dr 56" (Oct 2025).** The newest unknown song in the vault — "I fall pretty down, like the city's gone." Gem / meh / "that's actually ___"?

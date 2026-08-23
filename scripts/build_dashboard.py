@@ -1,8 +1,18 @@
 #!/usr/bin/env python3
-"""Dashboard v2 — catalog v1.5 + Momentum Index + searchable memo transcripts."""
-import json, re
+"""Dashboard v2 — catalog v1.6 + Momentum Index + searchable memo transcripts.
 
-cat = json.load(open('/home/claude/vault/00_control_room/master_catalog.json'))
+Repo-relative paths (the old /home/claude/vault/... Cowork copies are gone).
+Run from anywhere:  python3 scripts/build_dashboard.py
+"""
+import json, os, re
+
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CAT_PATH = os.path.join(HERE, "data", "master_catalog.json")
+TX_PATH = os.path.join(HERE, "data", "vm_transcribed.json")
+VM_MATCHES_PATH = os.path.join(HERE, "01_source_manifests", "voicememo", "vm_matches.json")
+OUT_PATH = os.path.join(HERE, "Jeff Story Song Vault Dashboard.html")
+
+cat = json.load(open(CAT_PATH))
 slim = []
 for s in cat['songs']:
     slim.append(dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
@@ -18,7 +28,18 @@ for s in cat['songs']:
 DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
 
 # transcripts: compact index (title, date, dur, cleaned text capped at 1500 chars)
-joined = json.load(open('/home/claude/vault/vm_transcribed.json'))
+# Overlay song_id from vm_matches.json (372/88) — the embedded transcript
+# file still carries the first-pass 326 matches; this join is the live index.
+joined = json.load(open(TX_PATH))
+TX_TOTAL = len(joined)
+if os.path.exists(VM_MATCHES_PATH):
+    _uid2sid = {}
+    for _sid, _uids in json.load(open(VM_MATCHES_PATH)).items():
+        for _uid in _uids:
+            _uid2sid[_uid] = _sid
+    for _row in joined:
+        if _row.get("uid") in _uid2sid:
+            _row["song_id"] = _uid2sid[_row["uid"]]
 def collapse(t):
     words = t.split(); out=[]
     for w in words:
@@ -84,7 +105,7 @@ input{flex:1;min-width:160px}
 .mhint{color:var(--ink3);font-size:12px;padding:16px;text-align:center}
 </style></head><body>
 <h1>🎸 Jeff Story Song Vault</h1>
-<div class="sub">Every song, one place · Catalog v1.5 · 2026-08-20 · now with the Momentum Index + all 916 memos searchable by what you actually sang</div>
+<div class="sub">Every song, one place · Catalog v1.6 · 2026-08-23 integrity pass · Momentum Index + all 916 memos searchable by what you actually sang · no audio in this repo</div>
 <div class="stats" id="stats"></div>
 <div class="lanes">
  <h2>The three lanes (+ on deck)</h2>
@@ -112,16 +133,17 @@ input{flex:1;min-width:160px}
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
 <div id="list"></div>
-<div class="covers-note">93 covers cataloged separately, never ranked against originals. Full data: “00 Control Room” on your Mac + the claude.ai project.</div>
+<div class="covers-note">93 covers cataloged separately, never ranked against originals. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" style="display:none">
 <div class="controls"><input id="mq" placeholder="Search everything you ever sang into your phone… (try: alright, garden, better than now)"></div>
 <div id="mlist"><div class="mhint">Type 3+ letters to search all 916 memo transcripts. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel.</div></div>
 </div>
-<div class="foot">Originals never moved or renamed — this is an index on top. Ask Claude in the “2026 Song Organization” project to update or dig deeper.</div>
+<div class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane.</div>
 <script>
 const DATA = __DATA__;
 const TX = __TX__;
+const TX_TOTAL = __TX_TOTAL__;
 function showTab(w){document.getElementById('paneS').style.display=w==='S'?'':'none';
  document.getElementById('paneM').style.display=w==='M'?'':'none';
  document.getElementById('tabS').classList.toggle('on',w==='S');
@@ -131,12 +153,13 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
 const projects=[...new Set(DATA.map(d=>d.p))].sort();
 projects.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;proj.appendChild(o);});
 const scoredCount=DATA.filter(d=>d.pot).length;
+const matchedCount=TX.filter(t=>t.s).length;
 document.getElementById('stats').innerHTML=
  `<div class="stat"><b>${DATA.length}</b><span>songs cataloged</span></div>`+
  `<div class="stat"><b>${scoredCount}</b><span>scored</span></div>`+
  `<div class="stat"><b>9</b><span>songs recovered from memos</span></div>`+
- `<div class="stat"><b>372</b><span>memos matched</span></div>`+
- `<div class="stat"><b>916</b><span>memos transcribed</span></div>`;
+ `<div class="stat"><b>${matchedCount}</b><span>memos matched</span></div>`+
+ `<div class="stat"><b>${TX_TOTAL}</b><span>memos transcribed</span></div>`;
 function esc(s){return (''+(s||'')).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function bar(v,c){return v?`<div class="barwrap"><div class="bar"><i style="width:${v}%;background:var(--${c})"></i></div><span>${v}</span></div>`:'<div class="barwrap"><span style="color:var(--ink3)">—</span></div>';}
 function render(){
@@ -145,7 +168,7 @@ function render(){
   if(pv&&d.p!==pv)return false;
   if(sv==='1'&&!d.pot)return false; if(sv==='0'&&d.pot)return false;
   if(!term)return true;
-  return (d.t+' '+d.id+' '+d.th+' '+d.hk+' '+d.c+' '+d.st+' '+(d.src||[]).join(' ')).toLowerCase().includes(term);});
+  return (d.t+' '+d.id+' '+d.th+' '+d.hk+' '+d.c+' '+d.st+' '+(d.wr||'')+' '+(d.nx||'')+' '+(d.gate||'')+' '+(d.src||[]).join(' ')).toLowerCase().includes(term);});
  const k=sort.value;
  rows.sort((a,b)=> k==='t'?a.t.localeCompare(b.t): k==='id'?a.id.localeCompare(b.id):((b[k]||0)-(a[k]||0)) || a.id.localeCompare(b.id));
  list.innerHTML=rows.length?rows.map((d,i)=>`
@@ -194,6 +217,6 @@ function mrender(){
 mq.addEventListener('input',mrender);
 </script></body></html>'''
 
-page = page.replace('__DATA__', DATA).replace('__TX__', TX)
-open('/home/claude/vault/Jeff Story Song Vault Dashboard.html','w').write(page)
-print('dashboard written,', len(page)//1024, 'KB,', len(tx), 'transcripts embedded')
+page = page.replace('__DATA__', DATA).replace('__TX__', TX).replace('__TX_TOTAL__', str(TX_TOTAL))
+open(OUT_PATH,'w').write(page)
+print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,', len(tx), 'transcripts embedded')

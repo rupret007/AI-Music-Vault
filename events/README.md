@@ -1,5 +1,8 @@
 # events/ — what the apps write back to the vault
 
+StoryBoard is the band OS that should emit these. Drop files here; do not
+invent a second song catalog — song ids come from `data/app_api.json`.
+
 Drop-file inbox. Apps (or Jeff) write small JSON events here; the next Claude
 session folds them into the catalog and then archives them.
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Build the organized vault layer for Jeff's Mac.
+"""HISTORICAL Mac-local organizer (Cowork paths). Do not re-run from this repo.
+
+Build the organized vault layer for Jeff's Mac.
 Best-practice archival approach: originals are NEVER moved/renamed; this creates a
 navigable catalog layer (song sheets + link indexes + symlink views) on top."""
 import json, os, shutil, re, collections

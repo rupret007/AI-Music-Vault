@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# HISTORICAL one-shot. Do not re-run — writes /home/claude/vault/...
+# Current spine: data/master_catalog.json · validate: scripts/validate_catalog.py
 """Catalog patch v1.5 — the Whisper transcript pass.
 Adds 9 recovered song entities (lyric-verified from transcripts), applies new
 memo matches, upgrades It's Alright / Andrea / Turn Over The Flag / Blue Skies

@@ -1,28 +1,28 @@
 # Jeff Story Song Vault — Producer README
-*How this system works, and how a future session resumes. Last updated: 2026-08-18 (Session 1).*
+*How this system works, and how a future session resumes. Last updated: 2026-08-23 (integrity + StoryBoard path).*
 
 ## Mission
 Jeff does not need more songs. He needs the strongest songs he already wrote to be recognized, organized, protected, and FINISHED. Max 3 active songs (flagship / quick win / experimental). Every active song has one clear next action at three energy levels.
 
 ## Resume procedure (future sessions: START HERE)
-1. Read the claude.ai project docs: `claude/session-log.md`, `claude/priority-queue.md`, `claude/master-catalog.csv`, `claude/needs-jeff.md`. Do NOT re-scan sources already marked complete in the Session Log unless they changed.
-2. The full raw manifests are in the project under `claude/manifests/` (gdrive-inventory.jsonl = 357 records with Drive file IDs; soundcloud-inventory.json; gdrive-doc-texts.md = 10 key docs in full).
-3. Check `Music/Jeff Story Song Vault/Voice Memo Intake/` on jeffs-mac-mini-local for new files (folder access to ~/Music and ~/Documents was granted in Session 1; re-request if expired).
-4. Continue from "NOT done / next continuation point" in the Session Log.
+1. This **repo** is the source of truth (not the old `claude/` Cowork copies). Read `00_control_room/Session Log.md`, `00_control_room/Priority Queue.md`, `00_control_room/Needs Jeff.md`, `data/master_catalog.json`.
+2. Confirm the catalog: `python3 scripts/validate_catalog.py`. StoryBoard import: `data/app_api.json` (see `APPS.md` and `00_control_room/Vault to StoryBoard.md`). Band OS = StoryBoard, not StoryDesk/StoryOps.
+3. Raw manifests live under `01_source_manifests/` (gdrive inventory + doc texts, voicememo matches).
+4. Check `Music/Jeff Story Song Vault/Voice Memo Intake/` on jeffs-mac-mini-local for new files (Mac-local only; this repo holds no audio).
+5. Continue from "NOT done / next continuation point" in the Session Log. Do not expand the three-song cap.
 
-## Structure (cloud workspace `/home/claude/vault/`, mirrored to the project)
+## Structure (this repo)
 ```
-00_control_room/    README, master_catalog.{json,csv,xlsx}, covers_reference.csv,
-                    Priority Queue, Needs Jeff, Session Log, Decision Log,
-                    Access Gaps, Rights and AI Provenance
-01_source_manifests/ gdrive/ soundcloud/ voicememo/ local/ logic/
-02_song_records/    one folder per song, created only when a song goes active
-03_unmatched_voice_memos/  (VM-YYYYMMDD-### ids, original names preserved)
-04_suno_experiments/  one brief per experiment (see Rights doc)
-05_producer_briefs/   ST-0001 Turn Over The Flag - Producer Brief.md
-06_exports/           working copies only — originals are NEVER edited
-99_source_links/      links/manifests, no bulk audio duplication
+00_control_room/    plan, queue, needs-jeff, logs, rights, Vault→StoryBoard pointer
+01_source_manifests/ gdrive/ voicememo/ (inventories + lyric texts)
+02_song_records/    per-song deep workups (only when a song goes active)
+04_suno_experiments/  one brief per experiment
+05_producer_briefs/   ST-0001, ST-0004, …
+data/               master_catalog.json (spine) + app_api.json (StoryBoard import)
+scripts/            validate_catalog.py · export_app_api.py · Mac-local workbench
+events/             drop-file inbox for StoryBoard / Show Night / WebJam
 ```
+Mac-local organized vault (00–99, working copies, intake audio) stays on Jeff's machine — never in this repo.
 
 ## Song IDs
 `ST-####` Stalemate · `SD-####` Something Dirty · `JS-####` Jeff Story solo · `UNK-####` authorship uncertain. ST-01xx block = 2010 *My Mom Says We're Cool* album tracks. A "song" = the underlying composition; files/versions link to it. Covers live in `covers_reference.csv` and are never ranked against originals.
@@ -39,5 +39,5 @@ Every score must cite concrete evidence. Confidence: high / medium / low / insuf
 - Rights: classify every song; no external/AI upload of co-writes, covers, band masters, or uncertain material without established rights. No voice cloning without separate explicit permission. All AI contributions logged; Jeff's originals preserved verbatim next to any proposed edit.
 - Suno: per-song one-time approval, default max 4 generations, private only, prefer demos over irreplaceable masters.
 
-## Current state (end of Session 1)
-Catalog v1: 113 originals + 93 covers. Active: ST-0001 Turn Over The Flag (flagship), ST-0004 Manic (quick win), ST-0009 Long Long Drive (experimental). The campaign: **finish the 6-track Stalemate album** using Jeff's own Overdubs doc as the checklist.
+## Current state (2026-08-23)
+Catalog v1.6: **150 entities / 126 originals** + 93 covers. Active (max 3): ST-0001 Turn Over The Flag (flagship), ST-0004 Manic (quick win), ST-0009 Long Long Drive (experimental). On deck: JS-0128 It's Alright. Protected opus: JS-0107 Blue Skies Fade. The campaign: **finish the 6-track Stalemate album** using Jeff's own Overdubs doc as the checklist. StoryBoard consumes `data/app_api.json`.

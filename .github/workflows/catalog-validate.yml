@@ -1,0 +1,31 @@
+name: catalog-validate
+
+# Mirrors rupret007/StoryBoard .github/workflows/quality.yml trigger + permissions
+# (that public workflow gets a hosted runner). No expression in defaults —
+# ${{ github.workspace }} at workflow-level caused a 0-job "workflow file issue".
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate master catalog (fail closed)
+        run: python scripts/validate_catalog.py
+
+      - name: Catalog validator unit tests
+        run: python -m unittest discover -s tests -v

@@ -4,7 +4,7 @@
 - Jeff Story / Stalemate / Something Dirty originals: rights high unless noted.
 - **Co-writes on record:** Mom, You're The Bomb (Greg Baldia). Suspected: Better Than Now, Don't Call Me A Hero, Graveyard Swiftly (sung by "S"/Che live — split unknown). Che appears throughout (stems, MIDI folder, mp3.com lyric).
 - **Authorship uncertain (frozen for external use):** UNK-0001..0013 (dustduff90 Structures songs + Castle), UNK-0100 (Dorivalland, dver.artist).
-- **Flagged:** The Way I Love You — stray "Paco Estrada" credit in one Rad Dad tab; confirm before any external upload.
+- **Resolved:** The Way I Love You — Paco Estrada composition, given to the band (Jeff 2026-08-18). No AI/external upload without revisiting rights.
 - **Covers (93):** never uploaded to AI services, never ranked. Includes the full Rad Dad book, Trailer Swift set, 8-bit series, Christmas covers, Ice Ice Baby.
 - Band masters (2010 album, 2011 EP, studio session takes): treat as band property; no external upload without bandmate consent.
 
@@ -16,8 +16,8 @@
 ## Standing rules
 No Suno upload without per-song approval (source shown, scope fixed, ≤4 generations, private). No voice clone/profile ever without separate explicit permission. Jeff's original lyric is always preserved beside any proposed edit + rationale + approved version. Prefer demos/excerpts over irreplaceable masters for any experiment.
 
-## Pending approval
-- **Long Long Drive Suno arrangement test** — proposed in Needs Jeff #1. Not started.
+## Experiment status
+- **Long Long Drive Suno EXP-001** — approved 2026-08-18 (Jeff blanket, scoped by standing rights). Ready; blocked on Chrome extension. Needs Jeff #1 is no longer this item (that slot is now It's Alright lyric lines). Catalog `ai_upload_ok` for ST-0009 is YES (Jeff-confirmed original; solo recordings only).
 
 ## Updates — 2026-08-18 Pass 3 (from Jeff directly)
 - The Way I Love You: composition by **Paco Estrada**, given to the band. Credit on release; no AI/external upload without revisiting rights.

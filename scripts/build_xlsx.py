@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-import json
+"""Optional xlsx export. Derived file — do not treat as the spine.
+
+Run: python3 scripts/build_xlsx.py
+Out: data/Jeff Story Master Song Catalog.xlsx (gitignored-style derived; not required)
+"""
+import json, os
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
-cat = json.load(open('/home/claude/vault/00_control_room/master_catalog.json'))
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+cat = json.load(open(os.path.join(HERE, "data", "master_catalog.json")))
 wb = Workbook()
 
 HDR = Font(name='Arial', bold=True, color='FFFFFF', size=10)
@@ -83,5 +89,6 @@ for i,row in enumerate(notes,1):
     c=ws4.cell(i,1,row[0]); c.font=Font(name='Arial', size=10, bold=(i==1))
 ws4.column_dimensions['A'].width=110
 
-wb.save('/home/claude/vault/00_control_room/Jeff Story Master Song Catalog.xlsx')
-print('saved')
+out = os.path.join(HERE, "data", "Jeff Story Master Song Catalog.xlsx")
+wb.save(out)
+print('saved', out)
