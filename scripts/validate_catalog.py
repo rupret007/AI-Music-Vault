@@ -20,6 +20,7 @@ import re
 import sys
 
 from storyboard_contract import (
+    IMPORTER_READS,
     LIVE_CATALOG_PROJECTS,
     MAX_ID_LEN,
     MAX_KEY_LEN,
@@ -246,6 +247,11 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.merge_key must be vault:catalog_import_v1:{id} "
                 "(StoryBoard sourceKey), not vault_id/vault_ref"
             )
+        if list(sb.get("reads") or []) != list(IMPORTER_READS):
+            errors.append(
+                "storyboard.reads must list exactly id, title, project, "
+                "is_original, key, bpm"
+            )
 
     dumped = json.dumps(api).lower()
     if '"consumer": "storydesk"' in dumped or '"consumer": "storyops"' in dumped:
@@ -256,29 +262,23 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         expected_scopes[import_scope(src.get("artist_project"))] += 1
 
     counts = api.get("counts")
+    required_counts = {
+        "entities": len(ids),
+        "storyboard_default_live": expected_scopes[SCOPE_DEFAULT_LIVE],
+        "storyboard_parked": expected_scopes["parked_catalog"],
+        "storyboard_not_live_band": expected_scopes["not_live_band"],
+    }
     if not isinstance(counts, dict):
         errors.append("app_api.json missing counts object")
     else:
-        if counts.get("entities") not in (None, len(ids)):
-            errors.append(
-                f"app_api.json counts.entities={counts.get('entities')} "
-                f"but catalog has {len(ids)} songs"
-            )
-        if counts.get("storyboard_default_live") not in (
-            None,
-            expected_scopes[SCOPE_DEFAULT_LIVE],
-        ):
-            errors.append(
-                "app_api.json counts.storyboard_default_live does not match "
-                "Rad Dad-labeled rows"
-            )
-        if counts.get("storyboard_parked") not in (None, expected_scopes["parked_catalog"]):
-            errors.append("app_api.json counts.storyboard_parked drifted")
-        if counts.get("storyboard_not_live_band") not in (
-            None,
-            expected_scopes["not_live_band"],
-        ):
-            errors.append("app_api.json counts.storyboard_not_live_band drifted")
+        for key, expected in required_counts.items():
+            if key not in counts:
+                errors.append(f"app_api.json counts.{key} is required (fail closed)")
+            elif counts.get(key) != expected:
+                errors.append(
+                    f"app_api.json counts.{key}={counts.get(key)!r} "
+                    f"expected {expected}"
+                )
 
     for rec in api_songs:
         if not isinstance(rec, dict):
@@ -307,9 +307,18 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 f"app_api {loc}: bpm={rec.get('bpm')!r} is not StoryBoard-parseable "
                 "(annotated strings import as null)"
             )
-        if rec.get("bpm_int") not in (None, want_bpm):
+        missing_honesty = [
+            field
+            for field in ("bpm_raw", "import_scope", "source_key", *IMPORTER_READS)
+            if field not in rec
+        ]
+        if missing_honesty:
+            errors.append(
+                f"app_api {loc}: missing StoryBoard honesty fields {missing_honesty}"
+            )
+        if rec.get("bpm_int") != want_bpm:
             errors.append(f"app_api {loc}: bpm_int drifted from bpm")
-        if rec.get("bpm_raw") not in (None, bpm_raw_string(src.get("bpm"))):
+        if rec.get("bpm_raw") != bpm_raw_string(src.get("bpm")):
             errors.append(f"app_api {loc}: bpm_raw does not match catalog bpm text")
         want_scope = import_scope(src.get("artist_project"))
         if rec.get("import_scope") != want_scope:
@@ -317,7 +326,7 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 f"app_api {loc}: import_scope={rec.get('import_scope')!r} "
                 f"expected {want_scope}"
             )
-        if rec.get("source_key") not in (None, source_key(src["song_id"])):
+        if rec.get("source_key") != source_key(src["song_id"]):
             errors.append(f"app_api {loc}: source_key is not vault:catalog_import_v1:{{id}}")
         want_gate = gate_class(src.get("ai_upload_ok")) == "YES"
         if rec.get("ai_upload_ok") is not want_gate:
@@ -350,9 +359,9 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             errors.append(f"setlist_ready {rid} is not an original")
         if not storyboard_parse_key(src.get("key")):
             errors.append(f"setlist_ready {rid} has no importable key")
-        if item.get("title") not in (None, src.get("canonical_title")):
+        if item.get("title") != src.get("canonical_title"):
             errors.append(f"setlist_ready {rid} title does not match catalog")
-        if item.get("project") not in (None, src.get("artist_project")):
+        if item.get("project") != src.get("artist_project"):
             errors.append(f"setlist_ready {rid} project does not match catalog")
     if len(ready_ids) != len(set(ready_ids)):
         errors.append("setlist_ready contains duplicate ids")
