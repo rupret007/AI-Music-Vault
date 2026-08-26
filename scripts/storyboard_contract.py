@@ -2,15 +2,17 @@
 """
 StoryBoard import contract — what catalog-import.ts actually does.
 
-Inspected 2026-08-23 from rupret007/StoryBoard main after PR #6
-(`packages/shared/src/catalog-import.ts`). Vault #6 published the
-schema-3 default-live slice; StoryBoard #6 consumes it and names the
-draft setlist "Vault default-live". Parked-named rows in that slice
-(Everyday / Stalemate, hybrids) stay current-artist repertoire.
+Inspected 2026-08-26 from rupret007/StoryBoard main after PR #9
+(`packages/shared/src/catalog-import.ts`). Vault #7–#10 already lock
+the schema-3 published slice, setlist names, and catalog counts.
+StoryBoard #9 makes this feed the usable source of truth on the
+Vault + Show Night path: Show Night binds planned Vault titles only
+and does not mint excluded rows or fill an empty published slice.
 
-Vault remains the catalog. StoryBoard remains the band OS.
-StoryLiner is promo only. Parked catalogs are not a fourth live band.
-Do not invent setlists, durations, or singers.
+`data/app_api.json` is the StoryBoard import. `master_catalog.json`
+is the spine, not a substitute feed. StoryLiner is promo only.
+Nothing auto-posts. Jeff owns feel, set-list, and catalog calls.
+Parked catalogs are not a fourth live band.
 """
 from __future__ import annotations
 
@@ -33,13 +35,20 @@ PARKED_CATALOG_PROJECTS = ("stalemate", "trailer swift", "something dirty")
 BOOKER_CATALOG_PROJECTS = ("travis", "travis story")
 CATALOG_BOOKER_POLICY = "travis_books"
 
-# StoryBoard vaultSetlistIdentity() after #6.
+# StoryBoard vaultSetlistIdentity() after #6 (unchanged through #9).
 VAULT_DEFAULT_LIVE_SETLIST_NAME = "Vault default-live"
 VAULT_SETLIST_READY_SETLIST_NAME = "Vault setlist-ready"
 PARKED_NAMED_IN_DEFAULT_LIVE_WARNING = (
     "Published default-live includes songs whose Vault project is a parked "
     "catalog name. They stay on the current artist — not a fourth live band."
 )
+
+# StoryBoard #9: Vault payload present → Show Night does not mint a second catalog.
+SHOW_NIGHT_NOT_IN_VAULT = "show_night_not_in_vault"
+SHOW_NIGHT_DOES_NOT_EXPAND_VAULT = True
+VAULT_IMPORT_FILE = "data/app_api.json"
+MASTER_CATALOG_IS_NOT_THE_IMPORT = True
+NEVER_AUTO_POST = True
 DEFAULT_LIVE_SETLIST_NOTES = (
     "Published Vault setlist_ready_default_import / default_live slice. "
     "Current artist only — not a fourth live band. Not a booking pitch. "
@@ -257,6 +266,118 @@ def parked_named_default_live_ids(songs: list[dict], published_ids) -> list[str]
         if rec and project_name_looks_parked(rec.get("project")):
             out.append(sid)
     return out
+
+
+def normalize_spine_song(src: dict) -> dict:
+    """Match StoryBoard normalizeVaultCatalog() on a master_catalog row.
+
+    The spine is not the StoryBoard feed: `live_presence` is not remapped
+    to `played_live`, and there is no published slice / import_scope.
+    """
+    sid = as_text(src.get("id")) or as_text(src.get("song_id")) or as_text(
+        src.get("vault_id")
+    )
+    title = as_text(src.get("title")) or as_text(src.get("canonical_title"))
+    project = as_text(src.get("project")) or as_text(src.get("artist_project"))
+    vault_id = as_text(src.get("vault_id")) or sid
+    rec = dict(src)
+    if sid:
+        rec["id"] = sid
+    if title:
+        rec["title"] = title
+    if project:
+        rec["project"] = project
+    if vault_id:
+        rec["vault_id"] = vault_id
+        rec["vault_ref"] = as_text(src.get("vault_ref")) or vault_ref_for(vault_id)
+    is_original = src.get("is_original")
+    if not isinstance(is_original, bool):
+        classification = (as_text(src.get("classification")) or "").lower()
+        if classification == "original":
+            is_original = True
+        elif classification == "cover":
+            is_original = False
+        else:
+            is_original = None
+    if isinstance(is_original, bool):
+        rec["is_original"] = is_original
+    elif "is_original" in rec:
+        rec.pop("is_original", None)
+    # StoryBoard does not remap catalog live_presence → played_live.
+    rec.pop("played_live", None)
+    rec.pop("import_scope", None)
+    return rec
+
+
+def spine_default_plan_ids(catalog_songs: list[dict]) -> list[str]:
+    """What StoryBoard would keep if pointed at master_catalog.json."""
+    songs = [normalize_spine_song(src) for src in catalog_songs if isinstance(src, dict)]
+    out: list[str] = []
+    for song, decision in default_decisions(songs, set()):
+        if decision.include and song.get("id"):
+            out.append(song["id"])
+    return out
+
+
+def vault_skip_by_title(
+    songs: list[dict],
+    ready_ids: set[str],
+    published_default_ids: set[str] | None,
+) -> dict[str, str]:
+    """StoryBoard #9 vaultSkipByTitle — skip reason keyed by cleaned title."""
+    skip: dict[str, str] = {}
+    for song, decision in live_default_decisions(
+        songs, ready_ids, published_default_ids
+    ):
+        if decision.include:
+            continue
+        title = clean_title(song.get("title") or "")
+        if title:
+            skip[title.lower()] = decision.reason
+    return skip
+
+
+def planned_vault_titles(
+    songs: list[dict],
+    ready_ids: set[str],
+    published_default_ids: set[str] | None,
+) -> dict[str, str]:
+    """Cleaned title → vault id for songs StoryBoard #9 would keep."""
+    planned: dict[str, str] = {}
+    for song, decision in live_default_decisions(
+        songs, ready_ids, published_default_ids
+    ):
+        if not decision.include:
+            continue
+        title = clean_title(song.get("title") or "")
+        sid = song.get("id")
+        if title and sid:
+            planned[title.lower()] = sid
+    return planned
+
+
+def show_night_bind_title(
+    title,
+    planned_titles: dict[str, str],
+    skip_by_title: dict[str, str],
+    *,
+    vault_catalog_resolved: bool = True,
+) -> tuple[str, str]:
+    """Match StoryBoard #9 showNightSongSourceKey() when a Vault payload is present.
+
+    Returns (action, detail):
+      bind + vault id when the cleaned title is already planned
+      skip + Vault reason (or show_night_not_in_vault) otherwise
+
+    Show Night-only imports (no Vault file) are unchanged and out of scope.
+    """
+    cleaned = clean_title(title)
+    key = cleaned.lower()
+    if not vault_catalog_resolved:
+        return ("mint_show_night", cleaned)
+    if key in planned_titles:
+        return ("bind", planned_titles[key])
+    return ("skip", skip_by_title.get(key, SHOW_NIGHT_NOT_IN_VAULT))
 
 
 def is_booker_project(project) -> bool:
@@ -546,9 +667,11 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
     return {
         "consumer": "StoryBoard",
         "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
-        "inspected": "2026-08-23 after StoryBoard #6",
+        "inspected": "2026-08-26 after StoryBoard #9",
         "policy_version": CATALOG_IMPORT_POLICY_VERSION,
         "import_from": "songs",
+        "import_file": VAULT_IMPORT_FILE,
+        "master_catalog_is_not_the_import": MASTER_CATALOG_IS_NOT_THE_IMPORT,
         "setlist_seed": "setlist_ready",
         "second_catalog": False,
         "not_band_os": ["StoryDesk", "StoryOps"],
@@ -556,6 +679,9 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
         "storyliner_role": "promo only",
         "no_fourth_live_band": True,
         "do_not_invent_live_band": True,
+        "never_auto_post": NEVER_AUTO_POST,
+        "show_night_does_not_expand_vault": SHOW_NIGHT_DOES_NOT_EXPAND_VAULT,
+        "show_night_binds_planned_vault_titles_only": True,
         "booker_policy": CATALOG_BOOKER_POLICY,
         "prefers_published_default_import": True,
         "empty_published_slice_stays_empty": True,
@@ -573,7 +699,8 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
         "leave_null": list(LEAVE_NULL),
         "why_null": (
             "durationSeconds, leadVocalist, genre, lyricsUrl, and chartUrl "
-            "are not in the vault. Do not invent them. Jeff owns feel and set-list."
+            "are not in the vault. Do not invent them. Jeff owns feel, "
+            "set-list, and catalog calls."
         ),
         "merge_key": f"vault:{CATALOG_IMPORT_POLICY_VERSION}:{{vault_id ?? id}}",
         "bpm_note": (
@@ -586,18 +713,22 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
         "parked_catalog_projects": ["Stalemate", "Trailer Swift", "Something Dirty"],
         "booker_catalog_projects": ["Travis", "Travis Story"],
         "default_import": (
-            "Published setlist_ready_default_import is the default plan when "
-            "present (empty published slice stays empty — StoryBoard will not "
-            "recompute a live band). StoryBoard names that draft setlist "
-            "'Vault default-live'. Songs whose Vault project is a parked "
-            "catalog name (Everyday / Stalemate, hybrids) stay on the current "
-            "artist — not a fourth live band. Fallback when that array is "
-            "absent: live repertoire (Rad Dad / Jeff Story / recorded Rad Dad "
-            "plays) gated by setlist_ready; that draft is 'Vault setlist-ready'. "
-            "Parked catalogs that are not in the published slice stay parked "
-            "unless Jeff passes includeParked / includeAllProjects. Covers stay "
-            "out. Travis rows are travis_books — never auto-pitch. Do not invent "
-            "Rad Dad catalog rows or a fourth live band."
+            "THE import file is data/app_api.json — master_catalog.json is the "
+            "spine, not a StoryBoard feed. Published setlist_ready_default_import "
+            "is the default plan when present (empty published slice stays "
+            "empty — StoryBoard will not recompute a live band). StoryBoard "
+            "names that draft setlist 'Vault default-live'. Songs whose Vault "
+            "project is a parked catalog name stay on the current artist — not "
+            "a fourth live band. Fallback when that array is absent: live "
+            "repertoire (Rad Dad / Jeff Story / recorded Rad Dad plays) gated "
+            "by setlist_ready; that draft is 'Vault setlist-ready'. Parked "
+            "catalogs that are not in the published slice stay parked unless "
+            "Jeff passes includeParked / includeAllProjects. Covers stay out. "
+            "Travis rows are travis_books — never auto-pitch. When a Vault "
+            "payload is present, Show Night only binds planned Vault titles "
+            "and does not mint excluded rows or fill an empty published slice. "
+            "Nothing auto-posts. Jeff owns feel, set-list, and catalog calls. "
+            "Do not invent Rad Dad catalog rows or a fourth live band."
         ),
         "active_lanes": ["flagship", "quick_win", "experimental"],
         "active_lane_cap": 3,
@@ -618,5 +749,8 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "show_played_songs": "vault_id preferred, title fallback",
             "lanes_are_not_a_setlist": True,
             "remote_catalog_urls": False,
+            "never_auto_post": True,
+            "show_night_does_not_expand_vault": True,
+            "jeff_owns_catalog_calls": True,
         },
     }

@@ -11,8 +11,11 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from export_app_api import build_payload  # noqa: E402
 from storyboard_contract import (  # noqa: E402
+    NEVER_AUTO_POST,
     PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
+    SHOW_NIGHT_NOT_IN_VAULT,
     VAULT_DEFAULT_LIVE_SETLIST_NAME,
+    VAULT_IMPORT_FILE,
     VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_STORYBOARD_FIELD_MAP,
     catalog_import_scope,
@@ -21,10 +24,14 @@ from storyboard_contract import (  # noqa: E402
     live_default_decisions,
     parked_named_default_live_ids,
     parse_bpm,
+    planned_vault_titles,
     project_name_looks_parked,
     recognized_import_scope,
+    show_night_bind_title,
+    spine_default_plan_ids,
     storyboard_parse_bpm,
     vault_setlist_identity,
+    vault_skip_by_title,
 )
 from validate_catalog import (  # noqa: E402
     ACTIVE_LANES,
@@ -482,11 +489,40 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
 
-    def test_inspected_must_name_storyboard_6(self):
+    def test_inspected_must_name_storyboard_9(self):
         extra = extras_ok()
-        extra["app_api"]["storyboard"]["inspected"] = "2026-08-23 after StoryBoard #5"
+        extra["app_api"]["storyboard"]["inspected"] = "2026-08-23 after StoryBoard #6"
         errors = validate(fixture(), extra)
-        self.assertTrue(any("StoryBoard #6" in e for e in errors), errors)
+        self.assertTrue(any("StoryBoard #9" in e for e in errors), errors)
+
+    def test_missing_never_auto_post_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["never_auto_post"] = False
+        extra["app_api"]["storyboard"]["ops"]["never_auto_post"] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("never_auto_post" in e for e in errors), errors)
+
+    def test_claiming_spine_is_the_import_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["master_catalog_is_not_the_import"] = False
+        extra["app_api"]["storyboard"]["import_file"] = "data/master_catalog.json"
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("master_catalog" in e or "import_file" in e for e in errors),
+            errors,
+        )
+
+    def test_missing_show_night_does_not_expand_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["show_night_does_not_expand_vault"] = False
+        extra["app_api"]["storyboard"]["ops"]["show_night_does_not_expand_vault"] = (
+            False
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("show_night_does_not_expand_vault" in e for e in errors),
+            errors,
+        )
 
     def test_default_setlist_name_must_be_vault_default_live(self):
         extra = extras_ok()
@@ -888,6 +924,82 @@ class ValidateCatalogTests(unittest.TestCase):
         }
         self.assertEqual(planned, {"JS-0128", "ST-0014"})
 
+    def test_show_night_does_not_mint_excluded_or_unknown_titles(self):
+        songs = [
+            {
+                "id": "JS-0128",
+                "title": "It's Alright",
+                "project": "Jeff Story",
+                "is_original": True,
+                "import_scope": "default_live",
+            },
+            {
+                "id": "ST-0002",
+                "title": "Cover Example",
+                "project": "Stalemate",
+                "is_original": False,
+                "import_scope": "cover_not_active",
+            },
+            {
+                "id": "JS-0997",
+                "title": "Booker Tune",
+                "project": "Travis Story",
+                "is_original": True,
+                "import_scope": "travis_books",
+            },
+        ]
+        published = {"JS-0128"}
+        ready = {"JS-0128"}
+        planned = planned_vault_titles(songs, ready, published)
+        skip = vault_skip_by_title(songs, ready, published)
+        self.assertEqual(
+            show_night_bind_title("It's Alright", planned, skip),
+            ("bind", "JS-0128"),
+        )
+        self.assertEqual(
+            show_night_bind_title("Cover Example", planned, skip),
+            ("skip", "cover_not_active"),
+        )
+        self.assertEqual(
+            show_night_bind_title("Booker Tune", planned, skip),
+            ("skip", "travis_books"),
+        )
+        self.assertEqual(
+            show_night_bind_title("Not In Vault", planned, skip),
+            ("skip", SHOW_NIGHT_NOT_IN_VAULT),
+        )
+
+    def test_show_night_does_not_fill_empty_published_slice(self):
+        songs = [
+            {
+                "id": "JS-0128",
+                "title": "It's Alright",
+                "project": "Jeff Story",
+                "is_original": True,
+                "import_scope": "default_live",
+            }
+        ]
+        planned = planned_vault_titles(songs, {"JS-0128"}, set())
+        skip = vault_skip_by_title(songs, {"JS-0128"}, set())
+        self.assertEqual(planned, {})
+        action, reason = show_night_bind_title("It's Alright", planned, skip)
+        self.assertEqual(action, "skip")
+        self.assertNotEqual(action, "bind")
+        self.assertIn(reason, {"not_setlist_ready", SHOW_NIGHT_NOT_IN_VAULT})
+
+    def test_spine_plan_is_not_the_published_default_live_feed(self):
+        """StoryBoard pointed at master_catalog drops played-live-only rows."""
+        cat = fixture()
+        cat["songs"][0]["artist_project"] = "Jeff Story"
+        cat["songs"][5]["live_presence"] = [{"band": "Rad Dad", "date": "2026-05"}]
+        payload = build_payload(cat)
+        published = {row["id"] for row in payload["setlist_ready_default_import"]}
+        self.assertEqual(published, {"ST-0001", "JS-0001"})
+        spine = set(spine_default_plan_ids(cat["songs"]))
+        self.assertIn("ST-0001", spine)
+        self.assertNotIn("JS-0001", spine)
+        self.assertNotEqual(spine, published)
+
     def test_catalog_import_scope_honors_declared_not_live(self):
         self.assertEqual(catalog_import_scope("Jeff Story"), "default_live")
         self.assertEqual(
@@ -961,7 +1073,15 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(
             api["storyboard"]["parked_named_in_default_live_stay_current_artist"]
         )
-        self.assertIn("StoryBoard #6", api["storyboard"]["inspected"])
+        self.assertIn("StoryBoard #9", api["storyboard"]["inspected"])
+        self.assertEqual(api["storyboard"]["import_file"], VAULT_IMPORT_FILE)
+        self.assertTrue(api["storyboard"]["master_catalog_is_not_the_import"])
+        self.assertTrue(api["storyboard"]["never_auto_post"])
+        self.assertTrue(api["storyboard"]["show_night_does_not_expand_vault"])
+        self.assertTrue(NEVER_AUTO_POST)
+        spine_ids = set(spine_default_plan_ids(cat["songs"]))
+        self.assertNotEqual(spine_ids, default_ids)
+        self.assertGreater(len(spine_ids), len(default_ids))
         live_ids = {
             rec["id"]
             for rec, decision in live_default_decisions(

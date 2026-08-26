@@ -37,6 +37,8 @@ These checks read the committed catalog metadata and StoryBoard export only.
 They do not open or upload audio, modify originals, or contact an AI service.
 Keep the repository and its test output private because catalog metadata can
 still contain unreleased, personal, collaborator, or location information.
+StoryBoard consumes a local `data/app_api.json` — not the spine, not a remote
+URL, and not a public catalog dump. Nothing auto-posts.
 
 ## The three lanes (+ on deck)
 
@@ -107,7 +109,7 @@ See [`00_control_room/Rights and AI Provenance.md`](00_control_room/Rights%20and
 
 ## Related projects
 
-The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — schema 3; StoryBoard reads `id` / `title` / `project` / `is_original` / `key` / `bpm` / `bpm_int` / `vault_id` / `vault_ref` / `played_live` / `import_scope`; default live is the published `setlist_ready_default_import` 20-id **Vault default-live** slice, including parked-named Everyday / hybrid rows as current-artist repertoire, not an empty list and not a fourth live band; Travis is `travis_books`; not a second catalog, not StoryDesk/StoryOps, StoryLiner is promo only). See [`APPS.md`](APPS.md).
+The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — schema 3; the spine is not a substitute import; StoryBoard reads `id` / `title` / `project` / `is_original` / `key` / `bpm` / `bpm_int` / `vault_id` / `vault_ref` / `played_live` / `import_scope`; default live is the published `setlist_ready_default_import` **Vault default-live** slice, including parked-named rows as current-artist repertoire, not an empty list and not a fourth live band; Show Night binds planned Vault titles only; Travis is `travis_books`; nothing auto-posts; not a second catalog, not StoryDesk/StoryOps, StoryLiner is promo only). See [`APPS.md`](APPS.md).
 
 ## Current state
 
