@@ -23,6 +23,21 @@ This is the working brain of the Jeff Story catalog: 150 song entities spanning 
 | Feed StoryBoard (band OS) | [`data/app_api.json`](data/app_api.json) — mapping in [`APPS.md`](APPS.md) and [`00_control_room/Vault to StoryBoard.md`](00_control_room/Vault%20to%20StoryBoard.md) |
 | Confirm the catalog isn't broken | `python3 scripts/validate_catalog.py` |
 
+## Verify safely
+
+Run the same offline gates used by catalog validation:
+
+```bash
+python3 scripts/validate_catalog.py
+python3 -m unittest discover -s tests -v
+python3 scripts/export_app_api.py --check
+```
+
+These checks read the committed catalog metadata and StoryBoard export only.
+They do not open or upload audio, modify originals, or contact an AI service.
+Keep the repository and its test output private because catalog metadata can
+still contain unreleased, personal, collaborator, or location information.
+
 ## The three lanes (+ on deck)
 
 - **Flagship** — Turn Over The Flag (mix v1.6, two overdubs left)
