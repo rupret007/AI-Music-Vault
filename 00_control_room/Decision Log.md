@@ -94,3 +94,6 @@
 
 ## 2026-08-26 — Session Log appears once (no audio, no new band)
 65. **Session Log after #12 listed the same local-JSON heading twice.** That leftover made resume dishonest (two identical passes). The #12 section is kept once. Validator fails closed on duplicate Session Log H2 headings. #11/#12 feed locks are unchanged. No second catalog surface.
+
+## 2026-08-26 — Session Log resume from latest (no audio, no new band)
+66. **Producer README resume still pointed at Session 1.** After #13, Session Log H2 headings are unique, but resume used the first "NOT done / next continuation point" and the latest honesty passes had no continuation heading. A later session would treat Session 1 as current. Validator now requires Session Log, requires a Next continuation point on the latest H2, and fails closed if Producer README still uses that Session 1 phrase. #11/#12/#13 locks unchanged. Hosted empty-runner is not a catalog fail.

@@ -242,3 +242,17 @@ Unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · 
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
 - No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
 - Private catalog stays private. No public dump of titles. Did not invent a setlist or a second catalog.
+
+## Session Log resume from latest — 2026-08-26 (Cloud Agent, no audio)
+### Done
+1. After Vault #13, Session Log H2 headings are unique, but Producer README still sent resume to the first Session 1 "NOT done / next continuation point". Later honesty passes had no Next continuation point, so a later session would treat Session 1 as current.
+2. Validator now requires Session Log, fails closed if the latest H2 pass has no Next continuation point, and fails closed if Producer README still points at that Session 1 heading. #11/#12/#13 locks are unchanged. No second catalog surface.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
+- Private catalog stays private. No public dump of titles. Did not invent a setlist or a second catalog.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — not the spine, not a remote URL. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.

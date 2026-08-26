@@ -43,6 +43,8 @@ from validate_catalog import (  # noqa: E402
     PROTECTED_LANES,
     YES_GATE,
     duplicate_session_log_headings,
+    latest_session_log_has_continuation,
+    latest_session_log_section,
     session_log_h2_headings,
     validate,
 )
@@ -113,6 +115,13 @@ def extras_ok(cat=None):
             "ST-0001 Turn Over The Flag\n"
             "ST-0004 Manic\n"
             "ST-0009 Long Long Drive\n"
+        ),
+        "session_log": (
+            "# Session Log\n\n"
+            "## usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)\n\n"
+            "once\n\n"
+            "### Next continuation point\n\n"
+            "standing Jeff-owned items unchanged\n"
         ),
         "dashboard_html": (
             "Catalog v1.6 · Turn Over The Flag · Manic · Long Long Drive · "
@@ -1093,7 +1102,9 @@ class ValidateCatalogTests(unittest.TestCase):
             "## usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)\n\n"
             "once\n\n"
             "## Session Log once — 2026-08-26 (Cloud Agent, no audio)\n\n"
-            "leftover removed\n"
+            "leftover removed\n\n"
+            "### Next continuation point\n\n"
+            "standing Jeff-owned items unchanged\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
 
@@ -1104,10 +1115,94 @@ class ValidateCatalogTests(unittest.TestCase):
             "## one pass\n\n"
             "### Done\n\n"
             "## other pass\n\n"
-            "### Done\n"
+            "### Done\n\n"
+            "### Next continuation point\n\n"
+            "standing Jeff-owned items unchanged\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertEqual(duplicate_session_log_headings(extras["session_log"]), [])
+
+    def test_missing_session_log_fails(self):
+        extras = extras_ok()
+        extras["session_log"] = None
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("Session Log.md is required for resume" in e for e in errors),
+            errors,
+        )
+
+    def test_empty_session_log_fails(self):
+        extras = extras_ok()
+        extras["session_log"] = "   \n"
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("Session Log.md is required for resume" in e for e in errors),
+            errors,
+        )
+
+    def test_latest_session_log_without_continuation_fails(self):
+        extras = extras_ok()
+        extras["session_log"] = (
+            "# Session Log\n\n"
+            "## first pass\n\n"
+            "### Next continuation point\n\n"
+            "old\n\n"
+            "## latest pass\n\n"
+            "no continuation here\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any(
+                "latest Session Log H2 pass has no Next continuation point" in e
+                for e in errors
+            ),
+            errors,
+        )
+        self.assertFalse(latest_session_log_has_continuation(extras["session_log"]))
+
+    def test_session1_style_continuation_on_latest_pass(self):
+        extras = extras_ok()
+        extras["session_log"] = (
+            "# Session Log\n\n"
+            "## Session 1 — 2026-08-18\n\n"
+            "### NOT done / next continuation point\n\n"
+            "old\n"
+        )
+        self.assertEqual(validate(fixture(), extras), [])
+        self.assertTrue(latest_session_log_has_continuation(extras["session_log"]))
+
+    def test_stale_producer_readme_resume_fails(self):
+        extras = extras_ok()
+        extras["producer_readme"] = (
+            'Continue from "NOT done / next continuation point" in the Session Log.\n'
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any(
+                "Producer README resume still points at the Session 1" in e
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_producer_readme_without_latest_session_log_fails(self):
+        extras = extras_ok()
+        extras["producer_readme"] = "Resume somehow.\n"
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any(
+                "Producer README resume must start from the latest Session Log H2" in e
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_producer_readme_latest_session_log_passes(self):
+        extras = extras_ok()
+        extras["producer_readme"] = (
+            "Continue from the latest Session Log H2 pass.\n"
+        )
+        self.assertEqual(validate(fixture(), extras), [])
 
     def test_real_repo_catalog_passes(self):
         """Live spine must stay green after this pass — no weakening the check."""
@@ -1200,10 +1295,22 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertEqual(live_ids, default_ids)
         headings = session_log_h2_headings(extra["session_log"])
         leftover = "usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)"
+        latest = latest_session_log_section(extra["session_log"])
         self.assertEqual(duplicate_session_log_headings(extra["session_log"]), [])
         self.assertEqual(len(headings), len(set(headings)))
         self.assertEqual(headings.count(leftover), 1)
         self.assertIn("Session Log once — 2026-08-26 (Cloud Agent, no audio)", headings)
+        self.assertIn(
+            "Session Log resume from latest — 2026-08-26 (Cloud Agent, no audio)",
+            headings,
+        )
+        self.assertTrue(latest_session_log_has_continuation(extra["session_log"]))
+        self.assertIn("### Next continuation point", latest)
+        self.assertIn("latest Session Log", extra["producer_readme"])
+        self.assertNotIn(
+            'Continue from "NOT done / next continuation point"',
+            extra["producer_readme"],
+        )
 
 
 if __name__ == "__main__":
