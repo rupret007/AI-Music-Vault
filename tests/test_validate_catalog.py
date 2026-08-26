@@ -42,6 +42,8 @@ from validate_catalog import (  # noqa: E402
     ACTIVE_LANES,
     PROTECTED_LANES,
     YES_GATE,
+    duplicate_session_log_headings,
+    session_log_h2_headings,
     validate,
 )
 
@@ -1065,6 +1067,48 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertEqual(recognized_import_scope("travis_books"), "travis_books")
         self.assertIsNone(recognized_import_scope("rad_dad_only"))
 
+    def test_duplicate_session_log_heading_fails(self):
+        extras = extras_ok()
+        extras["session_log"] = (
+            "# Session Log\n\n"
+            "## usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)\n\n"
+            "once\n\n"
+            "## usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)\n\n"
+            "once again\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any(
+                "Session Log.md heading appears more than once" in e
+                and "usable catalog local-JSON" in e
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_unique_session_log_headings_pass(self):
+        extras = extras_ok()
+        extras["session_log"] = (
+            "# Session Log\n\n"
+            "## usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)\n\n"
+            "once\n\n"
+            "## Session Log once — 2026-08-26 (Cloud Agent, no audio)\n\n"
+            "leftover removed\n"
+        )
+        self.assertEqual(validate(fixture(), extras), [])
+
+    def test_session_log_h3_repeat_is_not_a_duplicate_pass(self):
+        extras = extras_ok()
+        extras["session_log"] = (
+            "# Session Log\n\n"
+            "## one pass\n\n"
+            "### Done\n\n"
+            "## other pass\n\n"
+            "### Done\n"
+        )
+        self.assertEqual(validate(fixture(), extras), [])
+        self.assertEqual(duplicate_session_log_headings(extras["session_log"]), [])
+
     def test_real_repo_catalog_passes(self):
         """Live spine must stay green after this pass — no weakening the check."""
         from validate_catalog import load_repo
@@ -1154,6 +1198,12 @@ class ValidateCatalogTests(unittest.TestCase):
             if decision.include
         }
         self.assertEqual(live_ids, default_ids)
+        headings = session_log_h2_headings(extra["session_log"])
+        leftover = "usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)"
+        self.assertEqual(duplicate_session_log_headings(extra["session_log"]), [])
+        self.assertEqual(len(headings), len(set(headings)))
+        self.assertEqual(headings.count(leftover), 1)
+        self.assertIn("Session Log once — 2026-08-26 (Cloud Agent, no audio)", headings)
 
 
 if __name__ == "__main__":
