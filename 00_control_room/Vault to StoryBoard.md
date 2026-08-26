@@ -1,7 +1,7 @@
 # Vault → StoryBoard (consolidated path)
 
 *2026-08-26 · Control-room pointer, not a new priority list.*
-*Importer-honest pass: `data/app_api.json` is the StoryBoard feed after StoryBoard #9. The spine is not a substitute import.*
+*Importer-honest pass: `data/app_api.json` is the StoryBoard feed after StoryBoard #12 — local JSON only. The spine is not a substitute import. Remote catalog URLs are rejected.*
 
 **This vault is the song brain.** StoryBoard is the band-management OS that reads it. StoryLiner is promo only. There is no StoryDesk / StoryOps band OS, and this repo does not grow a new manager app or a fourth live band.
 
@@ -16,7 +16,7 @@
 ## Fields StoryBoard actually imports
 
 From `songs[]`: `id`, `title`, `project`, `is_original`, `key`, `bpm`, `bpm_int`, `vault_id`, `vault_ref`, `played_live`, `import_scope`.
-StoryBoard #9 reads this file (`data/app_api.json`), not `master_catalog.json`. It also reads the published `setlist_ready_default_import` id list and names that draft **Vault default-live**. An empty published slice stays empty. Parked-named rows in the slice stay current-artist repertoire. When a Vault payload is present, Show Night only binds planned Vault titles. Nothing auto-posts.
+StoryBoard #12 reads this file (`data/app_api.json`) as local JSON only, not `master_catalog.json`, and not a remote URL. It also reads the published `setlist_ready_default_import` id list and names that draft **Vault default-live**. An empty published slice stays empty. Parked-named rows in the slice stay current-artist repertoire. When a Vault payload is present, Show Night only binds planned Vault titles. Nothing auto-posts. Preview/apply lives in Band operations → Music & setlists.
 
 | StoryBoard writes | Vault field | Do not |
 |---|---|---|

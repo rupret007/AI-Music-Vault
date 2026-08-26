@@ -109,7 +109,7 @@ See [`00_control_room/Rights and AI Provenance.md`](00_control_room/Rights%20and
 
 ## Related projects
 
-The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — schema 3; the spine is not a substitute import; StoryBoard reads `id` / `title` / `project` / `is_original` / `key` / `bpm` / `bpm_int` / `vault_id` / `vault_ref` / `played_live` / `import_scope`; default live is the published `setlist_ready_default_import` **Vault default-live** slice, including parked-named rows as current-artist repertoire, not an empty list and not a fourth live band; Show Night binds planned Vault titles only; Travis is `travis_books`; nothing auto-posts; not a second catalog, not StoryDesk/StoryOps, StoryLiner is promo only). See [`APPS.md`](APPS.md).
+The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — schema 3; local JSON only after StoryBoard #12 — Band operations → Music & setlists; remote catalog URLs are rejected; the spine is not a substitute import; StoryBoard reads `id` / `title` / `project` / `is_original` / `key` / `bpm` / `bpm_int` / `vault_id` / `vault_ref` / `played_live` / `import_scope`; default live is the published `setlist_ready_default_import` **Vault default-live** slice, including parked-named rows as current-artist repertoire, not an empty list and not a fourth live band; Show Night binds planned Vault titles only; Travis is `travis_books`; nothing auto-posts; not a second catalog, not StoryDesk/StoryOps, StoryLiner is promo only). See [`APPS.md`](APPS.md).
 
 ## Current state
 

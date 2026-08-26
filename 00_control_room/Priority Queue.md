@@ -6,6 +6,7 @@
 *setlist_ready vs default-live count honesty 2026-08-23: `counts.setlist_ready` (40) stays distinct from the 20-id Vault default-live slice and fails closed if conflated. Still these three songs. Still no new priorities.*
 *published catalog-count honesty 2026-08-23: `counts.originals` (126) / `counts.scored` (59) / `counts.ai_upload_ok` (128) fail closed if omitted or collapsed into a setlist count. Still these three songs. Still no new priorities.*
 *usable catalog SoT 2026-08-26: StoryBoard import is `data/app_api.json` after StoryBoard #9 — not the spine. Show Night does not expand Vault. Nothing auto-posts. Still these three songs. Still no new priorities.*
+*usable catalog local-JSON 2026-08-26: StoryBoard #12 accepts that file only as local JSON (Band operations → Music & setlists). Remote catalog URLs are rejected. Still these three songs. Still no new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE
