@@ -221,3 +221,25 @@ Unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · 
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
 - No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
 - Private catalog stays private. No public dump of titles.
+
+## usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)
+### Done
+1. Re-inspected live StoryBoard `catalog-import.ts` after StoryBoard #12. `decideVaultSong` / field map / Show Night bind / never_auto_post stay as Vault #11 left them. The leftover lie was usability: `ops.remote_catalog_urls` was published false but not fail-closed, and `inspected` still named #9, so Band operations could be told this private catalog is fetchable.
+2. Ported StoryBoard #12 `catalogLocatorLooksRemote` / `parseLocalCatalogJson`. Validator now requires local-JSON-only, rejects remote catalog URLs, and fails closed if the feed itself looks like a locator. Operator path is Band operations → Music & setlists.
+3. Discarded: re-doing #11; treating the hosted 0-step empty-runner as a catalog fail; field-map drift; StoryBoard-side spine reject; public stub; unmerged StoryBoard #13 preview copy.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
+- Private catalog stays private. No public dump of titles. Hosted validate may be a 0-step empty-runner — not a catalog fail.
+
+## usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)
+### Done
+1. Re-inspected live StoryBoard `catalog-import.ts` after StoryBoard #12. `decideVaultSong` / field map / Show Night bind / never_auto_post stay as Vault #11 left them. The leftover lie was usability: `ops.remote_catalog_urls` was published false but not fail-closed, and `inspected` still named #9, so Band operations could be told this private catalog is fetchable.
+2. Ported StoryBoard #12 `catalogLocatorLooksRemote` / `parseLocalCatalogJson`. Validator now requires local-JSON-only, rejects remote catalog URLs, and fails closed if the feed itself looks like a locator. Operator path is Band operations → Music & setlists.
+3. Discarded: re-doing #11; treating the hosted 0-step empty-runner as a catalog fail; field-map drift; StoryBoard-side spine reject; public stub; unmerged StoryBoard #13 preview copy.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
+- Private catalog stays private. No public dump of titles. Hosted validate may be a 0-step empty-runner — not a catalog fail.

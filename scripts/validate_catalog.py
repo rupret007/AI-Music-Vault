@@ -20,11 +20,13 @@ import re
 import sys
 
 from storyboard_contract import (
+    BAND_OPERATIONS_IMPORT,
     BOOKER_CATALOG_PROJECTS,
     CATALOG_BOOKER_POLICY,
     IMPORTER_CATALOG_READS,
     IMPORTER_READS,
     LIVE_CATALOG_PROJECTS,
+    LOCAL_JSON_ONLY,
     MASTER_CATALOG_IS_NOT_THE_IMPORT,
     MAX_ID_LEN,
     MAX_IMPORT_SCOPE_LEN,
@@ -37,6 +39,7 @@ from storyboard_contract import (
     PARKED_CATALOG_PROJECTS,
     NEVER_AUTO_POST,
     PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
+    REMOTE_CATALOG_URLS,
     SCOPE_BOOKER,
     SCOPE_COVER,
     SCOPE_DEFAULT_LIVE,
@@ -52,6 +55,7 @@ from storyboard_contract import (
     VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
     bpm_raw_string,
+    catalog_locator_looks_remote,
     default_decisions,
     imported_active,
     imported_notes,
@@ -181,6 +185,12 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
     """Fail closed on StoryBoard-feed drift and importer-field dishonesty."""
     errors: list[str] = []
 
+    if catalog_locator_looks_remote(api):
+        errors.append(
+            "app_api.json must be local JSON — StoryBoard #12 rejects a "
+            "remote catalog locator (url / href / sourceUrl / catalogUrl / "
+            "fetch). This private catalog is not a public fetch."
+        )
     if api.get("schema_version") != 3:
         errors.append(
             "app_api.json schema_version must be 3 (StoryBoard #5 importer-honest)"
@@ -326,11 +336,26 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "the StoryBoard #6 parked-named dry-run warning"
             )
         inspected = str(sb.get("inspected") or "")
-        if "StoryBoard #9" not in inspected:
+        if "StoryBoard #12" not in inspected:
             errors.append(
-                "storyboard.inspected must name StoryBoard #9 "
-                "(live importer binds Show Night to planned Vault titles "
-                "only — this feed is the source of truth)"
+                "storyboard.inspected must name StoryBoard #12 "
+                "(live importer accepts this feed only as local JSON — "
+                "remote catalog URLs are rejected)"
+            )
+        if sb.get("local_json_only") is not LOCAL_JSON_ONLY:
+            errors.append(
+                "storyboard.local_json_only must be true — StoryBoard #12 "
+                "previews/applies a local file, not a remote catalog"
+            )
+        if sb.get("remote_catalog_urls") is not REMOTE_CATALOG_URLS:
+            errors.append(
+                "storyboard.remote_catalog_urls must be false — this "
+                "private catalog is not a public fetch"
+            )
+        if sb.get("band_operations_import") != BAND_OPERATIONS_IMPORT:
+            errors.append(
+                "storyboard.band_operations_import must name "
+                "Band operations → Music & setlists"
             )
         if sb.get("import_file") != VAULT_IMPORT_FILE:
             errors.append(
@@ -362,6 +387,18 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         ops = sb.get("ops") or {}
         if ops.get("never_auto_post") is not True:
             errors.append("storyboard.ops.never_auto_post must be true")
+        if ops.get("remote_catalog_urls") is not False:
+            errors.append(
+                "storyboard.ops.remote_catalog_urls must be false — "
+                "StoryBoard #12 rejects remote catalog locators"
+            )
+        if ops.get("local_json_only") is not True:
+            errors.append("storyboard.ops.local_json_only must be true")
+        if ops.get("band_operations_import") != BAND_OPERATIONS_IMPORT:
+            errors.append(
+                "storyboard.ops.band_operations_import must name "
+                "Band operations → Music & setlists"
+            )
         if ops.get("show_night_does_not_expand_vault") is not True:
             errors.append(
                 "storyboard.ops.show_night_does_not_expand_vault must be true"

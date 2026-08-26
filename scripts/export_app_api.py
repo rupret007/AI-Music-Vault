@@ -11,12 +11,14 @@ Field honesty: emit StoryBoard-importable values on the fields
 catalog-import.ts actually reads (id, title, project, is_original, key,
 bpm, bpm_int, vault_id, vault_ref, played_live, import_scope). This
 file — not master_catalog.json — is the StoryBoard import. StoryBoard
-#9 prefers the published setlist_ready_default_import slice, names that
-draft "Vault default-live", and binds Show Night to planned Vault titles
-only. Parked-named rows in that slice stay current-artist repertoire,
-not a fourth live band. Nothing auto-posts. Jeff owns feel, set-list,
-and catalog calls. Not StoryDesk. Not StoryOps. StoryLiner is promo
-only. No new app. No fourth live band.
+#12 prefers the published setlist_ready_default_import slice, names that
+draft "Vault default-live", binds Show Night to planned Vault titles
+only, and accepts this file only as local JSON (Band operations →
+Music & setlists). Remote catalog URLs are rejected. Parked-named rows
+in that slice stay current-artist repertoire, not a fourth live band.
+Nothing auto-posts. Jeff owns feel, set-list, and catalog calls. Not
+StoryDesk. Not StoryOps. StoryLiner is promo only. No new app. No
+fourth live band. This private catalog is not a public fetch.
 
 Run:  python3 scripts/export_app_api.py
 Check: python3 scripts/export_app_api.py --check
@@ -185,7 +187,9 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
             "audio": "No audio lives in this repo. Masters stay local + Drive.",
             "storyboard_import": (
                 "PRIMARY PATH: StoryBoard imports THIS file (data/app_api.json), "
-                "not the master_catalog.json spine. It reads songs[] id, title, "
+                "not the master_catalog.json spine. StoryBoard #12 accepts it "
+                "only as local JSON (Band operations → Music & setlists). "
+                "Remote catalog URLs are rejected. It reads songs[] id, title, "
                 "project, is_original, key, bpm, bpm_int, vault_id, vault_ref, "
                 "played_live, import_scope. Default live is the published "
                 "setlist_ready_default_import slice (empty published slice "
@@ -199,7 +203,8 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
                 "are not in the published slice are not a fourth live band. "
                 "Travis books. Nothing auto-posts. StoryLiner is promo only. "
                 "Jeff owns setlist order, duration, lead vocalist, and catalog "
-                "calls. Do not invent a second catalog."
+                "calls. Do not invent a second catalog. This private catalog "
+                "is not a public fetch."
             ),
         },
     }

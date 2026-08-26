@@ -11,19 +11,24 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from export_app_api import build_payload  # noqa: E402
 from storyboard_contract import (  # noqa: E402
+    BAND_OPERATIONS_IMPORT,
+    LOCAL_JSON_ONLY,
     NEVER_AUTO_POST,
     PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
+    REMOTE_CATALOG_URLS,
     SHOW_NIGHT_NOT_IN_VAULT,
     VAULT_DEFAULT_LIVE_SETLIST_NAME,
     VAULT_IMPORT_FILE,
     VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_STORYBOARD_FIELD_MAP,
     catalog_import_scope,
+    catalog_locator_looks_remote,
     decide_vault_song,
     import_scope,
     live_default_decisions,
     parked_named_default_live_ids,
     parse_bpm,
+    parse_local_catalog_json,
     planned_vault_titles,
     project_name_looks_parked,
     recognized_import_scope,
@@ -489,11 +494,62 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
 
-    def test_inspected_must_name_storyboard_9(self):
+    def test_inspected_must_name_storyboard_12(self):
         extra = extras_ok()
-        extra["app_api"]["storyboard"]["inspected"] = "2026-08-23 after StoryBoard #6"
+        extra["app_api"]["storyboard"]["inspected"] = "2026-08-26 after StoryBoard #9"
         errors = validate(fixture(), extra)
-        self.assertTrue(any("StoryBoard #9" in e for e in errors), errors)
+        self.assertTrue(any("StoryBoard #12" in e for e in errors), errors)
+
+    def test_missing_local_json_only_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["local_json_only"] = False
+        extra["app_api"]["storyboard"]["ops"]["local_json_only"] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("local_json_only" in e for e in errors), errors)
+
+    def test_claiming_remote_catalog_urls_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["remote_catalog_urls"] = True
+        extra["app_api"]["storyboard"]["ops"]["remote_catalog_urls"] = True
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("remote_catalog_urls" in e for e in errors), errors)
+
+    def test_missing_band_operations_import_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["band_operations_import"] = "fetch from GitHub"
+        extra["app_api"]["storyboard"]["ops"]["band_operations_import"] = (
+            "fetch from GitHub"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("band_operations_import" in e for e in errors), errors)
+
+    def test_remote_locator_on_feed_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["catalogUrl"] = "https://example.invalid/app_api.json"
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("remote catalog locator" in e or "local JSON" in e for e in errors),
+            errors,
+        )
+
+    def test_catalog_locator_looks_remote_matches_storyboard(self):
+        self.assertTrue(catalog_locator_looks_remote("https://example.invalid/feed"))
+        self.assertTrue(catalog_locator_looks_remote("//cdn.example.invalid/feed"))
+        self.assertTrue(
+            catalog_locator_looks_remote({"url": "https://example.invalid/feed"})
+        )
+        self.assertFalse(catalog_locator_looks_remote("data/app_api.json"))
+        self.assertFalse(catalog_locator_looks_remote({"songs": []}))
+
+    def test_parse_local_catalog_json_rejects_url(self):
+        with self.assertRaises(ValueError):
+            parse_local_catalog_json("https://example.invalid/app_api.json")
+        with self.assertRaises(ValueError):
+            parse_local_catalog_json(
+                '{"catalogUrl": "https://example.invalid/app_api.json"}'
+            )
+        self.assertIsNone(parse_local_catalog_json("   "))
+        self.assertEqual(parse_local_catalog_json('{"songs": []}'), {"songs": []})
 
     def test_missing_never_auto_post_fails_closed(self):
         extra = extras_ok()
@@ -1073,11 +1129,19 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(
             api["storyboard"]["parked_named_in_default_live_stay_current_artist"]
         )
-        self.assertIn("StoryBoard #9", api["storyboard"]["inspected"])
+        self.assertIn("StoryBoard #12", api["storyboard"]["inspected"])
         self.assertEqual(api["storyboard"]["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(api["storyboard"]["master_catalog_is_not_the_import"])
         self.assertTrue(api["storyboard"]["never_auto_post"])
         self.assertTrue(api["storyboard"]["show_night_does_not_expand_vault"])
+        self.assertTrue(api["storyboard"]["local_json_only"])
+        self.assertIs(api["storyboard"]["remote_catalog_urls"], False)
+        self.assertEqual(
+            api["storyboard"]["band_operations_import"], BAND_OPERATIONS_IMPORT
+        )
+        self.assertFalse(catalog_locator_looks_remote(api))
+        self.assertTrue(LOCAL_JSON_ONLY)
+        self.assertIs(REMOTE_CATALOG_URLS, False)
         self.assertTrue(NEVER_AUTO_POST)
         spine_ids = set(spine_default_plan_ids(cat["songs"]))
         self.assertNotEqual(spine_ids, default_ids)

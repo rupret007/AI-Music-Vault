@@ -21,12 +21,14 @@ from export_app_api import (  # noqa: E402
     comparable,
 )
 from storyboard_contract import (  # noqa: E402
+    BAND_OPERATIONS_IMPORT,
     CATALOG_IMPORT_POLICY_VERSION,
     VAULT_DEFAULT_LIVE_SETLIST_NAME,
     VAULT_IMPORT_FILE,
     VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
+    catalog_locator_looks_remote,
     clean_title,
     default_decisions,
     import_scope,
@@ -95,11 +97,16 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertIn("import_scope", mapping["reads"])
         self.assertNotIn("import_scope", mapping["does_not_read"])
         self.assertIn("setlist_ready_default_import", mapping["catalog_reads"])
-        self.assertIn("StoryBoard #9", mapping["inspected"])
+        self.assertIn("StoryBoard #12", mapping["inspected"])
         self.assertEqual(mapping["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(mapping["master_catalog_is_not_the_import"])
         self.assertTrue(mapping["never_auto_post"])
         self.assertTrue(mapping["show_night_does_not_expand_vault"])
+        self.assertTrue(mapping["local_json_only"])
+        self.assertIs(mapping["remote_catalog_urls"], False)
+        self.assertEqual(mapping["band_operations_import"], BAND_OPERATIONS_IMPORT)
+        self.assertTrue(mapping["ops"]["local_json_only"])
+        self.assertIs(mapping["ops"]["remote_catalog_urls"], False)
         self.assertTrue(mapping["ops"]["jeff_owns_catalog_calls"])
         self.assertEqual(mapping["live_catalog_projects"], ["Rad Dad", "Jeff Story"])
         self.assertTrue(mapping["setlist"]["prefers_default_import_from"])
@@ -302,11 +309,17 @@ class ExportHonestyTests(unittest.TestCase):
             api["storyboard"]["default_live_setlist_name"],
             VAULT_DEFAULT_LIVE_SETLIST_NAME,
         )
-        self.assertIn("StoryBoard #9", api["storyboard"]["inspected"])
+        self.assertIn("StoryBoard #12", api["storyboard"]["inspected"])
         self.assertEqual(api["storyboard"]["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(api["storyboard"]["master_catalog_is_not_the_import"])
         self.assertTrue(api["storyboard"]["never_auto_post"])
         self.assertTrue(api["storyboard"]["show_night_does_not_expand_vault"])
+        self.assertTrue(api["storyboard"]["local_json_only"])
+        self.assertIs(api["storyboard"]["remote_catalog_urls"], False)
+        self.assertEqual(
+            api["storyboard"]["band_operations_import"], BAND_OPERATIONS_IMPORT
+        )
+        self.assertFalse(catalog_locator_looks_remote(api))
 
     def test_bpm_int_alias(self):
         self.assertEqual(bpm_int(103), 103)

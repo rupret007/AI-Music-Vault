@@ -2,6 +2,7 @@
 *2026-08-20 · A new layer of logic for "what do I work on next." Every original now carries a **momentum score (0-100)**: when you last touched it (55%), how many separate times you've returned to it (30%), and how many years it's stayed with you (15%). Computed from every dated trace — memo dates, doc revisions, mixes, bounces. Potential says how good a song is; momentum says how alive it is in YOUR hands. The magic is in crossing them.*
 *2026-08-23: three lanes unchanged (Turn Over The Flag / Manic / Long Long Drive). StoryBoard may display this index; it does not get to promote a fourth active song or invent a fourth live band. Default StoryBoard import is the published 20-id Vault default-live slice (parked-named Everyday / hybrid stay current-artist), not a new WIP lane. `counts.setlist_ready` (40 keyed originals) is not that slice. `counts.originals` / `counts.scored` / `counts.ai_upload_ok` are catalog tallies, not a setlist.*
 *2026-08-26: StoryBoard still reads `data/app_api.json`, not the spine. Show Night does not expand that feed. Nothing auto-posts. Three lanes unchanged.*
+*2026-08-26 local-JSON: StoryBoard #12 accepts that file only as local JSON. Remote catalog URLs are rejected. Three lanes unchanged.*
 
 ## The four quadrants
 

@@ -2,20 +2,23 @@
 """
 StoryBoard import contract — what catalog-import.ts actually does.
 
-Inspected 2026-08-26 from rupret007/StoryBoard main after PR #9
-(`packages/shared/src/catalog-import.ts`). Vault #7–#10 already lock
-the schema-3 published slice, setlist names, and catalog counts.
-StoryBoard #9 makes this feed the usable source of truth on the
-Vault + Show Night path: Show Night binds planned Vault titles only
-and does not mint excluded rows or fill an empty published slice.
+Inspected 2026-08-26 from rupret007/StoryBoard main after PR #12
+(`packages/shared/src/catalog-import.ts`). Vault #7–#11 already lock
+the schema-3 published slice, setlist names, catalog counts,
+import file vs spine, Show Night-does-not-expand, and never_auto_post.
+StoryBoard #12 makes this feed usable from Band operations only as
+local JSON: remote catalog URLs are rejected, and a payload that
+looks like a locator is not imported.
 
 `data/app_api.json` is the StoryBoard import. `master_catalog.json`
 is the spine, not a substitute feed. StoryLiner is promo only.
 Nothing auto-posts. Jeff owns feel, set-list, and catalog calls.
-Parked catalogs are not a fourth live band.
+Parked catalogs are not a fourth live band. This private catalog
+is not a public fetch.
 """
 from __future__ import annotations
 
+import json
 import re
 from typing import NamedTuple
 
@@ -35,7 +38,7 @@ PARKED_CATALOG_PROJECTS = ("stalemate", "trailer swift", "something dirty")
 BOOKER_CATALOG_PROJECTS = ("travis", "travis story")
 CATALOG_BOOKER_POLICY = "travis_books"
 
-# StoryBoard vaultSetlistIdentity() after #6 (unchanged through #9).
+# StoryBoard vaultSetlistIdentity() after #6 (unchanged through #12).
 VAULT_DEFAULT_LIVE_SETLIST_NAME = "Vault default-live"
 VAULT_SETLIST_READY_SETLIST_NAME = "Vault setlist-ready"
 PARKED_NAMED_IN_DEFAULT_LIVE_WARNING = (
@@ -49,6 +52,11 @@ SHOW_NIGHT_DOES_NOT_EXPAND_VAULT = True
 VAULT_IMPORT_FILE = "data/app_api.json"
 MASTER_CATALOG_IS_NOT_THE_IMPORT = True
 NEVER_AUTO_POST = True
+# StoryBoard #12: Band operations preview/apply is local JSON only.
+LOCAL_JSON_ONLY = True
+REMOTE_CATALOG_URLS = False
+BAND_OPERATIONS_IMPORT = "Band operations → Music & setlists"
+REMOTE_LOCATOR_KEYS = ("url", "href", "sourceUrl", "catalogUrl", "fetch")
 DEFAULT_LIVE_SETLIST_NOTES = (
     "Published Vault setlist_ready_default_import / default_live slice. "
     "Current artist only — not a fourth live band. Not a booking pitch. "
@@ -197,6 +205,45 @@ def as_text(value):
     ):
         return str(int(value)) if value.is_integer() else str(value)
     return None
+
+
+def catalog_locator_looks_remote(value) -> bool:
+    """Match StoryBoard catalogLocatorLooksRemote() after #12.
+
+    A string with a scheme:// or protocol-relative // is remote.
+    A record is remote when url / href / sourceUrl / catalogUrl / fetch
+    is itself a remote locator. StoryBoard then refuses the payload.
+    """
+    if isinstance(value, str):
+        trimmed = value.strip()
+        return bool(re.match(r"^[a-z][a-z0-9+.-]*://", trimmed, re.I)) or (
+            trimmed.startswith("//")
+        )
+    if isinstance(value, dict):
+        return any(
+            catalog_locator_looks_remote(value.get(key)) for key in REMOTE_LOCATOR_KEYS
+        )
+    return False
+
+
+def parse_local_catalog_json(text, label: str = "catalog"):
+    """Match StoryBoard parseLocalCatalogJson() after #12.
+
+    Empty text → None. A URL string or a JSON object that looks like a
+    remote locator raises ValueError. Valid local JSON is returned.
+    """
+    trimmed = str(text or "").strip()
+    if not trimmed:
+        return None
+    if catalog_locator_looks_remote(trimmed):
+        raise ValueError(f"{label} must be local JSON, not a URL")
+    try:
+        parsed = json.loads(trimmed)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{label} must be valid JSON") from exc
+    if catalog_locator_looks_remote(parsed):
+        raise ValueError(f"{label} must be local JSON, not a URL")
+    return parsed
 
 
 def recognized_import_scope(declared=None) -> str | None:
@@ -667,11 +714,14 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
     return {
         "consumer": "StoryBoard",
         "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
-        "inspected": "2026-08-26 after StoryBoard #9",
+        "inspected": "2026-08-26 after StoryBoard #12",
         "policy_version": CATALOG_IMPORT_POLICY_VERSION,
         "import_from": "songs",
         "import_file": VAULT_IMPORT_FILE,
         "master_catalog_is_not_the_import": MASTER_CATALOG_IS_NOT_THE_IMPORT,
+        "local_json_only": LOCAL_JSON_ONLY,
+        "remote_catalog_urls": REMOTE_CATALOG_URLS,
+        "band_operations_import": BAND_OPERATIONS_IMPORT,
         "setlist_seed": "setlist_ready",
         "second_catalog": False,
         "not_band_os": ["StoryDesk", "StoryOps"],
@@ -714,21 +764,24 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
         "booker_catalog_projects": ["Travis", "Travis Story"],
         "default_import": (
             "THE import file is data/app_api.json — master_catalog.json is the "
-            "spine, not a StoryBoard feed. Published setlist_ready_default_import "
-            "is the default plan when present (empty published slice stays "
-            "empty — StoryBoard will not recompute a live band). StoryBoard "
-            "names that draft setlist 'Vault default-live'. Songs whose Vault "
-            "project is a parked catalog name stay on the current artist — not "
-            "a fourth live band. Fallback when that array is absent: live "
-            "repertoire (Rad Dad / Jeff Story / recorded Rad Dad plays) gated "
-            "by setlist_ready; that draft is 'Vault setlist-ready'. Parked "
-            "catalogs that are not in the published slice stay parked unless "
-            "Jeff passes includeParked / includeAllProjects. Covers stay out. "
-            "Travis rows are travis_books — never auto-pitch. When a Vault "
-            "payload is present, Show Night only binds planned Vault titles "
-            "and does not mint excluded rows or fill an empty published slice. "
-            "Nothing auto-posts. Jeff owns feel, set-list, and catalog calls. "
-            "Do not invent Rad Dad catalog rows or a fourth live band."
+            "spine, not a StoryBoard feed. StoryBoard #12 accepts this file "
+            "only as local JSON (Band operations → Music & setlists). Remote "
+            "catalog URLs are rejected. This private catalog is not a public "
+            "fetch. Published setlist_ready_default_import is the default plan "
+            "when present (empty published slice stays empty — StoryBoard will "
+            "not recompute a live band). StoryBoard names that draft setlist "
+            "'Vault default-live'. Songs whose Vault project is a parked "
+            "catalog name stay on the current artist — not a fourth live band. "
+            "Fallback when that array is absent: live repertoire (Rad Dad / "
+            "Jeff Story / recorded Rad Dad plays) gated by setlist_ready; that "
+            "draft is 'Vault setlist-ready'. Parked catalogs that are not in "
+            "the published slice stay parked unless Jeff passes includeParked "
+            "/ includeAllProjects. Covers stay out. Travis rows are "
+            "travis_books — never auto-pitch. When a Vault payload is present, "
+            "Show Night only binds planned Vault titles and does not mint "
+            "excluded rows or fill an empty published slice. Nothing auto-posts. "
+            "Jeff owns feel, set-list, and catalog calls. Do not invent Rad "
+            "Dad catalog rows or a fourth live band."
         ),
         "active_lanes": ["flagship", "quick_win", "experimental"],
         "active_lane_cap": 3,
@@ -749,6 +802,8 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "show_played_songs": "vault_id preferred, title fallback",
             "lanes_are_not_a_setlist": True,
             "remote_catalog_urls": False,
+            "local_json_only": True,
+            "band_operations_import": BAND_OPERATIONS_IMPORT,
             "never_auto_post": True,
             "show_night_does_not_expand_vault": True,
             "jeff_owns_catalog_calls": True,
