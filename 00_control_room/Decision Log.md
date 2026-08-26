@@ -97,3 +97,6 @@
 
 ## 2026-08-26 — Session Log resume from latest (no audio, no new band)
 66. **Producer README resume still pointed at Session 1.** After #13, Session Log H2 headings are unique, but resume used the first "NOT done / next continuation point" and the latest honesty passes had no continuation heading. A later session would treat Session 1 as current. Validator now requires Session Log, requires a Next continuation point on the latest H2, and fails closed if Producer README still uses that Session 1 phrase. #11/#12/#13 locks unchanged. Hosted empty-runner is not a catalog fail.
+
+## 2026-08-26 — local validate is the catalog gate (no audio, no new band)
+67. **APPS.md still claimed CI fails closed.** After #14, resume is the latest Session Log H2, but APPS.md and the validator docstring still treated hosted CI as the fail-closed gate. Hosted catalog-validate on this private repo may be a 0-step empty-runner. Local validate is the gate. Validator now fails closed if APPS.md or the validator docstring still claims CI fails closed, and APPS.md must admit the empty-runner is not a catalog fail. #11/#12/#13/#14 locks unchanged. Do not change billing.

@@ -6,14 +6,16 @@ Checks data/master_catalog.json (IDs, scores, AI-upload gates, next actions,
 three-active-song cap) plus the StoryBoard feed (data/app_api.json) when present.
 Session Log is required for resume. H2 headings must be unique, and the
 latest H2 pass must include a Next continuation point so resume cannot
-fall back to Session 1.
+fall back to Session 1. APPS.md must not treat hosted CI as that gate.
 
 This does NOT listen to audio, score songs, or invent priorities.
 Jeff owns the three active lanes; this script only verifies they still exist
 and that machine-readable gates match already-recorded rights.
 
 Run:  python3 scripts/validate_catalog.py
-Exit: 0 if clean, 1 if any error (CI fails closed).
+Exit: 0 if clean, 1 if any error (local validate fails closed).
+Hosted catalog-validate on this private repo may be a 0-step
+empty-runner — that red is not a catalog fail.
 """
 from __future__ import annotations
 
@@ -89,6 +91,7 @@ PRODUCER_README_PATH = os.path.join(
     HERE, "00_control_room", "Producer README.md"
 )
 DASHBOARD_PATH = os.path.join(HERE, "Jeff Story Song Vault Dashboard.html")
+APPS_MD_PATH = os.path.join(HERE, "APPS.md")
 SESSION_LOG_H2_RE = re.compile(r"(?m)^## (.+?)\s*$")
 SESSION_LOG_CONTINUATION_RE = re.compile(
     r"(?m)^### (?:NOT done / )?next continuation point\s*$",
@@ -97,6 +100,7 @@ SESSION_LOG_CONTINUATION_RE = re.compile(
 STALE_PRODUCER_RESUME_RE = re.compile(
     r'Continue from ["“]NOT done / next continuation point["”]'
 )
+STALE_HOSTED_CI_RE = re.compile(r"CI fails closed")
 
 # Jeff-owned WIP cap. Do not expand. on_deck / opus are parked, not a 4th/5th slot.
 ACTIVE_LANES = {
@@ -157,6 +161,22 @@ def latest_session_log_section(text: str) -> str:
 def latest_session_log_has_continuation(text: str) -> bool:
     """Latest H2 must name where a later session continues."""
     return bool(SESSION_LOG_CONTINUATION_RE.search(latest_session_log_section(text)))
+
+
+def apps_md_claims_hosted_ci(text: str) -> bool:
+    """Current docs must not treat hosted CI as the catalog gate."""
+    return bool(STALE_HOSTED_CI_RE.search(text or ""))
+
+
+def apps_md_admits_empty_runner(text: str) -> bool:
+    """APPS.md must say the hosted empty-runner is not a catalog fail."""
+    body = text or ""
+    return "empty-runner" in body and "not a catalog fail" in body
+
+
+def module_doc_claims_hosted_ci() -> bool:
+    """Validator docstring must not claim hosted CI is the fail-closed gate."""
+    return apps_md_claims_hosted_ci(sys.modules[__name__].__doc__ or "")
 
 
 YES_GATE = (
@@ -1233,6 +1253,25 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "Producer README resume must start from the latest Session Log H2"
             )
 
+    if module_doc_claims_hosted_ci():
+        errors.append(
+            "validator docstring still claims CI fails closed — "
+            "hosted empty-runner is not the catalog gate"
+        )
+
+    apps_md = extras.get("apps_md")
+    if isinstance(apps_md, str) and apps_md.strip():
+        if apps_md_claims_hosted_ci(apps_md):
+            errors.append(
+                "APPS.md still claims CI fails closed — "
+                "hosted empty-runner is not the catalog gate"
+            )
+        if not apps_md_admits_empty_runner(apps_md):
+            errors.append(
+                "APPS.md must say hosted validate may be an empty-runner, "
+                "not a catalog fail"
+            )
+
     dash = extras.get("dashboard_html")
     if isinstance(dash, str) and dash.strip():
         for sid, title in LANE_TITLES.items():
@@ -1286,6 +1325,7 @@ def load_repo(root: str | None = None) -> tuple[dict, dict]:
         "priority_queue": None,
         "session_log": None,
         "producer_readme": None,
+        "apps_md": None,
         "dashboard_html": None,
         "audio_files": find_audio_files(root),
     }
@@ -1304,6 +1344,7 @@ def load_repo(root: str | None = None) -> tuple[dict, dict]:
     extras["producer_readme"] = load_text(
         os.path.join(root, "00_control_room", "Producer README.md")
     )
+    extras["apps_md"] = load_text(os.path.join(root, "APPS.md"))
     extras["dashboard_html"] = load_text(
         os.path.join(root, "Jeff Story Song Vault Dashboard.html")
     )

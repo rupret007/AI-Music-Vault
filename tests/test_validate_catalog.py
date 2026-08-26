@@ -42,9 +42,12 @@ from validate_catalog import (  # noqa: E402
     ACTIVE_LANES,
     PROTECTED_LANES,
     YES_GATE,
+    apps_md_admits_empty_runner,
+    apps_md_claims_hosted_ci,
     duplicate_session_log_headings,
     latest_session_log_has_continuation,
     latest_session_log_section,
+    module_doc_claims_hosted_ci,
     session_log_h2_headings,
     validate,
 )
@@ -1204,6 +1207,52 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertEqual(validate(fixture(), extras), [])
 
+    def test_apps_md_ci_fails_closed_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "CI fails closed if this file drifts.\n"
+            "Hosted validate may be a 0-step empty-runner — not a catalog fail.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any(
+                "APPS.md still claims CI fails closed" in e
+                for e in errors
+            ),
+            errors,
+        )
+        self.assertTrue(apps_md_claims_hosted_ci(extras["apps_md"]))
+
+    def test_apps_md_without_empty_runner_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any(
+                "APPS.md must say hosted validate may be an empty-runner" in e
+                for e in errors
+            ),
+            errors,
+        )
+        self.assertFalse(apps_md_admits_empty_runner(extras["apps_md"]))
+
+    def test_apps_md_local_validate_honesty_passes(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail.\n"
+        )
+        self.assertEqual(validate(fixture(), extras), [])
+        self.assertFalse(apps_md_claims_hosted_ci(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_empty_runner(extras["apps_md"]))
+
+    def test_validator_docstring_does_not_claim_hosted_ci(self):
+        self.assertFalse(module_doc_claims_hosted_ci())
+
     def test_real_repo_catalog_passes(self):
         """Live spine must stay green after this pass — no weakening the check."""
         from validate_catalog import load_repo
@@ -1304,6 +1353,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Session Log resume from latest — 2026-08-26 (Cloud Agent, no audio)",
             headings,
         )
+        self.assertIn(
+            "Local validate is the catalog gate — 2026-08-26 (Cloud Agent, no audio)",
+            headings,
+        )
         self.assertTrue(latest_session_log_has_continuation(extra["session_log"]))
         self.assertIn("### Next continuation point", latest)
         self.assertIn("latest Session Log", extra["producer_readme"])
@@ -1311,6 +1364,11 @@ class ValidateCatalogTests(unittest.TestCase):
             'Continue from "NOT done / next continuation point"',
             extra["producer_readme"],
         )
+        self.assertFalse(module_doc_claims_hosted_ci())
+        self.assertTrue(isinstance(extra["apps_md"], str) and extra["apps_md"].strip())
+        self.assertFalse(apps_md_claims_hosted_ci(extra["apps_md"]))
+        self.assertTrue(apps_md_admits_empty_runner(extra["apps_md"]))
+        self.assertNotIn("CI fails closed", extra["apps_md"])
 
 
 if __name__ == "__main__":

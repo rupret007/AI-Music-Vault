@@ -64,7 +64,7 @@ Seed keyed originals from `setlist_ready`. Default import keeps `setlist_ready_d
 
 **Ops:** StoryBoard show/booking events write back to `events/` (`show_played` with vault ids). That is the ops loop. No second catalog.
 
-Regenerate after catalog edits: `python3 scripts/export_app_api.py`. CI fails closed if this file drifts from the catalog or the three-lane cap.
+Regenerate after catalog edits: `python3 scripts/export_app_api.py`. Local `python3 scripts/validate_catalog.py` fails closed if this file drifts from the catalog or the three-lane cap. Hosted `catalog-validate` on this private repo may be a 0-step empty-runner — that red is not a catalog fail. Do not claim hosted green. Do not change billing.
 
 ---
 
