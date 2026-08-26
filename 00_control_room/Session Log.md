@@ -256,3 +256,17 @@ Unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · 
 
 ### Next continuation point
 Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — not the spine, not a remote URL. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+## Local validate is the catalog gate — 2026-08-26 (Cloud Agent, no audio)
+### Done
+1. After Vault #14, resume uses the latest Session Log H2, but APPS.md and the validator docstring still said CI fails closed. Hosted catalog-validate on this private repo may be a 0-step empty-runner, so that claim treats a red empty-runner as the catalog gate.
+2. Validator now fails closed if APPS.md or the validator docstring still claims CI fails closed, and APPS.md must admit the hosted empty-runner is not a catalog fail. Local `python3 scripts/validate_catalog.py` is the gate. #11/#12/#13/#14 locks are unchanged. No second catalog surface. Do not change billing.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
+- Private catalog stays private. No public dump of titles. Did not invent a setlist or a second catalog.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — not the spine, not a remote URL. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
