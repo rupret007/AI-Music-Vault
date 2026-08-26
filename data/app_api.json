@@ -1,6 +1,6 @@
 {
  "schema_version": 3,
- "generated": "2026-08-23",
+ "generated": "2026-08-26",
  "catalog_version": "1.6",
  "primary_consumer": "StoryBoard",
  "counts": {
@@ -28,9 +28,11 @@
  "storyboard": {
   "consumer": "StoryBoard",
   "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
-  "inspected": "2026-08-23 after StoryBoard #6",
+  "inspected": "2026-08-26 after StoryBoard #9",
   "policy_version": "catalog_import_v1",
   "import_from": "songs",
+  "import_file": "data/app_api.json",
+  "master_catalog_is_not_the_import": true,
   "setlist_seed": "setlist_ready",
   "second_catalog": false,
   "not_band_os": [
@@ -46,6 +48,9 @@
   "storyliner_role": "promo only",
   "no_fourth_live_band": true,
   "do_not_invent_live_band": true,
+  "never_auto_post": true,
+  "show_night_does_not_expand_vault": true,
+  "show_night_binds_planned_vault_titles_only": true,
   "booker_policy": "travis_books",
   "prefers_published_default_import": true,
   "empty_published_slice_stays_empty": true,
@@ -111,7 +116,7 @@
    "lyricsUrl",
    "chartUrl"
   ],
-  "why_null": "durationSeconds, leadVocalist, genre, lyricsUrl, and chartUrl are not in the vault. Do not invent them. Jeff owns feel and set-list.",
+  "why_null": "durationSeconds, leadVocalist, genre, lyricsUrl, and chartUrl are not in the vault. Do not invent them. Jeff owns feel, set-list, and catalog calls.",
   "merge_key": "vault:catalog_import_v1:{vault_id ?? id}",
   "bpm_note": "StoryBoard parseBpm prefers songs[].bpm_int (clean integer 20–400), then songs[].bpm as an integer, then a leading 2–3 digit tempo. `bpm` and `bpm_int` are the same pre-parsed integer. `bpm_raw` keeps catalog text such as '214 (cut)'.",
   "live_catalog_projects": [
@@ -127,7 +132,7 @@
    "Travis",
    "Travis Story"
   ],
-  "default_import": "Published setlist_ready_default_import is the default plan when present (empty published slice stays empty — StoryBoard will not recompute a live band). StoryBoard names that draft setlist 'Vault default-live'. Songs whose Vault project is a parked catalog name (Everyday / Stalemate, hybrids) stay on the current artist — not a fourth live band. Fallback when that array is absent: live repertoire (Rad Dad / Jeff Story / recorded Rad Dad plays) gated by setlist_ready; that draft is 'Vault setlist-ready'. Parked catalogs that are not in the published slice stay parked unless Jeff passes includeParked / includeAllProjects. Covers stay out. Travis rows are travis_books — never auto-pitch. Do not invent Rad Dad catalog rows or a fourth live band.",
+  "default_import": "THE import file is data/app_api.json — master_catalog.json is the spine, not a StoryBoard feed. Published setlist_ready_default_import is the default plan when present (empty published slice stays empty — StoryBoard will not recompute a live band). StoryBoard names that draft setlist 'Vault default-live'. Songs whose Vault project is a parked catalog name stay on the current artist — not a fourth live band. Fallback when that array is absent: live repertoire (Rad Dad / Jeff Story / recorded Rad Dad plays) gated by setlist_ready; that draft is 'Vault setlist-ready'. Parked catalogs that are not in the published slice stay parked unless Jeff passes includeParked / includeAllProjects. Covers stay out. Travis rows are travis_books — never auto-pitch. When a Vault payload is present, Show Night only binds planned Vault titles and does not mint excluded rows or fill an empty published slice. Nothing auto-posts. Jeff owns feel, set-list, and catalog calls. Do not invent Rad Dad catalog rows or a fourth live band.",
   "active_lanes": [
    "flagship",
    "quick_win",
@@ -155,7 +160,10 @@
    "write_back": "events/",
    "show_played_songs": "vault_id preferred, title fallback",
    "lanes_are_not_a_setlist": true,
-   "remote_catalog_urls": false
+   "remote_catalog_urls": false,
+   "never_auto_post": true,
+   "show_night_does_not_expand_vault": true,
+   "jeff_owns_catalog_calls": true
   }
  },
  "songs": [
@@ -5505,6 +5513,6 @@
   "scores": "potential = how good; readiness = how close to done; momentum = how alive in Jeff's hands. Never merge them.",
   "rights": "ai_upload_ok=false means NEVER send this song's audio or lyrics to an AI music service. Covers, co-writes and collaborators' songs are all false.",
   "audio": "No audio lives in this repo. Masters stay local + Drive.",
-  "storyboard_import": "PRIMARY PATH: StoryBoard imports THIS file. It reads songs[] id, title, project, is_original, key, bpm, bpm_int, vault_id, vault_ref, played_live, import_scope. Default live is the published setlist_ready_default_import slice (empty published slice stays empty). StoryBoard names that draft 'Vault default-live'. Parked-named rows in that slice (Everyday / Stalemate, hybrids) stay current-artist repertoire — not a fourth live band. Fallback when that array is absent: Rad Dad + Jeff Story + recorded Rad Dad plays, gated by setlist_ready ('Vault setlist-ready'). Parked catalogs that are not in the published slice are not a fourth live band. Travis books. StoryLiner is promo only. Jeff owns setlist order, duration, and lead vocalist. Do not invent a second catalog."
+  "storyboard_import": "PRIMARY PATH: StoryBoard imports THIS file (data/app_api.json), not the master_catalog.json spine. It reads songs[] id, title, project, is_original, key, bpm, bpm_int, vault_id, vault_ref, played_live, import_scope. Default live is the published setlist_ready_default_import slice (empty published slice stays empty). StoryBoard names that draft 'Vault default-live'. Parked-named rows in that slice stay current-artist repertoire — not a fourth live band. When a Vault payload is present, Show Night only binds planned Vault titles and does not mint excluded rows. Fallback when the published array is absent: Rad Dad + Jeff Story + recorded Rad Dad plays, gated by setlist_ready ('Vault setlist-ready'). Parked catalogs that are not in the published slice are not a fourth live band. Travis books. Nothing auto-posts. StoryLiner is promo only. Jeff owns setlist order, duration, lead vocalist, and catalog calls. Do not invent a second catalog."
  }
 }

@@ -1,12 +1,12 @@
 # Jeff Story Song Vault — Producer README
-*How this system works, and how a future session resumes. Last updated: 2026-08-23 (published originals / scored / ai_upload_ok count honesty).*
+*How this system works, and how a future session resumes. Last updated: 2026-08-26 (usable catalog source of truth: app_api.json after StoryBoard #9, not the spine).*
 
 ## Mission
 Jeff does not need more songs. He needs the strongest songs he already wrote to be recognized, organized, protected, and FINISHED. Max 3 active songs (flagship / quick win / experimental). Every active song has one clear next action at three energy levels.
 
 ## Resume procedure (future sessions: START HERE)
 1. This **repo** is the source of truth (not the old `claude/` Cowork copies). Read `00_control_room/Session Log.md`, `00_control_room/Priority Queue.md`, `00_control_room/Needs Jeff.md`, `data/master_catalog.json`.
-2. Confirm the catalog: `python3 scripts/validate_catalog.py`. StoryBoard import: `data/app_api.json` (see `APPS.md` and `00_control_room/Vault to StoryBoard.md`). Band OS = StoryBoard, not StoryDesk/StoryOps.
+2. Confirm the catalog: `python3 scripts/validate_catalog.py`. StoryBoard import: `data/app_api.json` only — not `master_catalog.json` (see `APPS.md` and `00_control_room/Vault to StoryBoard.md`). Band OS = StoryBoard, not StoryDesk/StoryOps. Nothing auto-posts.
 3. Raw manifests live under `01_source_manifests/` (gdrive inventory + doc texts, voicememo matches).
 4. Check `Music/Jeff Story Song Vault/Voice Memo Intake/` on jeffs-mac-mini-local for new files (Mac-local only; this repo holds no audio).
 5. Continue from "NOT done / next continuation point" in the Session Log. Do not expand the three-song cap.

@@ -9,11 +9,14 @@ so StoryBoard does not hand-enter songs and we do not invent a second catalog.
 
 Field honesty: emit StoryBoard-importable values on the fields
 catalog-import.ts actually reads (id, title, project, is_original, key,
-bpm, bpm_int, vault_id, vault_ref, played_live, import_scope). StoryBoard
-#6 prefers the published setlist_ready_default_import slice and names
-that draft "Vault default-live". Parked-named rows in that slice stay
-current-artist repertoire, not a fourth live band. Not StoryDesk. Not
-StoryOps. StoryLiner is promo only. No new app. No fourth live band.
+bpm, bpm_int, vault_id, vault_ref, played_live, import_scope). This
+file — not master_catalog.json — is the StoryBoard import. StoryBoard
+#9 prefers the published setlist_ready_default_import slice, names that
+draft "Vault default-live", and binds Show Night to planned Vault titles
+only. Parked-named rows in that slice stay current-artist repertoire,
+not a fourth live band. Nothing auto-posts. Jeff owns feel, set-list,
+and catalog calls. Not StoryDesk. Not StoryOps. StoryLiner is promo
+only. No new app. No fourth live band.
 
 Run:  python3 scripts/export_app_api.py
 Check: python3 scripts/export_app_api.py --check
@@ -181,20 +184,22 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
                       "collaborators' songs are all false.",
             "audio": "No audio lives in this repo. Masters stay local + Drive.",
             "storyboard_import": (
-                "PRIMARY PATH: StoryBoard imports THIS file. It reads songs[] "
-                "id, title, project, is_original, key, bpm, bpm_int, vault_id, "
-                "vault_ref, played_live, import_scope. Default live is the "
-                "published setlist_ready_default_import slice (empty published "
-                "slice stays empty). StoryBoard names that draft 'Vault "
-                "default-live'. Parked-named rows in that slice (Everyday / "
-                "Stalemate, hybrids) stay current-artist repertoire — not a "
-                "fourth live band. Fallback when that array is absent: Rad "
-                "Dad + Jeff Story + recorded Rad Dad plays, gated by "
+                "PRIMARY PATH: StoryBoard imports THIS file (data/app_api.json), "
+                "not the master_catalog.json spine. It reads songs[] id, title, "
+                "project, is_original, key, bpm, bpm_int, vault_id, vault_ref, "
+                "played_live, import_scope. Default live is the published "
+                "setlist_ready_default_import slice (empty published slice "
+                "stays empty). StoryBoard names that draft 'Vault default-live'. "
+                "Parked-named rows in that slice stay current-artist repertoire "
+                "— not a fourth live band. When a Vault payload is present, "
+                "Show Night only binds planned Vault titles and does not mint "
+                "excluded rows. Fallback when the published array is absent: "
+                "Rad Dad + Jeff Story + recorded Rad Dad plays, gated by "
                 "setlist_ready ('Vault setlist-ready'). Parked catalogs that "
                 "are not in the published slice are not a fourth live band. "
-                "Travis books. StoryLiner is promo only. Jeff owns setlist "
-                "order, duration, and lead vocalist. Do not invent a second "
-                "catalog."
+                "Travis books. Nothing auto-posts. StoryLiner is promo only. "
+                "Jeff owns setlist order, duration, lead vocalist, and catalog "
+                "calls. Do not invent a second catalog."
             ),
         },
     }

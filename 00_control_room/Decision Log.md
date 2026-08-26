@@ -84,3 +84,7 @@
 
 ## 2026-08-23 — published catalog-count honesty (no audio, no new band)
 61. **`counts.originals` / `counts.scored` / `counts.ai_upload_ok` could lie after #8.** Those published tallies were not required. A hand-edit could omit them, set `originals` to 40 or 20 (a setlist draft), set `scored` to 126 (every original scored), or set `ai_upload_ok` to 126 (YES == originals) while `songs[]` stayed honest. Validator now requires the three counts, matches classification / potential / YES gates, and refuses those conflations when the numbers differ. Live feed stays 126 ≠ 40 ≠ 20, 59 scored, 128 YES. Field map, Travis books, parked-named Everyday / hybrid, and the 20-id slice stay as #8 left them.
+
+## 2026-08-26 — usable catalog source-of-truth (no audio, no new band)
+62. **`data/app_api.json` is the StoryBoard import; `master_catalog.json` is the spine.** StoryBoard's importer still accepts the spine, but without the published slice / `played_live` remap that is not the default-live plan. Claiming the spine is interchangeable is a lie. Validator fails closed if the feed hides that.
+63. **Live StoryBoard importer after #9 binds Show Night to planned Vault titles only.** It does not mint excluded or unknown titles, and it does not fill an empty published slice. Vault #7–#10 locked names and counts against a #6-era contract; that leftover is now fail-closed. Nothing auto-posts. Jeff owns feel, set-list, and catalog calls.

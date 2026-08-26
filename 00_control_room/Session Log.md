@@ -210,3 +210,14 @@ Unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
 - No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
+
+## usable catalog source-of-truth — 2026-08-26 (Cloud Agent, no audio)
+### Done
+1. Re-inspected live StoryBoard `catalog-import.ts` after StoryBoard #9. `decideVaultSong` / field map / setlist names are unchanged from #6. The leftover lie was usability: the feed still said inspected after #6, so it did not lock the #9 rule that makes this catalog the source of truth on the Vault + Show Night path.
+2. StoryBoard still accepts `master_catalog.json`. Pointed at the spine (no published slice, no `played_live` remap) that planner is not the published default-live feed. Contract now fail-closes that `data/app_api.json` is the import.
+3. Show Night bind is ported: planned Vault titles bind; excluded / unknown titles skip; an empty published slice stays empty. Nothing auto-posts. Jeff owns catalog calls.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
+- Private catalog stays private. No public dump of titles.

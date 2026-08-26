@@ -25,6 +25,7 @@ from storyboard_contract import (
     IMPORTER_CATALOG_READS,
     IMPORTER_READS,
     LIVE_CATALOG_PROJECTS,
+    MASTER_CATALOG_IS_NOT_THE_IMPORT,
     MAX_ID_LEN,
     MAX_IMPORT_SCOPE_LEN,
     MAX_KEY_LEN,
@@ -34,10 +35,19 @@ from storyboard_contract import (
     MAX_VAULT_REF_LEN,
     MAX_WRITERS,
     PARKED_CATALOG_PROJECTS,
+    NEVER_AUTO_POST,
     PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
+    SCOPE_BOOKER,
+    SCOPE_COVER,
     SCOPE_DEFAULT_LIVE,
+    SCOPE_NOT_LIVE,
+    SCOPE_NOT_READY,
+    SCOPE_PARKED,
+    SHOW_NIGHT_DOES_NOT_EXPAND_VAULT,
+    SHOW_NIGHT_NOT_IN_VAULT,
     SKIP_REASON_TO_COUNT,
     VAULT_DEFAULT_LIVE_SETLIST_NAME,
+    VAULT_IMPORT_FILE,
     VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
@@ -50,9 +60,12 @@ from storyboard_contract import (
     parked_named_default_live_ids,
     parse_bpm,
     played_live_from_presence,
+    planned_vault_titles,
     recognized_import_scope,
+    show_night_bind_title,
     source_key,
     storyboard_parse_key,
+    vault_skip_by_title,
     vault_ref_for,
     vault_setlist_identity,
 )
@@ -313,11 +326,50 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "the StoryBoard #6 parked-named dry-run warning"
             )
         inspected = str(sb.get("inspected") or "")
-        if "StoryBoard #6" not in inspected:
+        if "StoryBoard #9" not in inspected:
             errors.append(
-                "storyboard.inspected must name StoryBoard #6 "
-                "(live importer names Vault default-live and warns on "
-                "parked-named published-slice rows)"
+                "storyboard.inspected must name StoryBoard #9 "
+                "(live importer binds Show Night to planned Vault titles "
+                "only — this feed is the source of truth)"
+            )
+        if sb.get("import_file") != VAULT_IMPORT_FILE:
+            errors.append(
+                "storyboard.import_file must be data/app_api.json — "
+                "that file is the StoryBoard import, not the spine"
+            )
+        if sb.get("master_catalog_is_not_the_import") is not MASTER_CATALOG_IS_NOT_THE_IMPORT:
+            errors.append(
+                "storyboard.master_catalog_is_not_the_import must be true — "
+                "pointing StoryBoard at master_catalog.json is not the "
+                "published default-live feed"
+            )
+        if sb.get("never_auto_post") is not NEVER_AUTO_POST:
+            errors.append(
+                "storyboard.never_auto_post must be true — Vault does not "
+                "post, and StoryBoard must not auto-post from this feed"
+            )
+        if sb.get("show_night_does_not_expand_vault") is not SHOW_NIGHT_DOES_NOT_EXPAND_VAULT:
+            errors.append(
+                "storyboard.show_night_does_not_expand_vault must be true — "
+                "StoryBoard #9 binds Show Night to planned Vault titles "
+                "and does not mint excluded rows"
+            )
+        if sb.get("show_night_binds_planned_vault_titles_only") is not True:
+            errors.append(
+                "storyboard.show_night_binds_planned_vault_titles_only "
+                "must be true"
+            )
+        ops = sb.get("ops") or {}
+        if ops.get("never_auto_post") is not True:
+            errors.append("storyboard.ops.never_auto_post must be true")
+        if ops.get("show_night_does_not_expand_vault") is not True:
+            errors.append(
+                "storyboard.ops.show_night_does_not_expand_vault must be true"
+            )
+        if ops.get("jeff_owns_catalog_calls") is not True:
+            errors.append(
+                "storyboard.ops.jeff_owns_catalog_calls must be true — "
+                "Jeff owns feel, set-list, and catalog calls"
             )
         banned = {str(n).lower() for n in (sb.get("not_band_os") or [])}
         if "storydesk" not in banned or "storyops" not in banned:
@@ -723,6 +775,46 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             "live StoryBoard planner (published setlist_ready_default_import) "
             f"would select {sorted(live_planned)} but the published slice is "
             f"{sorted(published_set)} — do not invent or hide the default-live ids"
+        )
+
+    feed_songs = [r for r in api_songs if isinstance(r, dict)]
+    planned_titles = planned_vault_titles(
+        feed_songs, set(ready_ids), set(actual_default)
+    )
+    skip_map = vault_skip_by_title(
+        feed_songs, set(ready_ids), set(actual_default)
+    )
+    excluded_scopes = {
+        SCOPE_COVER,
+        SCOPE_PARKED,
+        SCOPE_BOOKER,
+        SCOPE_NOT_READY,
+        SCOPE_NOT_LIVE,
+    }
+    for rec in feed_songs:
+        loc = rec.get("id") or "app_api.songs[]"
+        action, detail = show_night_bind_title(
+            rec.get("title"), planned_titles, skip_map
+        )
+        scope = rec.get("import_scope")
+        if scope == SCOPE_DEFAULT_LIVE:
+            if action != "bind" or detail != rec.get("id"):
+                errors.append(
+                    f"app_api {loc}: Show Night must bind this published "
+                    "default-live title — do not hide a source-of-truth row"
+                )
+        elif scope in excluded_scopes and action != "skip":
+            errors.append(
+                f"app_api {loc}: Show Night must not mint an excluded "
+                f"{scope} title (StoryBoard #9)"
+            )
+    unknown_action, unknown_reason = show_night_bind_title(
+        "__vault_unknown_show_night_title__", planned_titles, skip_map
+    )
+    if unknown_action != "skip" or unknown_reason != SHOW_NIGHT_NOT_IN_VAULT:
+        errors.append(
+            "Show Night must skip titles that are not in Vault "
+            "(show_night_not_in_vault) — do not mint a second catalog"
         )
 
     if isinstance(counts, dict):
