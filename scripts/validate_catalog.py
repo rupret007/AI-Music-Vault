@@ -4,7 +4,9 @@ validate_catalog.py — fail-closed integrity check for the vault spine.
 
 Checks data/master_catalog.json (IDs, scores, AI-upload gates, next actions,
 three-active-song cap) plus the StoryBoard feed (data/app_api.json) when present.
-Session Log H2 headings must be unique so resume cannot list the same pass twice.
+Session Log is required for resume. H2 headings must be unique, and the
+latest H2 pass must include a Next continuation point so resume cannot
+fall back to Session 1.
 
 This does NOT listen to audio, score songs, or invent priorities.
 Jeff owns the three active lanes; this script only verifies they still exist
@@ -83,8 +85,18 @@ VM_MATCHES_PATH = os.path.join(
 )
 PRIORITY_PATH = os.path.join(HERE, "00_control_room", "Priority Queue.md")
 SESSION_LOG_PATH = os.path.join(HERE, "00_control_room", "Session Log.md")
+PRODUCER_README_PATH = os.path.join(
+    HERE, "00_control_room", "Producer README.md"
+)
 DASHBOARD_PATH = os.path.join(HERE, "Jeff Story Song Vault Dashboard.html")
 SESSION_LOG_H2_RE = re.compile(r"(?m)^## (.+?)\s*$")
+SESSION_LOG_CONTINUATION_RE = re.compile(
+    r"(?m)^### (?:NOT done / )?next continuation point\s*$",
+    re.IGNORECASE,
+)
+STALE_PRODUCER_RESUME_RE = re.compile(
+    r'Continue from ["“]NOT done / next continuation point["”]'
+)
 
 # Jeff-owned WIP cap. Do not expand. on_deck / opus are parked, not a 4th/5th slot.
 ACTIVE_LANES = {
@@ -132,6 +144,19 @@ def duplicate_session_log_headings(text: str) -> list[str]:
             dups.append(heading)
         seen.add(heading)
     return dups
+
+
+def latest_session_log_section(text: str) -> str:
+    """Body of the last H2 pass. Resume must start here, not at Session 1."""
+    matches = list(SESSION_LOG_H2_RE.finditer(text or ""))
+    if not matches:
+        return ""
+    return (text or "")[matches[-1].start() :]
+
+
+def latest_session_log_has_continuation(text: str) -> bool:
+    """Latest H2 must name where a later session continues."""
+    return bool(SESSION_LOG_CONTINUATION_RE.search(latest_session_log_section(text)))
 
 
 YES_GATE = (
@@ -1181,9 +1206,32 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append("Priority Queue.md lost the max-3 active-song cap")
 
     session_log = extras.get("session_log")
-    if isinstance(session_log, str) and session_log.strip():
+    if not isinstance(session_log, str) or not session_log.strip():
+        errors.append(
+            "Session Log.md is required for resume; fail closed when missing"
+        )
+    else:
         for heading in duplicate_session_log_headings(session_log):
             errors.append(f"Session Log.md heading appears more than once: {heading}")
+        if not session_log_h2_headings(session_log):
+            errors.append("Session Log.md has no H2 pass heading")
+        elif not latest_session_log_has_continuation(session_log):
+            errors.append(
+                "latest Session Log H2 pass has no Next continuation point — "
+                "resume must not fall back to Session 1"
+            )
+
+    producer = extras.get("producer_readme")
+    if isinstance(producer, str) and producer.strip():
+        if STALE_PRODUCER_RESUME_RE.search(producer):
+            errors.append(
+                "Producer README resume still points at the Session 1 "
+                "NOT done / next continuation point"
+            )
+        if "latest Session Log" not in producer:
+            errors.append(
+                "Producer README resume must start from the latest Session Log H2"
+            )
 
     dash = extras.get("dashboard_html")
     if isinstance(dash, str) and dash.strip():
@@ -1237,6 +1285,7 @@ def load_repo(root: str | None = None) -> tuple[dict, dict]:
         "vm_matches": None,
         "priority_queue": None,
         "session_log": None,
+        "producer_readme": None,
         "dashboard_html": None,
         "audio_files": find_audio_files(root),
     }
@@ -1251,6 +1300,9 @@ def load_repo(root: str | None = None) -> tuple[dict, dict]:
     )
     extras["session_log"] = load_text(
         os.path.join(root, "00_control_room", "Session Log.md")
+    )
+    extras["producer_readme"] = load_text(
+        os.path.join(root, "00_control_room", "Producer README.md")
     )
     extras["dashboard_html"] = load_text(
         os.path.join(root, "Jeff Story Song Vault Dashboard.html")
