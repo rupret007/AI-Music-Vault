@@ -4,6 +4,7 @@ validate_catalog.py — fail-closed integrity check for the vault spine.
 
 Checks data/master_catalog.json (IDs, scores, AI-upload gates, next actions,
 three-active-song cap) plus the StoryBoard feed (data/app_api.json) when present.
+Session Log H2 headings must be unique so resume cannot list the same pass twice.
 
 This does NOT listen to audio, score songs, or invent priorities.
 Jeff owns the three active lanes; this script only verifies they still exist
@@ -81,7 +82,9 @@ VM_MATCHES_PATH = os.path.join(
     HERE, "01_source_manifests", "voicememo", "vm_matches.json"
 )
 PRIORITY_PATH = os.path.join(HERE, "00_control_room", "Priority Queue.md")
+SESSION_LOG_PATH = os.path.join(HERE, "00_control_room", "Session Log.md")
 DASHBOARD_PATH = os.path.join(HERE, "Jeff Story Song Vault Dashboard.html")
+SESSION_LOG_H2_RE = re.compile(r"(?m)^## (.+?)\s*$")
 
 # Jeff-owned WIP cap. Do not expand. on_deck / opus are parked, not a 4th/5th slot.
 ACTIVE_LANES = {
@@ -114,6 +117,22 @@ REQUIRED_FIELDS = (
 )
 AUDIO_EXTS = {".m4a", ".mp3", ".wav", ".aif", ".aiff", ".flac", ".logicx", ".band"}
 SKIP_DIRS = {".git", ".venv", "__pycache__", "node_modules"}
+
+
+def session_log_h2_headings(text: str) -> list[str]:
+    """H2 headings only. Resume must not list the same pass twice."""
+    return SESSION_LOG_H2_RE.findall(text or "")
+
+
+def duplicate_session_log_headings(text: str) -> list[str]:
+    seen: set[str] = set()
+    dups: list[str] = []
+    for heading in session_log_h2_headings(text):
+        if heading in seen and heading not in dups:
+            dups.append(heading)
+        seen.add(heading)
+    return dups
+
 
 YES_GATE = (
     "YES — Jeff-written; SOLO recordings only "
@@ -1161,6 +1180,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
         if "max 3" not in pq.lower() and "max three" not in pq.lower():
             errors.append("Priority Queue.md lost the max-3 active-song cap")
 
+    session_log = extras.get("session_log")
+    if isinstance(session_log, str) and session_log.strip():
+        for heading in duplicate_session_log_headings(session_log):
+            errors.append(f"Session Log.md heading appears more than once: {heading}")
+
     dash = extras.get("dashboard_html")
     if isinstance(dash, str) and dash.strip():
         for sid, title in LANE_TITLES.items():
@@ -1212,6 +1236,7 @@ def load_repo(root: str | None = None) -> tuple[dict, dict]:
         "app_api": None,
         "vm_matches": None,
         "priority_queue": None,
+        "session_log": None,
         "dashboard_html": None,
         "audio_files": find_audio_files(root),
     }
@@ -1223,6 +1248,9 @@ def load_repo(root: str | None = None) -> tuple[dict, dict]:
         extras["vm_matches"] = load_json(vm)
     extras["priority_queue"] = load_text(
         os.path.join(root, "00_control_room", "Priority Queue.md")
+    )
+    extras["session_log"] = load_text(
+        os.path.join(root, "00_control_room", "Session Log.md")
     )
     extras["dashboard_html"] = load_text(
         os.path.join(root, "Jeff Story Song Vault Dashboard.html")

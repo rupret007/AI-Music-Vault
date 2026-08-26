@@ -91,3 +91,6 @@
 
 ## 2026-08-26 — usable catalog local-JSON only (no audio, no new band)
 64. **Live StoryBoard after #12 accepts this feed only as local JSON.** Vault #7–#11 already lock names, counts, import-file vs spine, Show Night-does-not-expand, and never_auto_post. The leftover was `ops.remote_catalog_urls=false` published but not fail-closed, while `inspected` still named #9. A hand-edit could claim this private catalog is fetchable, or add a remote locator key that makes Band operations refuse the file. Validator now requires local-JSON-only, rejects remote catalog URLs, and fails closed if the feed itself looks like a locator. Hosted validate may be a 0-step empty-runner — that is not a catalog fail, and billing is unchanged.
+
+## 2026-08-26 — Session Log appears once (no audio, no new band)
+65. **Session Log after #12 listed the same local-JSON heading twice.** That leftover made resume dishonest (two identical passes). The #12 section is kept once. Validator fails closed on duplicate Session Log H2 headings. #11/#12 feed locks are unchanged. No second catalog surface.
