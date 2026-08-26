@@ -1,5 +1,5 @@
 # Jeff Story Song Vault — Producer README
-*How this system works, and how a future session resumes. Last updated: 2026-08-23 (StoryBoard #6 parked-named default-live honesty).*
+*How this system works, and how a future session resumes. Last updated: 2026-08-23 (published originals / scored / ai_upload_ok count honesty).*
 
 ## Mission
 Jeff does not need more songs. He needs the strongest songs he already wrote to be recognized, organized, protected, and FINISHED. Max 3 active songs (flagship / quick win / experimental). Every active song has one clear next action at three energy levels.

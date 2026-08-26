@@ -200,3 +200,13 @@ Unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
 - No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.
+
+## published catalog-count honesty — 2026-08-23 (Cloud Agent, no audio)
+### Done
+1. After Vault #8, setlist-ready vs default-live counts were fail-closed, but `counts.originals` / `counts.scored` / `counts.ai_upload_ok` were still hand-editable. A lie could omit them or collapse 126 / 59 / 128 into a setlist draft (40 or 20) or into each other.
+2. Validator now requires those three counts, matches catalog classification / potential / YES gates, and refuses conflation when the numbers differ.
+3. Discarded: field-map drift vs live StoryBoard importer after StoryBoard #7 (Manager provenance only; `VAULT_STORYBOARD_FIELD_MAP` / `decideVaultSong` / setlist names unchanged). Parked-named default-live is still ST-0014 + JS-0001. JS-0128 in; ST-0001 / ST-0002 out. Did not reclassify the two non-original YES rows (fragment + draft/ancestor) — that is a rights question, not a published-count lie.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Blue Skies Fade untouched.

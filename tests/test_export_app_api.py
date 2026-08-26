@@ -262,11 +262,17 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertTrue(all(sid in ready_ids for sid in published))
         self.assertEqual(len(ready_ids), 40)
         self.assertEqual(api["counts"]["setlist_ready"], 40)
+        self.assertEqual(api["counts"]["originals"], 126)
+        self.assertEqual(api["counts"]["scored"], 59)
+        self.assertEqual(api["counts"]["ai_upload_ok"], 128)
         self.assertNotEqual(len(ready_ids), len(published))
         self.assertNotEqual(
             api["counts"]["setlist_ready"],
             api["counts"]["setlist_ready_default_import"],
         )
+        self.assertNotEqual(api["counts"]["originals"], api["counts"]["setlist_ready"])
+        self.assertNotEqual(api["counts"]["scored"], api["counts"]["originals"])
+        self.assertNotEqual(api["counts"]["ai_upload_ok"], api["counts"]["originals"])
         self.assertNotEqual(
             api["storyboard"]["default_live_setlist_name"],
             api["storyboard"]["setlist_ready_setlist_name"],

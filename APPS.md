@@ -55,7 +55,7 @@ Prisma still has duration / vocalist / genre / URLs — those stay null.
 
 Seed keyed originals from `setlist_ready`. Default import keeps `setlist_ready_default_import` (not an invented setlist). Merge on StoryBoard `sourceKey`, not on title. Field map is StoryBoard's `VAULT_STORYBOARD_FIELD_MAP` (`bpm_int`, notes ← `vault_ref`, `active = is_original !== false`).
 
-**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Default import writes **Vault default-live**; opt-in parked/all writes **Vault setlist-ready**. `counts.setlist_ready` (40 keyed originals today) must stay distinct from `counts.setlist_ready_default_import` / `counts.storyboard_default_live` (20) — two drafts, not one list. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist.
+**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Default import writes **Vault default-live**; opt-in parked/all writes **Vault setlist-ready**. `counts.setlist_ready` (40 keyed originals today) must stay distinct from `counts.setlist_ready_default_import` / `counts.storyboard_default_live` (20) — two drafts, not one list. `counts.originals` (126), `counts.scored` (59), and `counts.ai_upload_ok` (128) are catalog tallies, not those drafts, and fail closed if omitted or conflated. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist.
 
 **Ops:** StoryBoard show/booking events write back to `events/` (`show_played` with vault ids). That is the ops loop. No second catalog.
 
