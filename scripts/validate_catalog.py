@@ -34,6 +34,7 @@ from storyboard_contract import (
     LIVE_CATALOG_PROJECTS,
     LOCAL_JSON_ONLY,
     MASTER_CATALOG_IS_NOT_THE_IMPORT,
+    MASTER_CATALOG_IS_REJECTED,
     MAX_ID_LEN,
     MAX_IMPORT_SCOPE_LEN,
     MAX_KEY_LEN,
@@ -58,6 +59,7 @@ from storyboard_contract import (
     VAULT_DEFAULT_LIVE_SETLIST_NAME,
     VAULT_IMPORT_FILE,
     VAULT_SETLIST_READY_SETLIST_NAME,
+    VAULT_SPINE_IMPORT_ERROR,
     VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
     bpm_raw_string,
@@ -75,9 +77,11 @@ from storyboard_contract import (
     show_night_bind_title,
     source_key,
     storyboard_parse_key,
-    vault_skip_by_title,
+    vault_payload_looks_like_spine,
+    vault_payload_validation_error,
     vault_ref_for,
     vault_setlist_identity,
+    vault_skip_by_title,
 )
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -186,6 +190,16 @@ def apps_md_admits_empty_runner(text: str) -> bool:
     """APPS.md must say the hosted empty-runner is not a catalog fail."""
     body = text or ""
     return "empty-runner" in body and "not a catalog fail" in body
+
+
+def apps_md_claims_spine_still_accepted(text: str) -> bool:
+    """Jeff-facing APPS.md must not describe the deleted spine-accept path."""
+    return "does not remap" in (text or "")
+
+
+def apps_md_admits_spine_reject(text: str) -> bool:
+    """APPS.md must say StoryBoard rejects the spine as an import."""
+    return "rejects the spine" in (text or "").lower()
 
 
 def module_doc_claims_hosted_ci() -> bool:
@@ -420,6 +434,15 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             "remote catalog locator (url / href / sourceUrl / catalogUrl / "
             "fetch). This private catalog is not a public fetch."
         )
+    if vault_payload_looks_like_spine(api):
+        errors.append(
+            "app_api.json looks like the spine — StoryBoard #16 would "
+            "reject this feed"
+        )
+    elif vault_payload_validation_error(api) is not None:
+        errors.append(
+            "app_api.json must stay a valid StoryBoard feed envelope"
+        )
     if api.get("schema_version") != 3:
         errors.append(
             "app_api.json schema_version must be 3 (StoryBoard #5 importer-honest)"
@@ -571,6 +594,11 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "(live importer accepts this feed only as local JSON — "
                 "remote catalog URLs are rejected)"
             )
+        if "StoryBoard #16" not in inspected:
+            errors.append(
+                "storyboard.inspected must name StoryBoard #16 "
+                "(live importer rejects the spine as an import)"
+            )
         if sb.get("local_json_only") is not LOCAL_JSON_ONLY:
             errors.append(
                 "storyboard.local_json_only must be true — StoryBoard #12 "
@@ -594,8 +622,17 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         if sb.get("master_catalog_is_not_the_import") is not MASTER_CATALOG_IS_NOT_THE_IMPORT:
             errors.append(
                 "storyboard.master_catalog_is_not_the_import must be true — "
-                "pointing StoryBoard at master_catalog.json is not the "
-                "published default-live feed"
+                "the spine is not the StoryBoard import"
+            )
+        if sb.get("master_catalog_is_rejected") is not MASTER_CATALOG_IS_REJECTED:
+            errors.append(
+                "storyboard.master_catalog_is_rejected must be true — "
+                "StoryBoard #16 rejects the spine as an import"
+            )
+        if sb.get("vault_spine_import_error") != VAULT_SPINE_IMPORT_ERROR:
+            errors.append(
+                "storyboard.vault_spine_import_error must match the live "
+                "StoryBoard #16 spine-reject message"
             )
         if sb.get("never_auto_post") is not NEVER_AUTO_POST:
             errors.append(
@@ -623,6 +660,11 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             )
         if ops.get("local_json_only") is not True:
             errors.append("storyboard.ops.local_json_only must be true")
+        if ops.get("master_catalog_is_rejected") is not True:
+            errors.append(
+                "storyboard.ops.master_catalog_is_rejected must be true — "
+                "StoryBoard #16 rejects the spine"
+            )
         if ops.get("band_operations_import") != BAND_OPERATIONS_IMPORT:
             errors.append(
                 "storyboard.ops.band_operations_import must name "
@@ -1418,6 +1460,16 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "Producer README resume must start from the latest Session Log H2"
             )
 
+    if not vault_payload_looks_like_spine(cat):
+        errors.append(
+            "master_catalog.json lost spine shape — StoryBoard #16 "
+            "must still be able to reject it"
+        )
+    elif vault_payload_validation_error(cat) != VAULT_SPINE_IMPORT_ERROR:
+        errors.append(
+            "spine must stay rejected as a StoryBoard import"
+        )
+
     if catalog_ok_report_leaks_published_ids():
         errors.append(
             "validator success line still ships published ids — "
@@ -1441,6 +1493,15 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "APPS.md must say hosted validate may be an empty-runner, "
                 "not a catalog fail"
+            )
+        if apps_md_claims_spine_still_accepted(apps_md):
+            errors.append(
+                "APPS.md still describes the deleted spine-accept path — "
+                "StoryBoard rejects the spine"
+            )
+        if not apps_md_admits_spine_reject(apps_md):
+            errors.append(
+                "APPS.md must say StoryBoard rejects the spine as an import"
             )
         errors.extend(public_facing_doc_errors("APPS.md", apps_md, cat))
 

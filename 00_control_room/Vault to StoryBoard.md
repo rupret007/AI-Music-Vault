@@ -1,7 +1,7 @@
 # Vault → StoryBoard (consolidated path)
 
 *2026-08-26 · Control-room pointer, not a new priority list.*
-*Importer-honest pass: `data/app_api.json` is the StoryBoard feed after StoryBoard #12 — local JSON only. The spine is not a substitute import. Remote catalog URLs are rejected.*
+*Importer-honest pass: `data/app_api.json` is the StoryBoard feed after StoryBoard #16 — local JSON only, and StoryBoard rejects the spine as an import. Remote catalog URLs are rejected.*
 
 **This vault is the song brain.** StoryBoard is the band-management OS that reads it. StoryLiner is promo only. There is no StoryDesk / StoryOps band OS, and this repo does not grow a new manager app or a fourth live band.
 
@@ -16,7 +16,7 @@
 ## Fields StoryBoard actually imports
 
 From `songs[]`: `id`, `title`, `project`, `is_original`, `key`, `bpm`, `bpm_int`, `vault_id`, `vault_ref`, `played_live`, `import_scope`.
-StoryBoard #12 reads this file (`data/app_api.json`) as local JSON only, not `master_catalog.json`, and not a remote URL. It also reads the published `setlist_ready_default_import` id list and names that draft **Vault default-live**. An empty published slice stays empty. Parked-named rows in the slice stay current-artist repertoire. When a Vault payload is present, Show Night only binds planned Vault titles. Nothing auto-posts. Preview/apply lives in Band operations → Music & setlists.
+StoryBoard #16 reads this file (`data/app_api.json`) as local JSON only, rejects `master_catalog.json`, and rejects a remote URL. It also reads the published `setlist_ready_default_import` id list and names that draft **Vault default-live**. An empty published slice stays empty. Parked-named rows in the slice stay current-artist repertoire. When a Vault payload is present, Show Night only binds planned Vault titles. Nothing auto-posts. Preview/apply lives in Band operations → Music & setlists.
 
 | StoryBoard writes | Vault field | Do not |
 |---|---|---|
@@ -36,7 +36,7 @@ StoryBoard default import is the published **`setlist_ready_default_import`** sl
 
 The published slice already includes parked-named Vault projects. Those rows stay on the current artist — not a fourth live band. Parked catalogs that are **not** in the published slice stay off unless Jeff passes `includeParked` / `includeAllProjects`. Covers stay out. Travis rows are `travis_books` — StoryBoard does not auto-pitch him.
 
-`master_catalog.json` is the spine, not this feed. It does not carry `played_live` or the published slice, so pointing StoryBoard at the spine is not the default-live plan.
+`master_catalog.json` is the spine, not this feed. StoryBoard #16 rejects that spine at the import boundary — it is not a fallback planner.
 
 This vault labels **no** `artist_project` as the exact string `Rad Dad`. Songs *played* by Rad Dad still live under catalog / hybrid labels (`live_presence` ≠ project) and **do** enter default import via `played_live`. Keyed live-repertoire originals in `setlist_ready` enter as well. That is the existing catalog, not a minted band. `setlist_ready_default_import` is that slice — not an invented running order.
 

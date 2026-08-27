@@ -1,7 +1,7 @@
 # THE APP ECOSYSTEM — Jeff's music software, and how it connects to the vault
 
 *Vault is the song brain. StoryBoard is the band-management OS that consumes it.
-Updated 2026-08-26 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. The spine is not a substitute import. Remote catalog URLs are rejected. Jeff-facing wording here is roles and counts only.*
+Updated 2026-08-27 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. StoryBoard rejects the spine as an import. Remote catalog URLs are rejected. Jeff-facing wording here is roles and counts only.*
 
 ## The consolidated path (read this first)
 
@@ -25,14 +25,14 @@ Updated 2026-08-26 — consolidated path: **Vault → local `data/app_api.json` 
 |---|---|
 | **One song brain** | `data/master_catalog.json` is the only catalog. Do not invent a second format. |
 | **One band OS** | **StoryBoard** (`rupret007/StoryBoard`) is the manager. **Not StoryDesk. Not StoryOps.** Those names are not the band OS. |
-| **One import file** | StoryBoard reads local `data/app_api.json` (same `songs[]` array). The spine is not that feed. Remote catalog URLs are rejected. Mapping lives on the import file under `storyboard`. |
+| **One import file** | StoryBoard reads local `data/app_api.json` (same `songs[]` array). StoryBoard rejects the spine as an import. Remote catalog URLs are rejected. Mapping lives on the import file under `storyboard`. |
 | **No new app** | This repo does not grow a StoryBoard clone. Export + document; StoryBoard already has Song + Setlist. |
 | **Three active songs** | Flagship · Quick win · Experimental. On deck. Protected opus. Roles only — not a public catalog map. |
 | **No audio here** | Masters stay local + Drive. The feed carries import fields (keys, scores, gates) — never files. |
 
 ### StoryBoard Song mapping (importer-honest, 2026-08-26)
 
-Inspected `rupret007/StoryBoard` `packages/shared/src/catalog-import.ts` after StoryBoard #12.
+Inspected `rupret007/StoryBoard` `packages/shared/src/catalog-import.ts` after StoryBoard #16.
 The importer reads **`data/app_api.json`**, not `master_catalog.json`, and only as
 **local JSON** (Band operations → Music & setlists). Remote catalog URLs are
 rejected. From `songs[]` it reads `id`, `title`, `project`, `is_original`, `key`,
@@ -56,7 +56,7 @@ Prisma still has duration / vocalist / genre / URLs — those stay null.
 | `active` | `is_original !== false` | covers stay inactive |
 | `durationSeconds` / `leadVocalist` / `genre` / URLs | **null** | Jeff owns feel |
 
-**Default live is the published `setlist_ready_default_import` slice** (`import_scope=default_live`). StoryBoard #12 prefers that list when present and names the draft **Vault default-live**; an empty published slice stays empty. The file is accepted only as local JSON — remote catalog URLs are rejected. Parked-named rows in that slice stay current-artist repertoire — not a fourth live band. The spine is not this feed: StoryBoard pointed at `master_catalog.json` does not remap `live_presence` and has no published slice. Fallback when the array is absent: Rad Dad + Jeff Story + recorded Rad Dad plays, gated by `setlist_ready` (draft **Vault setlist-ready**). Parked catalogs that are not in the published slice stay parked unless opted in. Hybrid labels that phrase-match `rad dad` are live repertoire, not a fourth live band. `live_presence` is published as `played_live`. Travis rows are `travis_books`. Do not invent Rad Dad catalog rows.
+**Default live is the published `setlist_ready_default_import` slice** (`import_scope=default_live`). StoryBoard #12 prefers that list when present and names the draft **Vault default-live**; an empty published slice stays empty. The file is accepted only as local JSON — remote catalog URLs are rejected. Parked-named rows in that slice stay current-artist repertoire — not a fourth live band. StoryBoard rejects the spine as an import — `master_catalog.json` is not a fallback feed. Fallback when the published array is absent: Rad Dad + Jeff Story + recorded Rad Dad plays, gated by `setlist_ready` (draft **Vault setlist-ready**). Parked catalogs that are not in the published slice stay parked unless opted in. Hybrid labels that phrase-match `rad dad` are live repertoire, not a fourth live band. `live_presence` is published as `played_live`. Travis rows are `travis_books`. Do not invent Rad Dad catalog rows.
 
 Seed keyed originals from `setlist_ready`. Default import keeps `setlist_ready_default_import` (not an invented setlist). Merge on StoryBoard `sourceKey`, not on title. Field map is StoryBoard's `VAULT_STORYBOARD_FIELD_MAP` (`bpm_int`, notes ← `vault_ref`, `active = is_original !== false`).
 
