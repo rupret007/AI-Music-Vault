@@ -28,7 +28,7 @@
  "storyboard": {
   "consumer": "StoryBoard",
   "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
-  "inspected": "2026-08-27 after StoryBoard #16 (StoryBoard #12 local JSON; spine rejected)",
+  "inspected": "2026-08-27 after StoryBoard #16 (StoryBoard #12 local JSON; spine rejected; Show Night #1/#2 official set owner-only)",
   "policy_version": "catalog_import_v1",
   "import_from": "songs",
   "import_file": "data/app_api.json",
@@ -56,6 +56,14 @@
   "never_auto_post": true,
   "show_night_does_not_expand_vault": true,
   "show_night_binds_planned_vault_titles_only": true,
+  "show_night_official_set_is_owner_only": true,
+  "show_night_official_set_write": "POST /api/show",
+  "show_night_official_set_owner_error": "Owner access required.",
+  "show_night_public_suggestions_cannot_mutate_set": true,
+  "show_night_public_suggestion_write": "/api/suggestions",
+  "show_night_one_public_suggestion_writer": true,
+  "vault_feed_is_not_a_show_night_writer": true,
+  "show_control_is_owner_only": true,
   "booker_policy": "travis_books",
   "prefers_published_default_import": true,
   "empty_published_slice_stays_empty": true,
@@ -137,7 +145,7 @@
    "Travis",
    "Travis Story"
   ],
-  "default_import": "THE import file is data/app_api.json — master_catalog.json is the spine and is rejected as an import. StoryBoard #16 fails closed on that spine. StoryBoard #12 accepts this file only as local JSON (Band operations → Music & setlists). Remote catalog URLs are rejected. This private catalog is not a public fetch. Published setlist_ready_default_import is the default plan when present (empty published slice stays empty — StoryBoard will not recompute a live band). StoryBoard names that draft setlist 'Vault default-live'. Songs whose Vault project is a parked catalog name stay on the current artist — not a fourth live band. Fallback when that array is absent: live repertoire (Rad Dad / Jeff Story / recorded Rad Dad plays) gated by setlist_ready; that draft is 'Vault setlist-ready'. Parked catalogs that are not in the published slice stay parked unless Jeff passes includeParked / includeAllProjects. Covers stay out. Travis rows are travis_books — never auto-pitch. When a Vault payload is present, Show Night only binds planned Vault titles and does not mint excluded rows or fill an empty published slice. A rejected Vault payload also blocks a paired Show Night plan. Nothing auto-posts. Jeff owns feel, set-list, and catalog calls. Do not invent Rad Dad catalog rows or a fourth live band.",
+  "default_import": "THE import file is data/app_api.json — master_catalog.json is the spine and is rejected as an import. StoryBoard #16 fails closed on that spine. StoryBoard #12 accepts this file only as local JSON (Band operations → Music & setlists). Remote catalog URLs are rejected. This private catalog is not a public fetch. Published setlist_ready_default_import is the default plan when present (empty published slice stays empty — StoryBoard will not recompute a live band). StoryBoard names that draft setlist 'Vault default-live'. Songs whose Vault project is a parked catalog name stay on the current artist — not a fourth live band. Fallback when that array is absent: live repertoire (Rad Dad / Jeff Story / recorded Rad Dad plays) gated by setlist_ready; that draft is 'Vault setlist-ready'. Parked catalogs that are not in the published slice stay parked unless Jeff passes includeParked / includeAllProjects. Covers stay out. Travis rows are travis_books — never auto-pitch. When a Vault payload is present, Show Night only binds planned Vault titles and does not mint excluded rows or fill an empty published slice. A rejected Vault payload also blocks a paired Show Night plan. Show Night official set writes stay owner-only (POST /api/show). Public suggestions cannot mutate that set. This feed is not a public Show Night writer. Nothing auto-posts. Jeff owns feel, set-list, and catalog calls. Do not invent Rad Dad catalog rows or a fourth live band.",
   "active_lanes": [
    "flagship",
    "quick_win",
@@ -171,6 +179,11 @@
    "band_operations_import": "Band operations → Music & setlists",
    "never_auto_post": true,
    "show_night_does_not_expand_vault": true,
+   "show_night_official_set_is_owner_only": true,
+   "show_night_public_suggestions_cannot_mutate_set": true,
+   "vault_feed_is_not_a_show_night_writer": true,
+   "show_night_official_set_write": "POST /api/show",
+   "show_night_public_suggestion_write": "/api/suggestions",
    "jeff_owns_catalog_calls": true
   }
  },
@@ -5521,6 +5534,6 @@
   "scores": "potential = how good; readiness = how close to done; momentum = how alive in Jeff's hands. Never merge them.",
   "rights": "ai_upload_ok=false means NEVER send this song's audio or lyrics to an AI music service. Covers, co-writes and collaborators' songs are all false.",
   "audio": "No audio lives in this repo. Masters stay local + Drive.",
-  "storyboard_import": "PRIMARY PATH: StoryBoard imports THIS file (data/app_api.json). The master_catalog.json spine is rejected as an import (StoryBoard #16). StoryBoard #12 accepts this file only as local JSON (Band operations → Music & setlists). Remote catalog URLs are rejected. It reads songs[] id, title, project, is_original, key, bpm, bpm_int, vault_id, vault_ref, played_live, import_scope. Default live is the published setlist_ready_default_import slice (empty published slice stays empty). StoryBoard names that draft 'Vault default-live'. Parked-named rows in that slice stay current-artist repertoire — not a fourth live band. When a Vault payload is present, Show Night only binds planned Vault titles and does not mint excluded rows. A rejected Vault payload also blocks a paired Show Night plan. Fallback when the published array is absent: Rad Dad + Jeff Story + recorded Rad Dad plays, gated by setlist_ready ('Vault setlist-ready'). Parked catalogs that are not in the published slice are not a fourth live band. Travis books. Nothing auto-posts. StoryLiner is promo only. Jeff owns setlist order, duration, lead vocalist, and catalog calls. Do not invent a second catalog. This private catalog is not a public fetch."
+  "storyboard_import": "PRIMARY PATH: StoryBoard imports THIS file (data/app_api.json). The master_catalog.json spine is rejected as an import (StoryBoard #16). StoryBoard #12 accepts this file only as local JSON (Band operations → Music & setlists). Remote catalog URLs are rejected. It reads songs[] id, title, project, is_original, key, bpm, bpm_int, vault_id, vault_ref, played_live, import_scope. Default live is the published setlist_ready_default_import slice (empty published slice stays empty). StoryBoard names that draft 'Vault default-live'. Parked-named rows in that slice stay current-artist repertoire — not a fourth live band. When a Vault payload is present, Show Night only binds planned Vault titles and does not mint excluded rows. A rejected Vault payload also blocks a paired Show Night plan. Show Night official set writes stay owner-only. Public suggestions cannot mutate that set. This feed is not a public Show Night writer. Fallback when the published array is absent: Rad Dad + Jeff Story + recorded Rad Dad plays, gated by setlist_ready ('Vault setlist-ready'). Parked catalogs that are not in the published slice are not a fourth live band. Travis books. Nothing auto-posts. StoryLiner is promo only. Jeff owns setlist order, duration, lead vocalist, and catalog calls. Do not invent a second catalog. This private catalog is not a public fetch."
  }
 }

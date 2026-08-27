@@ -29,8 +29,11 @@ from storyboard_contract import (  # noqa: E402
     parked_named_default_live_ids,
     parse_bpm,
     parse_local_catalog_json,
+    official_set_write_allowed,
     planned_vault_titles,
     project_name_looks_parked,
+    public_suggestion_has_official_set_mutation,
+    public_suggestion_writer_is_canonical,
     recognized_import_scope,
     show_night_bind_title,
     spine_default_plan_ids,
@@ -47,7 +50,9 @@ from validate_catalog import (  # noqa: E402
     PROTECTED_LANES,
     YES_GATE,
     apps_md_admits_empty_runner,
+    apps_md_admits_show_night_owner_only,
     apps_md_admits_spine_reject,
+    apps_md_claims_feed_writes_official_set,
     apps_md_claims_hosted_ci,
     apps_md_claims_spine_still_accepted,
     catalog_ok_report,
@@ -623,6 +628,59 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
 
+    def test_missing_show_night_owner_only_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["show_night_official_set_is_owner_only"] = False
+        extra["app_api"]["storyboard"]["ops"]["show_night_official_set_is_owner_only"] = (
+            False
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("show_night_official_set_is_owner_only" in e for e in errors),
+            errors,
+        )
+
+    def test_missing_public_suggestion_cannot_mutate_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"][
+            "show_night_public_suggestions_cannot_mutate_set"
+        ] = False
+        extra["app_api"]["storyboard"]["ops"][
+            "show_night_public_suggestions_cannot_mutate_set"
+        ] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any(
+                "show_night_public_suggestions_cannot_mutate_set" in e
+                for e in errors
+            ),
+            errors,
+        )
+
+    def test_claiming_feed_is_a_show_night_writer_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["vault_feed_is_not_a_show_night_writer"] = False
+        extra["app_api"]["storyboard"]["ops"][
+            "vault_feed_is_not_a_show_night_writer"
+        ] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("vault_feed_is_not_a_show_night_writer" in e for e in errors),
+            errors,
+        )
+
+    def test_inspected_without_show_night_owner_only_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["inspected"] = (
+            "2026-08-27 after StoryBoard #16 "
+            "(StoryBoard #12 local JSON; spine rejected)"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("Show Night #1" in e or "owner-only" in e for e in errors),
+            errors,
+        )
+
     def test_default_setlist_name_must_be_vault_default_live(self):
         extra = extras_ok()
         extra["app_api"]["storyboard"]["default_live_setlist_name"] = (
@@ -1068,6 +1126,43 @@ class ValidateCatalogTests(unittest.TestCase):
             ("skip", SHOW_NIGHT_NOT_IN_VAULT),
         )
 
+    def test_public_suggestion_official_set_fields_are_mutations(self):
+        self.assertTrue(
+            public_suggestion_has_official_set_mutation(
+                {"setSlug": "x", "songs": []}
+            )
+        )
+        self.assertTrue(
+            public_suggestion_has_official_set_mutation({"order": 1})
+        )
+        self.assertFalse(
+            public_suggestion_has_official_set_mutation(
+                {"notes": "x", "addedBy": "x"}
+            )
+        )
+        self.assertFalse(public_suggestion_has_official_set_mutation("x"))
+
+    def test_official_set_write_requires_owner(self):
+        self.assertFalse(
+            official_set_write_allowed("POST", "/api/show", owner=False)
+        )
+        self.assertTrue(
+            official_set_write_allowed("POST", "/api/show", owner=True)
+        )
+        self.assertFalse(
+            official_set_write_allowed("GET", "/api/show", owner=True)
+        )
+        self.assertFalse(
+            official_set_write_allowed("POST", "/api/suggestions", owner=True)
+        )
+
+    def test_one_public_suggestion_writer(self):
+        self.assertTrue(public_suggestion_writer_is_canonical("/api/suggestions"))
+        self.assertFalse(
+            public_suggestion_writer_is_canonical("/api/suggestions/submit")
+        )
+        self.assertFalse(public_suggestion_writer_is_canonical("/api/show"))
+
     def test_show_night_does_not_fill_empty_published_slice(self):
         songs = [
             {
@@ -1288,13 +1383,18 @@ class ValidateCatalogTests(unittest.TestCase):
             "Local python3 scripts/validate_catalog.py fails closed "
             "if this file drifts. Hosted catalog-validate may be a "
             "0-step empty-runner — not a catalog fail. "
-            "StoryBoard rejects the spine as an import.\n"
+            "StoryBoard rejects the spine as an import. "
+            "Show Night official set is owner-only.\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertFalse(apps_md_claims_hosted_ci(extras["apps_md"]))
         self.assertTrue(apps_md_admits_empty_runner(extras["apps_md"]))
         self.assertFalse(apps_md_claims_spine_still_accepted(extras["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_show_night_owner_only(extras["apps_md"]))
+        self.assertFalse(
+            apps_md_claims_feed_writes_official_set(extras["apps_md"])
+        )
 
     def test_apps_md_spine_remap_lie_fails(self):
         extras = extras_ok()
@@ -1303,6 +1403,7 @@ class ValidateCatalogTests(unittest.TestCase):
             "if this file drifts. Hosted catalog-validate may be a "
             "0-step empty-runner — not a catalog fail. "
             "StoryBoard rejects the spine as an import. "
+            "Show Night official set is owner-only. "
             "StoryBoard pointed at master_catalog.json does not remap "
             "live_presence.\n"
         )
@@ -1326,6 +1427,40 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(apps_md_admits_spine_reject(extras["apps_md"]))
+
+    def test_apps_md_without_show_night_owner_only_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail. "
+            "StoryBoard rejects the spine as an import.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("official set is owner-only" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(apps_md_admits_show_night_owner_only(extras["apps_md"]))
+
+    def test_apps_md_feed_writes_official_set_lie_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail. "
+            "StoryBoard rejects the spine as an import. "
+            "Show Night official set is owner-only. "
+            "This feed writes the official set.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("writes the official set" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            apps_md_claims_feed_writes_official_set(extras["apps_md"])
+        )
 
     def test_readme_live_lane_title_fails(self):
         extras = extras_ok()
@@ -1425,7 +1560,8 @@ class ValidateCatalogTests(unittest.TestCase):
             "Protected opus. Andrea-Assistant is inbound. "
             "Travis rows are travis_books. Write-back songs array uses "
             "vault ids — do not paste published ids here. "
-            "StoryBoard rejects the spine as an import.\n"
+            "StoryBoard rejects the spine as an import. "
+            "Show Night official set is owner-only.\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertEqual(
@@ -1440,6 +1576,10 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(apps_md_admits_empty_runner(extras["apps_md"]))
         self.assertFalse(apps_md_claims_spine_still_accepted(extras["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_show_night_owner_only(extras["apps_md"]))
+        self.assertFalse(
+            apps_md_claims_feed_writes_official_set(extras["apps_md"])
+        )
 
     def test_validator_docstring_does_not_claim_hosted_ci(self):
         self.assertFalse(module_doc_claims_hosted_ci())
@@ -1561,6 +1701,8 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertIn("StoryBoard #12", api["storyboard"]["inspected"])
         self.assertIn("StoryBoard #16", api["storyboard"]["inspected"])
+        self.assertIn("Show Night #1", api["storyboard"]["inspected"])
+        self.assertIn("owner-only", api["storyboard"]["inspected"])
         self.assertEqual(api["storyboard"]["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(api["storyboard"]["master_catalog_is_not_the_import"])
         self.assertTrue(api["storyboard"]["master_catalog_is_rejected"])
@@ -1570,6 +1712,11 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertTrue(api["storyboard"]["never_auto_post"])
         self.assertTrue(api["storyboard"]["show_night_does_not_expand_vault"])
+        self.assertTrue(api["storyboard"]["show_night_official_set_is_owner_only"])
+        self.assertTrue(
+            api["storyboard"]["show_night_public_suggestions_cannot_mutate_set"]
+        )
+        self.assertTrue(api["storyboard"]["vault_feed_is_not_a_show_night_writer"])
         self.assertTrue(api["storyboard"]["local_json_only"])
         self.assertIs(api["storyboard"]["remote_catalog_urls"], False)
         self.assertEqual(
@@ -1650,11 +1797,20 @@ class ValidateCatalogTests(unittest.TestCase):
             "StoryBoard rejects the spine — 2026-08-27 "
             "(Cloud Agent, no audio)"
         )
+        leftover_owner = (
+            "Show Night official set is owner-only — 2026-08-27 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
+        self.assertIn(leftover_owner, headings)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
+        self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
+        self.assertFalse(
+            apps_md_claims_feed_writes_official_set(extra["apps_md"])
+        )
         self.assertFalse(catalog_ok_report_leaks_published_ids())
         originals = sum(
             1 for s in cat["songs"] if s.get("classification") == "original"

@@ -47,6 +47,14 @@ from storyboard_contract import (
     NEVER_AUTO_POST,
     PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
     REMOTE_CATALOG_URLS,
+    SHOW_CONTROL_IS_OWNER_ONLY,
+    SHOW_NIGHT_OFFICIAL_SET_IS_OWNER_ONLY,
+    SHOW_NIGHT_OFFICIAL_SET_OWNER_ERROR,
+    SHOW_NIGHT_OFFICIAL_SET_WRITE,
+    SHOW_NIGHT_ONE_PUBLIC_SUGGESTION_WRITER,
+    SHOW_NIGHT_PUBLIC_SUGGESTION_WRITE,
+    SHOW_NIGHT_PUBLIC_SUGGESTIONS_CANNOT_MUTATE_SET,
+    VAULT_FEED_IS_NOT_A_SHOW_NIGHT_WRITER,
     SCOPE_BOOKER,
     SCOPE_COVER,
     SCOPE_DEFAULT_LIVE,
@@ -200,6 +208,22 @@ def apps_md_claims_spine_still_accepted(text: str) -> bool:
 def apps_md_admits_spine_reject(text: str) -> bool:
     """APPS.md must say StoryBoard rejects the spine as an import."""
     return "rejects the spine" in (text or "").lower()
+
+
+def apps_md_admits_show_night_owner_only(text: str) -> bool:
+    """APPS.md must say Show Night official set is owner-only."""
+    body = (text or "").lower()
+    return "official set" in body and "owner-only" in body
+
+
+def apps_md_claims_feed_writes_official_set(text: str) -> bool:
+    """Jeff-facing APPS.md must not claim this feed writes the official set."""
+    body = (text or "").lower()
+    return (
+        "feed writes the official set" in body
+        or "catalog writes the official set" in body
+        or "this file writes the official set" in body
+    )
 
 
 def module_doc_claims_hosted_ci() -> bool:
@@ -599,6 +623,16 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.inspected must name StoryBoard #16 "
                 "(live importer rejects the spine as an import)"
             )
+        if "Show Night #1" not in inspected:
+            errors.append(
+                "storyboard.inspected must name Show Night #1 "
+                "(official set writes stay owner-only)"
+            )
+        if "owner-only" not in inspected:
+            errors.append(
+                "storyboard.inspected must admit Show Night official "
+                "set is owner-only"
+            )
         if sb.get("local_json_only") is not LOCAL_JSON_ONLY:
             errors.append(
                 "storyboard.local_json_only must be true — StoryBoard #12 "
@@ -650,6 +684,58 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.show_night_binds_planned_vault_titles_only "
                 "must be true"
             )
+        if sb.get("show_night_official_set_is_owner_only") is not (
+            SHOW_NIGHT_OFFICIAL_SET_IS_OWNER_ONLY
+        ):
+            errors.append(
+                "storyboard.show_night_official_set_is_owner_only must be "
+                "true — Show Night official set writes stay owner-only"
+            )
+        if sb.get("show_night_official_set_write") != SHOW_NIGHT_OFFICIAL_SET_WRITE:
+            errors.append(
+                "storyboard.show_night_official_set_write must be "
+                "POST /api/show"
+            )
+        if sb.get("show_night_official_set_owner_error") != (
+            SHOW_NIGHT_OFFICIAL_SET_OWNER_ERROR
+        ):
+            errors.append(
+                "storyboard.show_night_official_set_owner_error must match "
+                "the live Show Night owner-gate sentence"
+            )
+        if sb.get("show_night_public_suggestions_cannot_mutate_set") is not (
+            SHOW_NIGHT_PUBLIC_SUGGESTIONS_CANNOT_MUTATE_SET
+        ):
+            errors.append(
+                "storyboard.show_night_public_suggestions_cannot_mutate_set "
+                "must be true — public suggestions cannot mutate the "
+                "official set"
+            )
+        if sb.get("show_night_public_suggestion_write") != (
+            SHOW_NIGHT_PUBLIC_SUGGESTION_WRITE
+        ):
+            errors.append(
+                "storyboard.show_night_public_suggestion_write must be "
+                "/api/suggestions"
+            )
+        if sb.get("show_night_one_public_suggestion_writer") is not (
+            SHOW_NIGHT_ONE_PUBLIC_SUGGESTION_WRITER
+        ):
+            errors.append(
+                "storyboard.show_night_one_public_suggestion_writer must "
+                "be true — Show Night #2 keeps one public writer"
+            )
+        if sb.get("vault_feed_is_not_a_show_night_writer") is not (
+            VAULT_FEED_IS_NOT_A_SHOW_NIGHT_WRITER
+        ):
+            errors.append(
+                "storyboard.vault_feed_is_not_a_show_night_writer must be "
+                "true — this feed is not a public Show Night writer"
+            )
+        if sb.get("show_control_is_owner_only") is not SHOW_CONTROL_IS_OWNER_ONLY:
+            errors.append(
+                "storyboard.show_control_is_owner_only must be true"
+            )
         ops = sb.get("ops") or {}
         if ops.get("never_auto_post") is not True:
             errors.append("storyboard.ops.never_auto_post must be true")
@@ -673,6 +759,33 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         if ops.get("show_night_does_not_expand_vault") is not True:
             errors.append(
                 "storyboard.ops.show_night_does_not_expand_vault must be true"
+            )
+        if ops.get("show_night_official_set_is_owner_only") is not True:
+            errors.append(
+                "storyboard.ops.show_night_official_set_is_owner_only "
+                "must be true"
+            )
+        if ops.get("show_night_public_suggestions_cannot_mutate_set") is not True:
+            errors.append(
+                "storyboard.ops.show_night_public_suggestions_cannot_mutate_set "
+                "must be true"
+            )
+        if ops.get("vault_feed_is_not_a_show_night_writer") is not True:
+            errors.append(
+                "storyboard.ops.vault_feed_is_not_a_show_night_writer "
+                "must be true"
+            )
+        if ops.get("show_night_official_set_write") != SHOW_NIGHT_OFFICIAL_SET_WRITE:
+            errors.append(
+                "storyboard.ops.show_night_official_set_write must be "
+                "POST /api/show"
+            )
+        if ops.get("show_night_public_suggestion_write") != (
+            SHOW_NIGHT_PUBLIC_SUGGESTION_WRITE
+        ):
+            errors.append(
+                "storyboard.ops.show_night_public_suggestion_write must "
+                "be /api/suggestions"
             )
         if ops.get("jeff_owns_catalog_calls") is not True:
             errors.append(
@@ -1502,6 +1615,15 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
         if not apps_md_admits_spine_reject(apps_md):
             errors.append(
                 "APPS.md must say StoryBoard rejects the spine as an import"
+            )
+        if apps_md_claims_feed_writes_official_set(apps_md):
+            errors.append(
+                "APPS.md still claims this feed writes the official set — "
+                "Show Night official set is owner-only"
+            )
+        if not apps_md_admits_show_night_owner_only(apps_md):
+            errors.append(
+                "APPS.md must say Show Night official set is owner-only"
             )
         errors.extend(public_facing_doc_errors("APPS.md", apps_md, cat))
 

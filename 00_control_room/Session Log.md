@@ -312,3 +312,17 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 
 ### Next continuation point
 Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+## Show Night official set is owner-only — 2026-08-27 (Cloud Agent, no audio)
+### Done
+1. After Vault #18, the catalog feed admits StoryBoard rejects the spine, but it still did not fail-closed the live Show Night official-set boundary. Show Night #1/#2 keep official-set writes owner-only. Public suggestions cannot mutate that set. This feed is not a public Show Night writer.
+2. Contract + validator now fail closed if the feed hides that owner-only official set, if inspected omits Show Night #1, or if APPS.md still claims this feed writes the official set. Song rows are unchanged. #11/#12/#13/#14/#15/#16/#17/#18 locks are unchanged. No second catalog surface. Do not change billing.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Protected opus untouched.
+- Private catalog stays private. No public dump of titles. Did not invent a setlist or a second catalog. Live-lane titles stay out of Jeff-facing docs. Ids stay out of the catalog-gate success line.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Show Night official set is owner-only. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.

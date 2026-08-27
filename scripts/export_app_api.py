@@ -15,7 +15,9 @@ file — not master_catalog.json — is the StoryBoard import. StoryBoard
 setlist_ready_default_import slice, names that draft "Vault default-live",
 binds Show Night to planned Vault titles only, and accepts this file
 only as local JSON (Band operations → Music & setlists). Remote catalog
-URLs are rejected. Parked-named rows in that slice stay current-artist
+URLs are rejected. Show Night official set writes stay owner-only.
+Public suggestions cannot mutate that set. This feed is not a public
+Show Night writer. Parked-named rows in that slice stay current-artist
 repertoire, not a fourth live band. Nothing auto-posts. Jeff owns feel,
 set-list, and catalog calls. Not StoryDesk. Not StoryOps. StoryLiner is
 promo only. No new app. No fourth live band. This private catalog is
@@ -200,7 +202,10 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
                 "— not a fourth live band. When a Vault payload is present, "
                 "Show Night only binds planned Vault titles and does not mint "
                 "excluded rows. A rejected Vault payload also blocks a paired "
-                "Show Night plan. Fallback when the published array is absent: "
+                "Show Night plan. Show Night official set writes stay "
+                "owner-only. Public suggestions cannot mutate that set. This "
+                "feed is not a public Show Night writer. Fallback when the "
+                "published array is absent: "
                 "Rad Dad + Jeff Story + recorded Rad Dad plays, gated by "
                 "setlist_ready ('Vault setlist-ready'). Parked catalogs that "
                 "are not in the published slice are not a fourth live band. "

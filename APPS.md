@@ -1,7 +1,7 @@
 # THE APP ECOSYSTEM — Jeff's music software, and how it connects to the vault
 
 *Vault is the song brain. StoryBoard is the band-management OS that consumes it.
-Updated 2026-08-27 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. StoryBoard rejects the spine as an import. Remote catalog URLs are rejected. Jeff-facing wording here is roles and counts only.*
+Updated 2026-08-27 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. StoryBoard rejects the spine as an import. Show Night official set is owner-only. Remote catalog URLs are rejected. Jeff-facing wording here is roles and counts only.*
 
 ## The consolidated path (read this first)
 
@@ -42,6 +42,8 @@ It names the published-slice draft **Vault default-live**. Parked-named rows in
 that slice stay current-artist repertoire — not a fourth live band.
 When a Vault payload is present, Show Night only binds planned Vault titles
 and does not mint excluded rows or fill an empty published slice.
+Show Night official set is owner-only. Public suggestions cannot mutate it.
+This feed is not a public Show Night writer.
 Prisma still has duration / vocalist / genre / URLs — those stay null.
 **Nothing auto-posts. Jeff owns feel, set-list, and catalog calls.**
 **StoryLiner is promo only** and does not consume this feed.
@@ -60,7 +62,7 @@ Prisma still has duration / vocalist / genre / URLs — those stay null.
 
 Seed keyed originals from `setlist_ready`. Default import keeps `setlist_ready_default_import` (not an invented setlist). Merge on StoryBoard `sourceKey`, not on title. Field map is StoryBoard's `VAULT_STORYBOARD_FIELD_MAP` (`bpm_int`, notes ← `vault_ref`, `active = is_original !== false`).
 
-**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Default import writes **Vault default-live**; opt-in parked/all writes **Vault setlist-ready**. Those two drafts stay distinct, and the published catalog tallies stay catalog-true — fail closed if omitted or conflated. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist. Show Night is a running-order import on this feed, not a second catalog.
+**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Default import writes **Vault default-live**; opt-in parked/all writes **Vault setlist-ready**. Those two drafts stay distinct, and the published catalog tallies stay catalog-true — fail closed if omitted or conflated. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist. Show Night is a running-order import on this feed, not a second catalog. Show Night official set is owner-only.
 
 **Ops:** StoryBoard show/booking events write back to `events/` (`show_played` with vault ids). That is the ops loop. No second catalog.
 
