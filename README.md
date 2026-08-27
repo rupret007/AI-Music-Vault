@@ -46,7 +46,7 @@ catalog dump. Nothing auto-posts.
 - **Flagship** — mix v1.6, two overdubs left
 - **Quick win** — one overdub: lead guitar on choruses + solos
 - **Experimental** — Suno arrangement test queued
-- **On deck** — in the live set, lyric ~85% recovered, unrecorded
+- **On deck** — catalog, not the official set, lyric ~85% recovered, unrecorded
 - **The Opus** — its own protected lane
 
 Work is capped at three active songs. That cap is the point.

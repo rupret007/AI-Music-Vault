@@ -15,6 +15,7 @@ from catalog_surface import (  # noqa: E402
     SURFACE_SUBTITLE,
     overlay_feed_scopes,
     played_badge_label,
+    surface_stage_label,
 )
 
 CAT_PATH = os.path.join(HERE, "data", "master_catalog.json")
@@ -28,7 +29,7 @@ app_api = json.load(open(API_PATH)) if os.path.exists(API_PATH) else {}
 slim = []
 for s in cat['songs']:
     slim.append(dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
-        c=s['classification'], st=s.get('stage',''), key=s.get('key',''), bpm=s.get('bpm',''),
+        c=s['classification'], st=surface_stage_label(s.get('stage','')), key=s.get('key',''), bpm=s.get('bpm',''),
         pot=s.get('potential'), rdy=s.get('readiness'), mom=s.get('momentum'),
         la=s.get('last_activity',''), conf=s.get('confidence',''),
         th=s.get('theme',''), hk=s.get('hook',''), nx=s.get('next_action',''),

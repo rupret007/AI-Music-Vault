@@ -345,6 +345,7 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 ### Done
 1. After Vault #20, the catalog feed admits the official-set dump bind, but it still talked like Vault default-live / catalog rows were the live set. Show Night owns official sets. StoryBoard #20 keeps Vault song rows Vault-framed after that bind.
 2. Contract + validator now fail closed if the feed hides that catalog rows are not the official set, if inspected omits StoryBoard #20, or if APPS.md / the dashboard still claim catalog rows are the live set. The dashboard reuses `data/app_api.json` for import_scope and no longer labels catalog play history as LIVE. Song rows are unchanged. #11/#12/#13/#14/#15/#16/#17/#18/#19/#20 locks are unchanged. No second catalog surface. Do not change billing.
+3. QA leftover: the dashboard still reprinted spine stage `IN CURRENT LIVE SET`. The first useful surface now sanitizes that phrase to catalog play history. Validator / README fail closed on that live-set claim. Spine unchanged.
 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.

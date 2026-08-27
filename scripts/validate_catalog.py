@@ -435,6 +435,11 @@ def public_facing_doc_errors(label: str, text: str, cat: dict) -> list[str]:
             f"{label} still ships collaborator-as-catalog-map dumps — "
             "roles and counts only"
         )
+    if catalog_surface_claims_official_set(text):
+        errors.append(
+            f"{label} still claims catalog rows are the live set — "
+            "Show Night owns official sets"
+        )
     return errors
 
 
@@ -1853,7 +1858,8 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
         if catalog_surface_claims_official_set(dash):
             errors.append(
                 "dashboard still claims catalog rows are the live set — "
-                "Show Night owns official sets"
+                "Show Night owns official sets. Do not reprint spine "
+                "'IN CURRENT LIVE SET' on the first useful surface."
             )
         if not catalog_surface_admits_not_official_set(dash):
             errors.append(

@@ -23,6 +23,21 @@ SURFACE_SUBTITLE = (
 ON_DECK_NOTE = "catalog, not the official set"
 
 PLAYED_BADGE_PREFIX = "played"
+SURFACE_STAGE_REPLACEMENT = "catalog play history — not the official set"
+
+# Longer phrases first so "in the current live set" wins over "in the live set".
+STAGE_LIVE_SET_CLAIMS = (
+    "in the current live set",
+    "in current live set",
+    "in the live set",
+)
+
+OFFICIAL_SET_SURFACE_CLAIMS = STAGE_LIVE_SET_CLAIMS + (
+    "catalog rows are the official set",
+    "catalog rows are the live set",
+    "default-live is the official set",
+    "vault default-live is the official set",
+)
 
 
 def feed_scope_by_id(app_api) -> dict[str, str]:
@@ -94,13 +109,28 @@ def surface_row_claims_official_set(row) -> bool:
 def catalog_surface_claims_official_set(text: str) -> bool:
     """First useful surface must not call catalog rows the live / official set."""
     body = (text or "").lower()
-    return (
-        "in the live set" in body
-        or "catalog rows are the official set" in body
-        or "catalog rows are the live set" in body
-        or "default-live is the official set" in body
-        or "vault default-live is the official set" in body
-    )
+    return any(claim in body for claim in OFFICIAL_SET_SURFACE_CLAIMS)
+
+
+def surface_stage_label(stage) -> str:
+    """Display catalog stage without reprinting a live-set claim.
+
+    Spine notes may still say 'IN CURRENT LIVE SET' for play-history
+    rows. Do not rewrite the spine. The first useful surface sanitizes.
+    """
+    text = "" if stage is None else str(stage)
+    while True:
+        lowered = text.lower()
+        hit = None
+        for claim in STAGE_LIVE_SET_CLAIMS:
+            idx = lowered.find(claim)
+            if idx >= 0:
+                hit = (idx, len(claim))
+                break
+        if hit is None:
+            return text
+        idx, n = hit
+        text = text[:idx] + SURFACE_STAGE_REPLACEMENT + text[idx + n :]
 
 
 def catalog_surface_admits_not_official_set(text: str) -> bool:

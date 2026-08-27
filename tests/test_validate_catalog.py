@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from catalog_surface import (  # noqa: E402
     ON_DECK_NOTE,
+    SURFACE_STAGE_REPLACEMENT,
     SURFACE_SUBTITLE,
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
@@ -18,6 +19,7 @@ from catalog_surface import (  # noqa: E402
     overlay_feed_scopes,
     played_badge_label,
     surface_row_claims_official_set,
+    surface_stage_label,
 )
 from export_app_api import build_payload  # noqa: E402
 from storyboard_contract import (  # noqa: E402
@@ -916,6 +918,40 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertTrue(
             catalog_surface_claims_official_set(extra["dashboard_html"])
+        )
+
+    def test_dashboard_current_live_set_reprint_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = (
+            extra["dashboard_html"]
+            + " · written + IN CURRENT LIVE SET (Oct 2025 practice)"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("IN CURRENT LIVE SET" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            catalog_surface_claims_official_set(extra["dashboard_html"])
+        )
+
+    def test_surface_stage_label_sanitizes_current_live_set(self):
+        raw = (
+            "written + IN CURRENT LIVE SET (Oct 2025 practice) "
+            "— unrecorded, no lyric doc"
+        )
+        sanitized = surface_stage_label(raw)
+        self.assertIn(SURFACE_STAGE_REPLACEMENT, sanitized)
+        self.assertIn("Oct 2025 practice", sanitized)
+        self.assertIn("unrecorded, no lyric doc", sanitized)
+        self.assertFalse(catalog_surface_claims_official_set(sanitized))
+        self.assertIn("not the official set", sanitized)
+        self.assertFalse(catalog_surface_claims_official_set("not the live set"))
+        self.assertTrue(catalog_surface_claims_official_set("in current live set"))
+        self.assertTrue(catalog_surface_claims_official_set("in the current live set"))
+        self.assertEqual(
+            surface_stage_label("written — catalog only"),
+            "written — catalog only",
         )
 
     def test_dashboard_without_feed_reuse_fails_closed(self):
@@ -1877,6 +1913,16 @@ class ValidateCatalogTests(unittest.TestCase):
             apps_md_claims_feed_writes_official_set(extras["apps_md"])
         )
 
+    def test_readme_in_the_live_set_fails(self):
+        extras = extras_ok()
+        extras["readme"] = "On deck — in the live set, lyric recovered\n"
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("README.md" in e and "catalog rows are the live set" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(catalog_surface_claims_official_set(extras["readme"]))
+
     def test_readme_live_lane_title_fails(self):
         extras = extras_ok()
         extras["readme"] = "Flagship — Turn Over The Flag\n"
@@ -2284,6 +2330,9 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertTrue(catalog_surface_admits_not_official_set(extra["dashboard_html"]))
         self.assertFalse(catalog_surface_claims_official_set(extra["dashboard_html"]))
+        self.assertFalse(catalog_surface_claims_official_set(extra["readme"]))
+        self.assertNotIn("IN CURRENT LIVE SET", extra["dashboard_html"])
+        self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
         self.assertFalse(catalog_ok_report_leaks_published_ids())
         originals = sum(
