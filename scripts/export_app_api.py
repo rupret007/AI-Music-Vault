@@ -19,8 +19,10 @@ URLs are rejected. Show Night official set writes stay owner-only.
 Public suggestions cannot mutate that set. This feed is not a public
 Show Night writer. StoryBoard #19 binds a local official-set dump as
 Rad Dad — official set. Guest/parked slugs stay opt-in. Show Night is
-the live set surface; Vault is the catalog. Parked-named rows in that
-slice stay current-artist repertoire, not a fourth live band. Nothing
+the live set surface; Vault is the catalog. Catalog rows / Vault
+default-live are not the official live set. Show Night owns official
+sets. Parked-named rows in that slice stay current-artist repertoire,
+not a fourth live band. Nothing
 auto-posts. Jeff owns feel,
 set-list, and catalog calls. Not StoryDesk. Not StoryOps. StoryLiner is
 promo only. No new app. No fourth live band. This private catalog is
@@ -210,7 +212,10 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
                 "feed is not a public Show Night writer. StoryBoard #19 binds "
                 "a local official-set dump as 'Rad Dad — official set'. "
                 "Guest/parked slugs stay opt-in. Show Night is the live set "
-                "surface; Vault is the catalog. Fallback when the "
+                "surface; Vault is the catalog. Vault default-live is a "
+                "catalog slice, not the official live set. Catalog rows "
+                "are not the official set. Show Night owns official sets. "
+                "Fallback when the "
                 "published array is absent: "
                 "Rad Dad + Jeff Story + recorded Rad Dad plays, gated by "
                 "setlist_ready ('Vault setlist-ready'). Parked catalogs that "
@@ -284,10 +289,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"  {counts['setlist_ready']} setlist-ready originals "
-        f"({counts['setlist_ready_default_import']} default-live repertoire)"
+        f"({counts['setlist_ready_default_import']} default-live catalog "
+        f"slice, not the official set)"
     )
     print(
-        f"  StoryBoard default import: {counts['storyboard_default_live']} live / "
+        f"  StoryBoard default import: {counts['storyboard_default_live']} "
+        f"default-live catalog / "
         f"{counts['storyboard_default_live_parked_named']} parked-named "
         f"(current artist) / "
         f"{counts['storyboard_parked']} parked / "

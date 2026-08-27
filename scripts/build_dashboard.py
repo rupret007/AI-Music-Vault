@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
 """Dashboard v2 — catalog v1.6 + Momentum Index + searchable memo transcripts.
 
+First useful surface reuses data/app_api.json for StoryBoard import_scope.
+Catalog rows are not the official live set. Show Night owns official sets.
 Repo-relative paths (the old /home/claude/vault/... Cowork copies are gone).
 Run from anywhere:  python3 scripts/build_dashboard.py
 """
-import json, os, re
+import json, os, sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from catalog_surface import (  # noqa: E402
+    ON_DECK_NOTE,
+    SURFACE_SUBTITLE,
+    overlay_feed_scopes,
+    played_badge_label,
+)
+
 CAT_PATH = os.path.join(HERE, "data", "master_catalog.json")
+API_PATH = os.path.join(HERE, "data", "app_api.json")
 TX_PATH = os.path.join(HERE, "data", "vm_transcribed.json")
 VM_MATCHES_PATH = os.path.join(HERE, "01_source_manifests", "voicememo", "vm_matches.json")
 OUT_PATH = os.path.join(HERE, "Jeff Story Song Vault Dashboard.html")
 
 cat = json.load(open(CAT_PATH))
+app_api = json.load(open(API_PATH)) if os.path.exists(API_PATH) else {}
 slim = []
 for s in cat['songs']:
     slim.append(dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
@@ -23,8 +35,9 @@ for s in cat['songs']:
         ly=s.get('lyric_status',''), au=s.get('audio_status',''),
         src=s.get('sources',[]), sc=s.get('soundcloud',[]), oq=s.get('open_questions',''),
         wr=', '.join(s.get('writers',[])),
-        live=s.get('live_latest',''), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
+        live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
         gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved','')))
+overlay_feed_scopes(slim, app_api)
 DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
 
 # transcripts: compact index (title, date, dur, cleaned text capped at 1500 chars)
@@ -105,14 +118,14 @@ input{flex:1;min-width:160px}
 .mhint{color:var(--ink3);font-size:12px;padding:16px;text-align:center}
 </style></head><body>
 <h1>🎸 Jeff Story Song Vault</h1>
-<div class="sub">Every song, one place · Catalog v1.6 · 2026-08-23 integrity pass · Momentum Index + all 916 memos searchable by what you actually sang · no audio in this repo</div>
+<div class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index + all 916 memos searchable by what you actually sang · no audio in this repo</div>
 <div class="stats" id="stats"></div>
 <div class="lanes">
  <h2>The three lanes (+ on deck)</h2>
  <div class="lane"><span class="tag f">Flagship</span><b>Turn Over The Flag</b><span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
  <div class="lane"><span class="tag q">Quick win</span><b>Manic</b><span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
  <div class="lane"><span class="tag x">Experimental</span><b>Long Long Drive</b><span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
- <div class="lane"><span class="tag">On deck</span><b>It's Alright</b><span style="color:var(--ink3)">— in the live set, lyric 85% recovered; takes Manic's slot next</span></div>
+ <div class="lane"><span class="tag">On deck</span><b>It's Alright</b><span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
  <div class="lane"><span class="tag">The Opus</span><b>Blue Skies Fade</b><span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
 </div>
 <div class="tabs">
@@ -128,12 +141,13 @@ input{flex:1;min-width:160px}
   <option value="pot">Sort: Potential</option><option value="rdy">Sort: Readiness</option>
   <option value="id">Sort: Catalog ID</option><option value="t">Sort: Title</option></select>
  <select id="scored"><option value="">All songs</option><option value="1">Scored only</option><option value="0">Unscored / to explore</option></select>
+ <select id="scope"><option value="">All StoryBoard scopes</option></select>
 </div>
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
 <div id="list"></div>
-<div class="covers-note">93 covers cataloged separately, never ranked against originals. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
+<div class="covers-note">93 covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" style="display:none">
 <div class="controls"><input id="mq" placeholder="Search everything you ever sang into your phone… (try: alright, garden, better than now)"></div>
@@ -149,32 +163,38 @@ function showTab(w){document.getElementById('paneS').style.display=w==='S'?'':'n
  document.getElementById('tabS').classList.toggle('on',w==='S');
  document.getElementById('tabM').classList.toggle('on',w==='M');}
 const q=document.getElementById('q'),proj=document.getElementById('proj'),
- sort=document.getElementById('sort'),scored=document.getElementById('scored'),list=document.getElementById('list');
+ sort=document.getElementById('sort'),scored=document.getElementById('scored'),
+ scope=document.getElementById('scope'),list=document.getElementById('list');
 const projects=[...new Set(DATA.map(d=>d.p))].sort();
 projects.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;proj.appendChild(o);});
+const scopes=[...new Set(DATA.map(d=>d.scope).filter(Boolean))].sort();
+scopes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=(DATA.find(d=>d.scope===s)||{}).scope_label||s;scope.appendChild(o);});
 const scoredCount=DATA.filter(d=>d.pot).length;
 const matchedCount=TX.filter(t=>t.s).length;
+const defaultLiveCount=DATA.filter(d=>d.scope==='default_live').length;
 document.getElementById('stats').innerHTML=
  `<div class="stat"><b>${DATA.length}</b><span>songs cataloged</span></div>`+
  `<div class="stat"><b>${scoredCount}</b><span>scored</span></div>`+
+ `<div class="stat"><b>${defaultLiveCount}</b><span>default-live catalog</span></div>`+
  `<div class="stat"><b>9</b><span>songs recovered from memos</span></div>`+
  `<div class="stat"><b>${matchedCount}</b><span>memos matched</span></div>`+
  `<div class="stat"><b>${TX_TOTAL}</b><span>memos transcribed</span></div>`;
 function esc(s){return (''+(s||'')).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function bar(v,c){return v?`<div class="barwrap"><div class="bar"><i style="width:${v}%;background:var(--${c})"></i></div><span>${v}</span></div>`:'<div class="barwrap"><span style="color:var(--ink3)">—</span></div>';}
 function render(){
- const term=q.value.toLowerCase(), pv=proj.value, sv=scored.value;
+ const term=q.value.toLowerCase(), pv=proj.value, sv=scored.value, scv=scope.value;
  let rows=DATA.filter(d=>{
   if(pv&&d.p!==pv)return false;
+  if(scv&&d.scope!==scv)return false;
   if(sv==='1'&&!d.pot)return false; if(sv==='0'&&d.pot)return false;
   if(!term)return true;
-  return (d.t+' '+d.id+' '+d.th+' '+d.hk+' '+d.c+' '+d.st+' '+(d.wr||'')+' '+(d.nx||'')+' '+(d.gate||'')+' '+(d.src||[]).join(' ')).toLowerCase().includes(term);});
+  return (d.t+' '+d.id+' '+d.th+' '+d.hk+' '+d.c+' '+d.st+' '+(d.wr||'')+' '+(d.nx||'')+' '+(d.gate||'')+' '+(d.scope_label||'')+' '+(d.src||[]).join(' ')).toLowerCase().includes(term);});
  const k=sort.value;
  rows.sort((a,b)=> k==='t'?a.t.localeCompare(b.t): k==='id'?a.id.localeCompare(b.id):((b[k]||0)-(a[k]||0)) || a.id.localeCompare(b.id));
  list.innerHTML=rows.length?rows.map((d,i)=>`
  <div class="row"><div class="rhead" onclick="this.nextElementSibling.classList.toggle('open')">
   <span class="rid">${d.id}</span>
-  <span><span class="rtitle">${esc(d.t)}${d.live?` <span class="pill" style="color:var(--good);font-weight:700">LIVE ${esc(d.live)}</span>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${d.la?` · last touched ${esc(d.la)}`:''}</span></span>
+  <span><span class="rtitle">${esc(d.t)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${d.la?` · last touched ${esc(d.la)}`:''}</span></span>
   ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
  </div><div class="detail">
   ${d.th?`<h4>Theme</h4>${esc(d.th)}`:''}
@@ -189,7 +209,7 @@ function render(){
   ${d.oq?`<h4>Open questions</h4>${esc(d.oq)}`:''}
  </div></div>`).join(''):'<div class="empty">No songs match — clear a filter?</div>';
 }
-[q,proj,sort,scored].forEach(el=>el.addEventListener('input',render));
+[q,proj,sort,scored,scope].forEach(el=>el.addEventListener('input',render));
 render();
 // ---- memo transcript search ----
 const mq=document.getElementById('mq'), mlist=document.getElementById('mlist');

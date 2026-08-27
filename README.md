@@ -15,7 +15,7 @@ This is the working brain of the Jeff Story catalog: 150 song entities spanning 
 | Know what to work on next | [`00_control_room/Priority Queue.md`](00_control_room/Priority%20Queue.md) |
 | See the whole plan | [`00_control_room/THE PLAN.md`](00_control_room/THE%20PLAN.md) |
 | Know what's *alive* vs. sleeping | [`00_control_room/What's Alive — Momentum Index.md`](00_control_room/What's%20Alive%20—%20Momentum%20Index.md) |
-| Browse every song interactively | `Jeff Story Song Vault Dashboard.html` (open in any browser) |
+| Browse every song interactively | `Jeff Story Song Vault Dashboard.html` (open in any browser; catalog rows are not the official set) |
 | Understand the songs as a body of work | [`00_control_room/Song Map.md`](00_control_room/Song%20Map.md) |
 | Co-write with an AI without it sounding like AI | [`00_control_room/Jeff Story Style Guide.md`](00_control_room/Jeff%20Story%20Style%20Guide.md) |
 | See what needs Jeff's answer | [`00_control_room/Needs Jeff.md`](00_control_room/Needs%20Jeff.md) |
@@ -110,7 +110,7 @@ See [`00_control_room/Rights and AI Provenance.md`](00_control_room/Rights%20and
 
 ## Related projects
 
-The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — schema 3; local JSON only after StoryBoard #12 — Band operations → Music & setlists; remote catalog URLs are rejected; StoryBoard #16 rejects the spine as an import; StoryBoard reads `id` / `title` / `project` / `is_original` / `key` / `bpm` / `bpm_int` / `vault_id` / `vault_ref` / `played_live` / `import_scope`; default live is the published `setlist_ready_default_import` **Vault default-live** slice, including parked-named rows as current-artist repertoire, not an empty list and not a fourth live band; Show Night binds planned Vault titles only; Show Night official set is owner-only; StoryBoard #19 binds a local official-set dump as **Rad Dad — official set**; guest/parked slugs stay opt-in; Show Night is the live set surface; Travis is `travis_books`; nothing auto-posts; not a second catalog, not StoryDesk/StoryOps, StoryLiner is promo only). See [`APPS.md`](APPS.md).
+The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — schema 3; local JSON only after StoryBoard #12 — Band operations → Music & setlists; remote catalog URLs are rejected; StoryBoard #16 rejects the spine as an import; StoryBoard reads `id` / `title` / `project` / `is_original` / `key` / `bpm` / `bpm_int` / `vault_id` / `vault_ref` / `played_live` / `import_scope`; default live is the published `setlist_ready_default_import` **Vault default-live** slice, including parked-named rows as current-artist repertoire, not an empty list and not a fourth live band; catalog rows are not the official set; Show Night owns official sets; Show Night binds planned Vault titles only; Show Night official set is owner-only; StoryBoard #19 binds a local official-set dump as **Rad Dad — official set**; guest/parked slugs stay opt-in; Show Night is the live set surface; Travis is `travis_books`; nothing auto-posts; not a second catalog, not StoryDesk/StoryOps, StoryLiner is promo only). See [`APPS.md`](APPS.md).
 
 ## Current state
 

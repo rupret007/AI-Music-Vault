@@ -1,7 +1,7 @@
 # Vault → StoryBoard (consolidated path)
 
 *2026-08-26 · Control-room pointer, not a new priority list.*
-*Importer-honest pass: `data/app_api.json` is the StoryBoard feed after StoryBoard #19 — local JSON only, StoryBoard rejects the spine as an import, and a local official-set dump binds as Rad Dad — official set. Remote catalog URLs are rejected.*
+*Importer-honest pass: `data/app_api.json` is the StoryBoard feed after StoryBoard #20 — local JSON only, StoryBoard rejects the spine as an import, a local official-set dump binds as Rad Dad — official set, and catalog rows are not the official set. Show Night owns official sets. Remote catalog URLs are rejected.*
 
 **This vault is the song brain.** StoryBoard is the band-management OS that reads it. StoryLiner is promo only. There is no StoryDesk / StoryOps band OS, and this repo does not grow a new manager app or a fourth live band.
 
@@ -16,7 +16,7 @@
 ## Fields StoryBoard actually imports
 
 From `songs[]`: `id`, `title`, `project`, `is_original`, `key`, `bpm`, `bpm_int`, `vault_id`, `vault_ref`, `played_live`, `import_scope`.
-StoryBoard #19 reads this file (`data/app_api.json`) as local JSON only, rejects `master_catalog.json`, and rejects a remote URL. It also reads the published `setlist_ready_default_import` id list and names that draft **Vault default-live**. An empty published slice stays empty. Parked-named rows in the slice stay current-artist repertoire. When a Vault payload is present, Show Night only binds planned Vault titles. Show Night official set is owner-only. Public suggestions cannot mutate it. This feed is not a public Show Night writer. StoryBoard binds a local official-set dump as **Rad Dad — official set**. Guest/parked slugs stay opt-in. Show Night is the live set surface. Nothing auto-posts. Preview/apply lives in Band operations → Music & setlists.
+StoryBoard #19 reads this file (`data/app_api.json`) as local JSON only, rejects `master_catalog.json`, and rejects a remote URL. It also reads the published `setlist_ready_default_import` id list and names that draft **Vault default-live**. An empty published slice stays empty. Parked-named rows in the slice stay current-artist repertoire. When a Vault payload is present, Show Night only binds planned Vault titles. Show Night official set is owner-only. Public suggestions cannot mutate it. This feed is not a public Show Night writer. StoryBoard binds a local official-set dump as **Rad Dad — official set**. Guest/parked slugs stay opt-in. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Nothing auto-posts. Preview/apply lives in Band operations → Music & setlists.
 
 | StoryBoard writes | Vault field | Do not |
 |---|---|---|
@@ -53,7 +53,7 @@ StoryBoard may *display* the whole library after an opt-in import. It must not p
 ## Setlists + ops (same file, not a second catalog)
 
 - **Library seed:** `songs[]` (StoryBoard merge key = `vault:catalog_import_v1:{id}`).
-- **Setlist seed:** default import prefers `setlist_ready_default_import` and writes **Vault default-live**. Opt-in parked/all still uses `setlist_ready` and writes **Vault setlist-ready**. Those counts stay distinct and fail closed if a hand-edit conflates them. Published catalog tallies stay catalog-true and fail closed if omitted or collapsed into a setlist count. StoryBoard `SetlistItem.itemType` = `song`. Do **not** invent breaks, durations, or running order. Show Night does not expand this catalog. Official set writes stay owner-only.
+- **Setlist seed:** default import prefers `setlist_ready_default_import` and writes **Vault default-live**. Opt-in parked/all still uses `setlist_ready` and writes **Vault setlist-ready**. Those counts stay distinct and fail closed if a hand-edit conflates them. Published catalog tallies stay catalog-true and fail closed if omitted or collapsed into a setlist count. Vault default-live is a catalog slice, not the official live set. Catalog rows are not the official set. StoryBoard `SetlistItem.itemType` = `song`. Do **not** invent breaks, durations, or running order. Show Night does not expand this catalog. Official set writes stay owner-only. Show Night owns official sets.
 - **Ops write-back:** drop `show_played` / `bounce` JSON into `events/` citing vault ids. Lanes in the feed are WIP slots, not a setlist. Remote catalog URLs are rejected on the StoryBoard side. Official-set dumps bind as **Rad Dad — official set**; guest/parked slugs stay opt-in.
 
 ## What StoryBoard should not do

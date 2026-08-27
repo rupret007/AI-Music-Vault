@@ -25,10 +25,15 @@ import os
 import re
 import sys
 
+from catalog_surface import (
+    catalog_surface_admits_not_official_set,
+    catalog_surface_claims_official_set,
+)
 from storyboard_contract import (
     BAND_OPERATIONS_IMPORT,
     BOOKER_CATALOG_PROJECTS,
     CATALOG_BOOKER_POLICY,
+    CATALOG_ROWS_ARE_NOT_THE_OFFICIAL_SET,
     IMPORTER_CATALOG_READS,
     IMPORTER_READS,
     LIVE_CATALOG_PROJECTS,
@@ -58,6 +63,7 @@ from storyboard_contract import (
     SHOW_NIGHT_OFFICIAL_SET_SLUG,
     SHOW_NIGHT_OFFICIAL_SET_WRITE,
     SHOW_NIGHT_ONE_PUBLIC_SUGGESTION_WRITER,
+    SHOW_NIGHT_OWNS_OFFICIAL_SETS,
     SHOW_NIGHT_PUBLIC_SUGGESTION_WRITE,
     SHOW_NIGHT_PUBLIC_SUGGESTIONS_CANNOT_MUTATE_SET,
     SHOW_NIGHT_ROLE,
@@ -73,6 +79,7 @@ from storyboard_contract import (
     SHOW_NIGHT_DOES_NOT_EXPAND_VAULT,
     SHOW_NIGHT_NOT_IN_VAULT,
     SKIP_REASON_TO_COUNT,
+    VAULT_DEFAULT_LIVE_IS_NOT_THE_OFFICIAL_SET,
     VAULT_DEFAULT_LIVE_SETLIST_NAME,
     VAULT_IMPORT_FILE,
     VAULT_SETLIST_READY_SETLIST_NAME,
@@ -252,6 +259,27 @@ def apps_md_claims_suggestion_dump_is_official_set(text: str) -> bool:
         or "suggestions are the official set" in body
         or "suggestion board is the official set" in body
     )
+
+
+def apps_md_admits_catalog_not_official_set(text: str) -> bool:
+    """APPS.md must admit catalog rows / default-live are not the official set."""
+    body = (text or "").lower()
+    has_not = (
+        "catalog rows are not the official set" in body
+        or "catalog rows are not the live set" in body
+        or "default-live is not the official set" in body
+        or "vault default-live is not the official set" in body
+    )
+    has_owner = (
+        "show night owns official" in body
+        or "show night owns the official" in body
+    )
+    return has_not and has_owner
+
+
+def apps_md_claims_catalog_is_official_set(text: str) -> bool:
+    """Jeff-facing APPS.md must not call catalog rows the official live set."""
+    return catalog_surface_claims_official_set(text)
 
 
 def module_doc_claims_hosted_ci() -> bool:
@@ -678,6 +706,16 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.inspected must name Show Night #3 "
                 "(Show Night is the live set surface)"
             )
+        if "StoryBoard #20" not in inspected:
+            errors.append(
+                "storyboard.inspected must name StoryBoard #20 "
+                "(Vault framing after official-set bind)"
+            )
+        if "catalog rows are not the official set" not in inspected:
+            errors.append(
+                "storyboard.inspected must admit catalog rows are "
+                "not the official set"
+            )
         if sb.get("local_json_only") is not LOCAL_JSON_ONLY:
             errors.append(
                 "storyboard.local_json_only must be true — StoryBoard #12 "
@@ -828,6 +866,26 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             errors.append("storyboard.vault_role must be catalog")
         if sb.get("raddad_site_role") != RADDAD_SITE_ROLE:
             errors.append("storyboard.raddad_site_role must be public_site")
+        if sb.get("catalog_rows_are_not_the_official_set") is not (
+            CATALOG_ROWS_ARE_NOT_THE_OFFICIAL_SET
+        ):
+            errors.append(
+                "storyboard.catalog_rows_are_not_the_official_set must "
+                "be true — catalog rows are not the live set"
+            )
+        if sb.get("vault_default_live_is_not_the_official_set") is not (
+            VAULT_DEFAULT_LIVE_IS_NOT_THE_OFFICIAL_SET
+        ):
+            errors.append(
+                "storyboard.vault_default_live_is_not_the_official_set "
+                "must be true — Vault default-live is a catalog slice"
+            )
+        if sb.get("show_night_owns_official_sets") is not (
+            SHOW_NIGHT_OWNS_OFFICIAL_SETS
+        ):
+            errors.append(
+                "storyboard.show_night_owns_official_sets must be true"
+            )
         ops = sb.get("ops") or {}
         if ops.get("never_auto_post") is not True:
             errors.append("storyboard.ops.never_auto_post must be true")
@@ -904,6 +962,20 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         if ops.get("show_night_role") != SHOW_NIGHT_ROLE:
             errors.append(
                 "storyboard.ops.show_night_role must be live_set_surface"
+            )
+        if ops.get("catalog_rows_are_not_the_official_set") is not True:
+            errors.append(
+                "storyboard.ops.catalog_rows_are_not_the_official_set "
+                "must be true"
+            )
+        if ops.get("vault_default_live_is_not_the_official_set") is not True:
+            errors.append(
+                "storyboard.ops.vault_default_live_is_not_the_official_set "
+                "must be true"
+            )
+        if ops.get("show_night_owns_official_sets") is not True:
+            errors.append(
+                "storyboard.ops.show_night_owns_official_sets must be true"
             )
         if ops.get("jeff_owns_catalog_calls") is not True:
             errors.append(
@@ -1753,6 +1825,16 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "APPS.md must admit the official-set dump binds as "
                 "Rad Dad — official set and Show Night is the live set surface"
             )
+        if apps_md_claims_catalog_is_official_set(apps_md):
+            errors.append(
+                "APPS.md still claims catalog rows are the official "
+                "set — Show Night owns official sets"
+            )
+        if not apps_md_admits_catalog_not_official_set(apps_md):
+            errors.append(
+                "APPS.md must admit catalog rows are not the official "
+                "set and Show Night owns official sets"
+            )
         errors.extend(public_facing_doc_errors("APPS.md", apps_md, cat))
 
     readme = extras.get("readme")
@@ -1768,6 +1850,16 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
         version = str(cat.get("version") or "")
         if version and f"Catalog v{version}" not in dash:
             errors.append(f"dashboard does not advertise Catalog v{version}")
+        if catalog_surface_claims_official_set(dash):
+            errors.append(
+                "dashboard still claims catalog rows are the live set — "
+                "Show Night owns official sets"
+            )
+        if not catalog_surface_admits_not_official_set(dash):
+            errors.append(
+                "dashboard must reuse data/app_api.json and admit "
+                "catalog rows are not the official set"
+            )
 
     audio_hits = extras.get("audio_files")
     if audio_hits:

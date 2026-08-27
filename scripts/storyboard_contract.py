@@ -2,18 +2,21 @@
 """
 StoryBoard import contract — what catalog-import.ts actually does.
 
-Inspected 2026-08-27 from rupret007/StoryBoard main after PR #19
+Inspected 2026-08-27 from rupret007/StoryBoard main after PR #20
 (`packages/shared/src/catalog-import.ts`) and rupret007/rad-dad-show-night
-after #3. Vault #7–#19 already lock the schema-3 published slice,
+after #3. Vault #7–#20 already lock the schema-3 published slice,
 setlist names, catalog counts, import file vs spine, spine-reject,
-Show Night-does-not-expand, never_auto_post, local-JSON-only, and
-owner-only official-set writes. StoryBoard #16 rejects
-`master_catalog.json` at the catalog import boundary. A rejected
-Vault payload also blocks a paired Show Night plan. StoryBoard #19
-binds a local official-set dump (`songs[]` + `setSlug`) as
-Rad Dad — official set. Guest/parked slugs stay opt-in. Public
-suggestion dumps are not the official set. Show Night #3 names
-Show Night as the live set surface; Vault is the catalog.
+Show Night-does-not-expand, never_auto_post, local-JSON-only,
+owner-only official-set writes, and the official-set dump bind.
+StoryBoard #16 rejects `master_catalog.json` at the catalog import
+boundary. A rejected Vault payload also blocks a paired Show Night
+plan. StoryBoard #19 binds a local official-set dump (`songs[]` +
+`setSlug`) as Rad Dad — official set. Guest/parked slugs stay
+opt-in. Public suggestion dumps are not the official set.
+StoryBoard #20 keeps Vault song rows Vault-framed after that bind.
+Show Night #3 names Show Night as the live set surface; Vault is
+the catalog. Catalog rows / Vault default-live are not the
+official live set. Show Night owns official sets.
 
 `data/app_api.json` is the StoryBoard import. `master_catalog.json`
 is the spine and is rejected as an import. StoryLiner is promo only.
@@ -88,6 +91,11 @@ SHOW_NIGHT_FEED_IMPORT_ERROR = (
 SHOW_NIGHT_ROLE = "live_set_surface"
 VAULT_ROLE = "catalog"
 RADDAD_SITE_ROLE = "public_site"
+# Leftover after Vault #20 / StoryBoard #20: catalog rows stay
+# catalog. Vault default-live is not the official live set.
+CATALOG_ROWS_ARE_NOT_THE_OFFICIAL_SET = True
+VAULT_DEFAULT_LIVE_IS_NOT_THE_OFFICIAL_SET = True
+SHOW_NIGHT_OWNS_OFFICIAL_SETS = True
 # Field names only — not a catalog dump. A public suggestion that
 # carries any of these is an official-set mutation attempt.
 OFFICIAL_SET_MUTATION_KEYS = (
@@ -1113,11 +1121,13 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
         "consumer": "StoryBoard",
         "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
         "inspected": (
-            "2026-08-27 after StoryBoard #19 "
+            "2026-08-27 after StoryBoard #20 "
             "(StoryBoard #12 local JSON; StoryBoard #16 spine rejected; "
             "Show Night #1/#2 official set owner-only; "
-            "official-set dump binds Rad Dad — official set; "
-            "Show Night #3 live set surface)"
+            "StoryBoard #19 official-set dump binds Rad Dad — official set; "
+            "Show Night #3 live set surface; "
+            "StoryBoard #20 Vault framing after official-set bind; "
+            "catalog rows are not the official set)"
         ),
         "policy_version": CATALOG_IMPORT_POLICY_VERSION,
         "import_from": "songs",
@@ -1169,6 +1179,13 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
         "show_night_role": SHOW_NIGHT_ROLE,
         "vault_role": VAULT_ROLE,
         "raddad_site_role": RADDAD_SITE_ROLE,
+        "catalog_rows_are_not_the_official_set": (
+            CATALOG_ROWS_ARE_NOT_THE_OFFICIAL_SET
+        ),
+        "vault_default_live_is_not_the_official_set": (
+            VAULT_DEFAULT_LIVE_IS_NOT_THE_OFFICIAL_SET
+        ),
+        "show_night_owns_official_sets": SHOW_NIGHT_OWNS_OFFICIAL_SETS,
         "booker_policy": CATALOG_BOOKER_POLICY,
         "prefers_published_default_import": True,
         "empty_published_slice_stays_empty": True,
@@ -1225,9 +1242,12 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "(songs[] + setSlug) as 'Rad Dad — official set'. Guest/parked "
             "slugs stay opt-in — not a fourth live band. Public suggestion "
             "dumps are not the official set. Show Night is the live set "
-            "surface; Vault is the catalog. Nothing auto-posts. "
-            "Jeff owns feel, set-list, and catalog calls. Do not invent Rad "
-            "Dad catalog rows or a fourth live band."
+            "surface; Vault is the catalog. Vault default-live is a "
+            "catalog slice, not the official live set. Catalog rows are "
+            "not the official set. Show Night owns official sets. "
+            "Nothing auto-posts. Jeff owns feel, set-list, and catalog "
+            "calls. Do not invent Rad Dad catalog rows or a fourth live "
+            "band."
         ),
         "active_lanes": ["flagship", "quick_win", "experimental"],
         "active_lane_cap": 3,
@@ -1265,6 +1285,9 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
                 SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME
             ),
             "show_night_role": SHOW_NIGHT_ROLE,
+            "catalog_rows_are_not_the_official_set": True,
+            "vault_default_live_is_not_the_official_set": True,
+            "show_night_owns_official_sets": True,
             "jeff_owns_catalog_calls": True,
         },
     }
