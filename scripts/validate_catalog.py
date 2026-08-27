@@ -11,6 +11,7 @@ fall back to Session 1. APPS.md must not treat hosted CI as that gate.
 This does NOT listen to audio, score songs, or invent priorities.
 Jeff owns the three active lanes; this script only verifies they still exist
 and that machine-readable gates match already-recorded rights.
+Success output is roles and counts only — no published ids.
 
 Run:  python3 scripts/validate_catalog.py
 Exit: 0 if clean, 1 if any error (local validate fails closed).
@@ -306,6 +307,20 @@ def public_doc_has_collaborator_map(text: str, cat: dict) -> bool:
         _phrase_in_public_doc(name, body)
         for name in public_doc_collaborator_names(cat)
     )
+
+
+def catalog_ok_report(entity_count: int, original_count: int) -> str:
+    """Local validate success is roles and counts only. Do not echo published ids."""
+    return (
+        f"catalog OK — {entity_count} entities · {original_count} originals · "
+        "3 active lanes · protected opus"
+    )
+
+
+def catalog_ok_report_leaks_published_ids(text: str | None = None) -> bool:
+    """Success line must stay paste-safe. Published ids are a leftover leak."""
+    body = catalog_ok_report(0, 0) if text is None else (text or "")
+    return public_doc_has_published_ids(body)
 
 
 def public_facing_doc_errors(label: str, text: str, cat: dict) -> list[str]:
@@ -1403,6 +1418,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "Producer README resume must start from the latest Session Log H2"
             )
 
+    if catalog_ok_report_leaks_published_ids():
+        errors.append(
+            "validator success line still ships published ids — "
+            "roles and counts only"
+        )
+
     if module_doc_claims_hosted_ci():
         errors.append(
             "validator docstring still claims CI fails closed — "
@@ -1525,12 +1546,7 @@ def main() -> int:
         for err in errors:
             print(f"  • {err}")
         return 1
-    print(
-        f"catalog OK — {len(songs)} entities · {originals} originals · "
-        f"lanes {ACTIVE_LANES['flagship']}/"
-        f"{ACTIVE_LANES['quick_win']}/"
-        f"{ACTIVE_LANES['experimental']} · opus {PROTECTED_LANES['opus']} protected"
-    )
+    print(catalog_ok_report(len(songs), originals))
     return 0
 
 
