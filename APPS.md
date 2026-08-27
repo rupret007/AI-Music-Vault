@@ -1,7 +1,7 @@
 # THE APP ECOSYSTEM — Jeff's music software, and how it connects to the vault
 
 *Vault is the song brain. StoryBoard is the band-management OS that consumes it.
-Updated 2026-08-27 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. StoryBoard rejects the spine as an import. Show Night official set is owner-only. Remote catalog URLs are rejected. Jeff-facing wording here is roles and counts only.*
+Updated 2026-08-27 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. StoryBoard rejects the spine as an import. Show Night official set is owner-only. StoryBoard binds a local official-set dump as **Rad Dad — official set**. Show Night is the live set surface. Remote catalog URLs are rejected. Jeff-facing wording here is roles and counts only.*
 
 ## The consolidated path (read this first)
 
@@ -32,7 +32,8 @@ Updated 2026-08-27 — consolidated path: **Vault → local `data/app_api.json` 
 
 ### StoryBoard Song mapping (importer-honest, 2026-08-26)
 
-Inspected `rupret007/StoryBoard` `packages/shared/src/catalog-import.ts` after StoryBoard #16.
+Inspected `rupret007/StoryBoard` `packages/shared/src/catalog-import.ts` after StoryBoard #19
+and `rupret007/rad-dad-show-night` after Show Night #3.
 The importer reads **`data/app_api.json`**, not `master_catalog.json`, and only as
 **local JSON** (Band operations → Music & setlists). Remote catalog URLs are
 rejected. From `songs[]` it reads `id`, `title`, `project`, `is_original`, `key`,
@@ -44,6 +45,11 @@ When a Vault payload is present, Show Night only binds planned Vault titles
 and does not mint excluded rows or fill an empty published slice.
 Show Night official set is owner-only. Public suggestions cannot mutate it.
 This feed is not a public Show Night writer.
+StoryBoard binds a local official-set dump (`songs[]` + `setSlug`) as
+**Rad Dad — official set**. Guest/parked slugs stay opt-in — not a fourth
+live band. Public suggestion dumps are not the official set.
+Show Night is the live set surface. Vault is the catalog. The public band
+site is a separate surface.
 Prisma still has duration / vocalist / genre / URLs — those stay null.
 **Nothing auto-posts. Jeff owns feel, set-list, and catalog calls.**
 **StoryLiner is promo only** and does not consume this feed.
@@ -62,7 +68,7 @@ Prisma still has duration / vocalist / genre / URLs — those stay null.
 
 Seed keyed originals from `setlist_ready`. Default import keeps `setlist_ready_default_import` (not an invented setlist). Merge on StoryBoard `sourceKey`, not on title. Field map is StoryBoard's `VAULT_STORYBOARD_FIELD_MAP` (`bpm_int`, notes ← `vault_ref`, `active = is_original !== false`).
 
-**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Default import writes **Vault default-live**; opt-in parked/all writes **Vault setlist-ready**. Those two drafts stay distinct, and the published catalog tallies stay catalog-true — fail closed if omitted or conflated. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist. Show Night is a running-order import on this feed, not a second catalog. Show Night official set is owner-only.
+**Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Default import writes **Vault default-live**; opt-in parked/all writes **Vault setlist-ready**. Those two drafts stay distinct, and the published catalog tallies stay catalog-true — fail closed if omitted or conflated. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist. Show Night is the live set surface, not a second catalog. StoryBoard binds a local official-set dump as **Rad Dad — official set**. Guest/parked slugs stay opt-in. Show Night official set is owner-only.
 
 **Ops:** StoryBoard show/booking events write back to `events/` (`show_played` with vault ids). That is the ops loop. No second catalog.
 
@@ -76,8 +82,8 @@ Regenerate after catalog edits: `python3 scripts/export_app_api.py`. Local `pyth
 | Repo | What it is | Vault relevance |
 |---|---|---|
 | **webjam** | Desktop conductor for low-latency remote collaboration — Jamulus sessions, Reference Studio (local recording/arrangement/mixing, non-destructive, WAV/FLAC bounce with checksums), meeting handoff, iPhone companion. v0.26.0, four-platform CI, MIT. | **HIGH — bidirectional.** Every Reference Studio bounce is a new song version with a checksum. That's version-chain data of better quality than anything in Drive. |
-| **rad-dad-show-night** | Rad Dad + Friends show-night run sheet, set lists, shared song-suggestion board. TypeScript. | **HIGH — write-back.** Live-set events belong in `events/` and should cite vault ids. StoryBoard is still the band OS; this app is the night-of sheet. |
-| **RadDadSite** | Rad Dad band website. CSS. | **MEDIUM — outbound.** Could render setlists/originals from vault data instead of hand-maintained lists. |
+| **rad-dad-show-night** | Live set surface next to this catalog and the public band site. Official set is owner-only. TypeScript. | **HIGH — write-back.** Live-set events belong in `events/` and should cite vault ids. StoryBoard binds a local official-set dump as **Rad Dad — official set**. This feed does not write that set. |
+| **RadDadSite** | Public band site. CSS. | **MEDIUM — outbound.** Public surface only — not the catalog, not the live set surface. |
 
 ### 🤖 The assistants
 | Repo | What it is | Vault relevance |
@@ -125,6 +131,6 @@ Prefer vault ids. Titles work as a fallback. Same shape for WebJam bounces (`{"e
 - ~~Which of the Story-family repos touch music?~~ **RESOLVED:** StoryBoard = band OS, StoryLiner = promo, Story-Flight-Plan = not music. StoryDesk / StoryOps are not the band OS.
 - ~~StoryBoard song-library schema?~~ **RESOLVED 2026-08-23** (inspected `prisma` `Song`): title / musicalKey / bpm / durationSeconds / leadVocalist / active. Mapping is in `data/app_api.json` → `storyboard`. Duration and lead vocalist stay null until Jeff supplies them.
 - Is the assistant named after a catalog row, or a separate thing?
-- Does `rad-dad-show-night` already store setlists in a structured file we can read directly?
+- ~~Does `rad-dad-show-night` already store setlists in a structured file we can read directly?~~ **RESOLVED 2026-08-27:** official set is a local `songs[]` + `setSlug` dump. StoryBoard binds `rad-dad` as **Rad Dad — official set**. Guest/parked slugs stay opt-in. Unused title dumps stay removed.
 - StoryBoard library today: empty or hand-populated? (Import is a seed vs a merge on `vault:catalog_import_v1:{id}`.)
 - Should any vault `artist_project` be labeled **Rad Dad**, or does Jeff always import with `includeAllProjects` / `includeParked`? Default live is the published 20-row `setlist_ready_default_import` slice (including parked-named / hybrid rows as current-artist repertoire) — we will not invent Rad Dad rows or a fourth live band.

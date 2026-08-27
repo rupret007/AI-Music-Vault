@@ -16,11 +16,15 @@ from storyboard_contract import (  # noqa: E402
     NEVER_AUTO_POST,
     PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
     REMOTE_CATALOG_URLS,
+    SHOW_NIGHT_FEED_IMPORT_ERROR,
     SHOW_NIGHT_NOT_IN_VAULT,
+    SHOW_NIGHT_OFFICIAL_SET_IMPORT_ERROR,
+    SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME,
     VAULT_DEFAULT_LIVE_SETLIST_NAME,
     VAULT_IMPORT_FILE,
     VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_STORYBOARD_FIELD_MAP,
+    bind_official_set_dump,
     catalog_import_scope,
     catalog_locator_looks_remote,
     decide_vault_song,
@@ -36,6 +40,9 @@ from storyboard_contract import (  # noqa: E402
     public_suggestion_writer_is_canonical,
     recognized_import_scope,
     show_night_bind_title,
+    show_night_catalog_payload_error,
+    show_night_payload_looks_like_official_set_dump,
+    show_night_payload_looks_like_suggestion,
     spine_default_plan_ids,
     storyboard_parse_bpm,
     vault_payload_looks_like_spine,
@@ -50,11 +57,13 @@ from validate_catalog import (  # noqa: E402
     PROTECTED_LANES,
     YES_GATE,
     apps_md_admits_empty_runner,
+    apps_md_admits_official_set_dump,
     apps_md_admits_show_night_owner_only,
     apps_md_admits_spine_reject,
     apps_md_claims_feed_writes_official_set,
     apps_md_claims_hosted_ci,
     apps_md_claims_spine_still_accepted,
+    apps_md_claims_suggestion_dump_is_official_set,
     catalog_ok_report,
     catalog_ok_report_leaks_published_ids,
     duplicate_session_log_headings,
@@ -125,6 +134,71 @@ def fixture():
         "songs": songs,
         "voice_memo_pool": {"matched": 2, "matched_songs": 1},
     }
+
+
+APPS_MD_HONEST = (
+    "Local python3 scripts/validate_catalog.py fails closed "
+    "if this file drifts. Hosted catalog-validate may be a "
+    "0-step empty-runner — not a catalog fail. "
+    "StoryBoard rejects the spine as an import. "
+    "Show Night official set is owner-only. "
+    "StoryBoard binds a local official-set dump as "
+    "Rad Dad — official set. Show Night is the live set surface.\n"
+)
+
+OFFICIAL_SET_DUMP = {
+    "show": {
+        "title": "Example Night",
+        "venue": "Example Room",
+        "date": "Saturday, September 19, 2026",
+    },
+    "sets": [
+        {"slug": "stalemate", "title": "Stalemate"},
+        {"slug": "rad-dad", "title": "Rad Dad"},
+    ],
+    "songs": [
+        {
+            "setSlug": "stalemate",
+            "position": 1,
+            "title": "Parked Demo",
+            "isOriginal": True,
+        },
+        {
+            "setSlug": "rad-dad",
+            "position": 1,
+            "title": "Harbor Lights →",
+            "isOriginal": True,
+            "transition": True,
+        },
+        {
+            "setSlug": "rad-dad",
+            "position": 2,
+            "title": "Cover Example",
+            "isOriginal": False,
+        },
+    ],
+}
+
+SUGGESTION_DUMP = {
+    "suggestions": [
+        {
+            "title": "Cover Example",
+            "artist": "Example Artist",
+            "notes": "please add this",
+        }
+    ]
+}
+
+LEGACY_SHOW_JSON = {
+    "event": {"name": "Example Night"},
+    "radDadSet": [
+        {"number": 1, "song": "Harbor Lights →", "transition": True},
+        {"number": 2, "song": "Cover Example"},
+    ],
+    "guestSets": [
+        {"name": "Stalemate", "songs": [{"number": 1, "song": "Parked Demo"}]},
+    ],
+}
 
 
 def extras_ok(cat=None):
@@ -681,6 +755,40 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
 
+    def test_missing_official_set_dump_bind_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"] = False
+        extra["app_api"]["storyboard"]["ops"][
+            "show_night_binds_official_set_dump"
+        ] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("show_night_binds_official_set_dump" in e for e in errors),
+            errors,
+        )
+
+    def test_missing_guest_sets_opt_in_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["show_night_guest_sets_stay_opt_in"] = False
+        extra["app_api"]["storyboard"]["ops"][
+            "show_night_guest_sets_stay_opt_in"
+        ] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("show_night_guest_sets_stay_opt_in" in e for e in errors),
+            errors,
+        )
+
+    def test_inspected_without_storyboard_19_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["inspected"] = (
+            "2026-08-27 after StoryBoard #16 "
+            "(StoryBoard #12 local JSON; spine rejected; "
+            "Show Night #1/#2 official set owner-only)"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("StoryBoard #19" in e for e in errors), errors)
+
     def test_default_setlist_name_must_be_vault_default_live(self):
         extra = extras_ok()
         extra["app_api"]["storyboard"]["default_live_setlist_name"] = (
@@ -1163,6 +1271,101 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertFalse(public_suggestion_writer_is_canonical("/api/show"))
 
+    def test_official_set_dump_binds_rad_dad_only(self):
+        """Harbor Lights / Cover Example / Parked Demo fixtures only."""
+        self.assertTrue(show_night_payload_looks_like_official_set_dump(OFFICIAL_SET_DUMP))
+        self.assertFalse(show_night_payload_looks_like_official_set_dump(LEGACY_SHOW_JSON))
+        self.assertFalse(show_night_payload_looks_like_suggestion(OFFICIAL_SET_DUMP))
+        self.assertIsNone(show_night_catalog_payload_error(OFFICIAL_SET_DUMP))
+        leftover = bind_official_set_dump(OFFICIAL_SET_DUMP)
+        self.assertTrue(leftover["ok"])
+        self.assertEqual(leftover["official_name"], SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME)
+        self.assertEqual(leftover["official_titles"], ["Harbor Lights", "Cover Example"])
+        self.assertEqual(leftover["guests"], [])
+        self.assertTrue(
+            any(
+                row["reason"] == "guest_set_skipped" and row["title"] == "Stalemate"
+                for row in leftover["skipped"]
+            )
+        )
+        self.assertNotIn("Parked Demo", leftover["official_titles"])
+
+    def test_official_set_dump_with_vault_binds_planned_only(self):
+        songs = [
+            {
+                "id": "RD-0001",
+                "title": "Harbor Lights",
+                "project": "Rad Dad",
+                "is_original": True,
+                "import_scope": "default_live",
+            },
+            {
+                "id": "CV-0001",
+                "title": "Cover Example",
+                "project": "Rad Dad",
+                "is_original": False,
+                "import_scope": "cover_not_active",
+            },
+        ]
+        published = {"RD-0001"}
+        ready = {"RD-0001"}
+        planned = planned_vault_titles(songs, ready, published)
+        skip = vault_skip_by_title(songs, ready, published)
+        leftover = bind_official_set_dump(OFFICIAL_SET_DUMP, planned, skip)
+        self.assertTrue(leftover["ok"])
+        self.assertEqual(leftover["official_titles"], ["Harbor Lights"])
+        self.assertTrue(
+            any(
+                row["reason"] == "cover_not_active"
+                and row["title"] == "Cover Example"
+                and row.get("source") == "show_night"
+                for row in leftover["skipped"]
+            )
+        )
+        self.assertTrue(
+            any(
+                row["reason"] == "guest_set_skipped" and row["title"] == "Stalemate"
+                for row in leftover["skipped"]
+            )
+        )
+        guests = bind_official_set_dump(
+            OFFICIAL_SET_DUMP, planned, skip, include_guest_sets=True
+        )
+        self.assertTrue(any(guest["name"] == "Stalemate" for guest in guests["guests"]))
+        self.assertFalse(
+            any(row["reason"] == "guest_set_skipped" for row in guests["skipped"])
+        )
+
+    def test_suggestion_dump_is_refused(self):
+        self.assertTrue(show_night_payload_looks_like_suggestion(SUGGESTION_DUMP))
+        self.assertEqual(
+            show_night_catalog_payload_error(SUGGESTION_DUMP),
+            SHOW_NIGHT_OFFICIAL_SET_IMPORT_ERROR,
+        )
+        leftover = bind_official_set_dump(SUGGESTION_DUMP)
+        self.assertFalse(leftover["ok"])
+        self.assertEqual(leftover["error"], SHOW_NIGHT_OFFICIAL_SET_IMPORT_ERROR)
+        self.assertEqual(leftover["official_titles"], [])
+        self.assertIsNone(leftover["official_name"])
+
+    def test_legacy_raddadset_still_works(self):
+        self.assertFalse(show_night_payload_looks_like_official_set_dump(LEGACY_SHOW_JSON))
+        self.assertIsNone(show_night_catalog_payload_error(LEGACY_SHOW_JSON))
+        leftover = bind_official_set_dump(LEGACY_SHOW_JSON)
+        self.assertTrue(leftover["ok"])
+        self.assertEqual(leftover["official_name"], SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME)
+        self.assertEqual(leftover["official_titles"], ["Harbor Lights", "Cover Example"])
+        self.assertTrue(
+            any(
+                row["reason"] == "guest_set_skipped" and row["title"] == "Stalemate"
+                for row in leftover["skipped"]
+            )
+        )
+        self.assertEqual(
+            show_night_catalog_payload_error({"radDadSet": "nope"}),
+            SHOW_NIGHT_FEED_IMPORT_ERROR,
+        )
+
     def test_show_night_does_not_fill_empty_published_slice(self):
         songs = [
             {
@@ -1379,21 +1582,19 @@ class ValidateCatalogTests(unittest.TestCase):
 
     def test_apps_md_local_validate_honesty_passes(self):
         extras = extras_ok()
-        extras["apps_md"] = (
-            "Local python3 scripts/validate_catalog.py fails closed "
-            "if this file drifts. Hosted catalog-validate may be a "
-            "0-step empty-runner — not a catalog fail. "
-            "StoryBoard rejects the spine as an import. "
-            "Show Night official set is owner-only.\n"
-        )
+        extras["apps_md"] = APPS_MD_HONEST
         self.assertEqual(validate(fixture(), extras), [])
         self.assertFalse(apps_md_claims_hosted_ci(extras["apps_md"]))
         self.assertTrue(apps_md_admits_empty_runner(extras["apps_md"]))
         self.assertFalse(apps_md_claims_spine_still_accepted(extras["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extras["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_official_set_dump(extras["apps_md"]))
         self.assertFalse(
             apps_md_claims_feed_writes_official_set(extras["apps_md"])
+        )
+        self.assertFalse(
+            apps_md_claims_suggestion_dump_is_official_set(extras["apps_md"])
         )
 
     def test_apps_md_spine_remap_lie_fails(self):
@@ -1404,6 +1605,8 @@ class ValidateCatalogTests(unittest.TestCase):
             "0-step empty-runner — not a catalog fail. "
             "StoryBoard rejects the spine as an import. "
             "Show Night official set is owner-only. "
+            "StoryBoard binds a local official-set dump as "
+            "Rad Dad — official set. Show Night is the live set surface. "
             "StoryBoard pointed at master_catalog.json does not remap "
             "live_presence.\n"
         )
@@ -1443,6 +1646,36 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertFalse(apps_md_admits_show_night_owner_only(extras["apps_md"]))
 
+    def test_apps_md_without_official_set_dump_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail. "
+            "StoryBoard rejects the spine as an import. "
+            "Show Night official set is owner-only.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("official-set dump binds" in e or "live set surface" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(apps_md_admits_official_set_dump(extras["apps_md"]))
+
+    def test_apps_md_suggestion_dump_lie_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            APPS_MD_HONEST + "Suggestion dump is the official set.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("suggestion dump as the official" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            apps_md_claims_suggestion_dump_is_official_set(extras["apps_md"])
+        )
+
     def test_apps_md_feed_writes_official_set_lie_fails(self):
         extras = extras_ok()
         extras["apps_md"] = (
@@ -1451,6 +1684,8 @@ class ValidateCatalogTests(unittest.TestCase):
             "0-step empty-runner — not a catalog fail. "
             "StoryBoard rejects the spine as an import. "
             "Show Night official set is owner-only. "
+            "StoryBoard binds a local official-set dump as "
+            "Rad Dad — official set. Show Night is the live set surface. "
             "This feed writes the official set.\n"
         )
         errors = validate(fixture(), extras)
@@ -1561,7 +1796,9 @@ class ValidateCatalogTests(unittest.TestCase):
             "Travis rows are travis_books. Write-back songs array uses "
             "vault ids — do not paste published ids here. "
             "StoryBoard rejects the spine as an import. "
-            "Show Night official set is owner-only.\n"
+            "Show Night official set is owner-only. "
+            "StoryBoard binds a local official-set dump as "
+            "Rad Dad — official set. Show Night is the live set surface.\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertEqual(
@@ -1577,6 +1814,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(apps_md_claims_spine_still_accepted(extras["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extras["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_official_set_dump(extras["apps_md"]))
         self.assertFalse(
             apps_md_claims_feed_writes_official_set(extras["apps_md"])
         )
@@ -1701,8 +1939,12 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertIn("StoryBoard #12", api["storyboard"]["inspected"])
         self.assertIn("StoryBoard #16", api["storyboard"]["inspected"])
+        self.assertIn("StoryBoard #19", api["storyboard"]["inspected"])
         self.assertIn("Show Night #1", api["storyboard"]["inspected"])
+        self.assertIn("Show Night #3", api["storyboard"]["inspected"])
         self.assertIn("owner-only", api["storyboard"]["inspected"])
+        self.assertIn("official-set dump", api["storyboard"]["inspected"])
+        self.assertIn("live set surface", api["storyboard"]["inspected"])
         self.assertEqual(api["storyboard"]["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(api["storyboard"]["master_catalog_is_not_the_import"])
         self.assertTrue(api["storyboard"]["master_catalog_is_rejected"])
@@ -1717,6 +1959,19 @@ class ValidateCatalogTests(unittest.TestCase):
             api["storyboard"]["show_night_public_suggestions_cannot_mutate_set"]
         )
         self.assertTrue(api["storyboard"]["vault_feed_is_not_a_show_night_writer"])
+        self.assertTrue(api["storyboard"]["show_night_binds_official_set_dump"])
+        self.assertTrue(api["storyboard"]["show_night_official_set_dump_is_local"])
+        self.assertEqual(api["storyboard"]["show_night_official_set_slug"], "rad-dad")
+        self.assertEqual(
+            api["storyboard"]["show_night_official_set_setlist_name"],
+            SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME,
+        )
+        self.assertTrue(api["storyboard"]["show_night_guest_sets_stay_opt_in"])
+        self.assertEqual(api["storyboard"]["show_night_role"], "live_set_surface")
+        self.assertEqual(api["storyboard"]["vault_role"], "catalog")
+        self.assertEqual(api["storyboard"]["raddad_site_role"], "public_site")
+        self.assertTrue(api["storyboard"]["ops"]["show_night_binds_official_set_dump"])
+        self.assertTrue(api["storyboard"]["ops"]["show_night_guest_sets_stay_opt_in"])
         self.assertTrue(api["storyboard"]["local_json_only"])
         self.assertIs(api["storyboard"]["remote_catalog_urls"], False)
         self.assertEqual(
@@ -1801,15 +2056,24 @@ class ValidateCatalogTests(unittest.TestCase):
             "Show Night official set is owner-only — 2026-08-27 "
             "(Cloud Agent, no audio)"
         )
+        leftover_dump = (
+            "Official-set dump binds Rad Dad — official set — 2026-08-27 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
         self.assertIn(leftover_owner, headings)
+        self.assertIn(leftover_dump, headings)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
+        self.assertTrue(apps_md_admits_official_set_dump(extra["apps_md"]))
         self.assertFalse(
             apps_md_claims_feed_writes_official_set(extra["apps_md"])
+        )
+        self.assertFalse(
+            apps_md_claims_suggestion_dump_is_official_set(extra["apps_md"])
         )
         self.assertFalse(catalog_ok_report_leaks_published_ids())
         originals = sum(

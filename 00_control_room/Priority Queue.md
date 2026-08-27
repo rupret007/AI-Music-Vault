@@ -14,6 +14,7 @@
 *Local validate success roles/counts only 2026-08-27: catalog-gate stdout stays roles and counts — published ids removed from the success line. Still these three songs. Still no new priorities.*
 *StoryBoard rejects the spine 2026-08-27: live importer after #16 fails closed on the spine — not a fallback planner. Still these three songs. Still no new priorities.*
 *Show Night official set owner-only 2026-08-27: official-set writes stay owner-only; public suggestions cannot mutate that set; this feed is not a public Show Night writer. Still these three songs. Still no new priorities.*
+*Official-set dump bind 2026-08-27: StoryBoard #19 binds a local official-set dump as Rad Dad — official set; guest/parked slugs stay opt-in; Show Night is the live set surface. Still these three songs. Still no new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE

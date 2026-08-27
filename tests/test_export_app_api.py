@@ -28,6 +28,7 @@ from storyboard_contract import (  # noqa: E402
     VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_SPINE_IMPORT_ERROR,
     VAULT_STORYBOARD_FIELD_MAP,
+    SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME,
     bpm_int,
     catalog_locator_looks_remote,
     clean_title,
@@ -100,8 +101,12 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertIn("setlist_ready_default_import", mapping["catalog_reads"])
         self.assertIn("StoryBoard #12", mapping["inspected"])
         self.assertIn("StoryBoard #16", mapping["inspected"])
+        self.assertIn("StoryBoard #19", mapping["inspected"])
         self.assertIn("Show Night #1", mapping["inspected"])
+        self.assertIn("Show Night #3", mapping["inspected"])
         self.assertIn("owner-only", mapping["inspected"])
+        self.assertIn("official-set dump", mapping["inspected"])
+        self.assertIn("live set surface", mapping["inspected"])
         self.assertEqual(mapping["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(mapping["master_catalog_is_not_the_import"])
         self.assertTrue(mapping["master_catalog_is_rejected"])
@@ -113,6 +118,18 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertTrue(mapping["show_night_public_suggestions_cannot_mutate_set"])
         self.assertTrue(mapping["vault_feed_is_not_a_show_night_writer"])
         self.assertTrue(mapping["ops"]["show_night_official_set_is_owner_only"])
+        self.assertTrue(mapping["show_night_binds_official_set_dump"])
+        self.assertTrue(mapping["show_night_official_set_dump_is_local"])
+        self.assertEqual(mapping["show_night_official_set_slug"], "rad-dad")
+        self.assertEqual(
+            mapping["show_night_official_set_setlist_name"],
+            SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME,
+        )
+        self.assertTrue(mapping["show_night_guest_sets_stay_opt_in"])
+        self.assertEqual(mapping["show_night_role"], "live_set_surface")
+        self.assertEqual(mapping["vault_role"], "catalog")
+        self.assertEqual(mapping["raddad_site_role"], "public_site")
+        self.assertTrue(mapping["ops"]["show_night_binds_official_set_dump"])
         self.assertTrue(mapping["local_json_only"])
         self.assertIs(mapping["remote_catalog_urls"], False)
         self.assertEqual(mapping["band_operations_import"], BAND_OPERATIONS_IMPORT)
@@ -322,8 +339,12 @@ class ExportHonestyTests(unittest.TestCase):
         )
         self.assertIn("StoryBoard #12", api["storyboard"]["inspected"])
         self.assertIn("StoryBoard #16", api["storyboard"]["inspected"])
+        self.assertIn("StoryBoard #19", api["storyboard"]["inspected"])
         self.assertIn("Show Night #1", api["storyboard"]["inspected"])
+        self.assertIn("Show Night #3", api["storyboard"]["inspected"])
         self.assertIn("owner-only", api["storyboard"]["inspected"])
+        self.assertIn("official-set dump", api["storyboard"]["inspected"])
+        self.assertTrue(api["storyboard"]["show_night_binds_official_set_dump"])
         self.assertEqual(api["storyboard"]["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(api["storyboard"]["master_catalog_is_not_the_import"])
         self.assertTrue(api["storyboard"]["master_catalog_is_rejected"])
