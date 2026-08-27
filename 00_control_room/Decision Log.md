@@ -103,3 +103,6 @@
 
 ## 2026-08-26 — Jeff-facing docs roles and counts only (no audio, no new band)
 68. **README.md and APPS.md still dumped catalog leftovers after #15.** Local validate was already the catalog gate. The leftover was Jeff-facing ecosystem wording: live-lane titles, protected-opus names, collaborator-as-catalog-map dumps, and write-back ids. Those docs are roles and counts only. Validator fails closed if they leak again. The #15 empty-runner lock is unchanged. No public catalog dump. Do not change billing.
+
+## 2026-08-27 — local validate success is roles and counts only (no audio, no new band)
+69. **Catalog-gate success line still printed published lane ids after #16.** Jeff-facing docs were already roles and counts only. The leftover was the local validate success report: it still echoed published lane ids, so verify output could not be pasted without sanitizing. Success is now roles and counts only. Validator fails closed if that line ships published ids. The #16 public-doc lock is unchanged. The #15 empty-runner lock is unchanged. Do not change billing.

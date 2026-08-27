@@ -44,6 +44,8 @@ from validate_catalog import (  # noqa: E402
     YES_GATE,
     apps_md_admits_empty_runner,
     apps_md_claims_hosted_ci,
+    catalog_ok_report,
+    catalog_ok_report_leaks_published_ids,
     duplicate_session_log_headings,
     latest_session_log_has_continuation,
     latest_session_log_section,
@@ -1370,6 +1372,57 @@ class ValidateCatalogTests(unittest.TestCase):
     def test_validator_docstring_does_not_claim_hosted_ci(self):
         self.assertFalse(module_doc_claims_hosted_ci())
 
+    def test_catalog_ok_report_is_roles_counts_only(self):
+        line = catalog_ok_report(150, 126)
+        self.assertIn("catalog OK", line)
+        self.assertIn("150 entities", line)
+        self.assertIn("126 originals", line)
+        self.assertIn("3 active lanes", line)
+        self.assertIn("protected opus", line)
+        self.assertNotIn("lanes ST-", line)
+        self.assertNotIn("lanes JS-", line)
+        self.assertFalse(public_doc_has_published_ids(line))
+        self.assertFalse(catalog_ok_report_leaks_published_ids(line))
+        self.assertFalse(catalog_ok_report_leaks_published_ids())
+
+    def test_catalog_ok_report_with_published_id_is_a_leak(self):
+        leaked = catalog_ok_report(1, 1) + " ST-0000"
+        self.assertTrue(public_doc_has_published_ids(leaked))
+        self.assertTrue(catalog_ok_report_leaks_published_ids(leaked))
+
+    def test_validate_fails_when_success_line_ships_ids(self):
+        import validate_catalog as vc
+
+        original = vc.catalog_ok_report
+        vc.catalog_ok_report = lambda *_a, **_k: "catalog OK — lanes ST-0000"
+        try:
+            errors = validate(fixture(), extras_ok())
+            self.assertTrue(
+                any("success line still ships published ids" in e for e in errors),
+                errors,
+            )
+        finally:
+            vc.catalog_ok_report = original
+
+    def test_live_validate_stdout_is_roles_counts_only(self):
+        import subprocess
+
+        proc = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "scripts", "validate_catalog.py")],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertIn("catalog OK", proc.stdout)
+        self.assertIn("3 active lanes", proc.stdout)
+        self.assertIn("protected opus", proc.stdout)
+        self.assertNotIn("lanes ST-", proc.stdout)
+        self.assertNotIn("lanes JS-", proc.stdout)
+        self.assertFalse(public_doc_has_published_ids(proc.stdout))
+        self.assertFalse(public_doc_has_published_ids(proc.stderr))
+        self.assertFalse(catalog_ok_report_leaks_published_ids(proc.stdout))
+
     def test_real_repo_catalog_passes(self):
         """Live spine must stay green after this pass — no weakening the check."""
         from validate_catalog import load_repo
@@ -1509,7 +1562,19 @@ class ValidateCatalogTests(unittest.TestCase):
             "Jeff-facing docs roles and counts only — 2026-08-26 "
             "(Cloud Agent, no audio)"
         )
+        leftover_stdout = (
+            "Local validate success is roles and counts only — 2026-08-27 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
+        self.assertIn(leftover_stdout, headings)
+        self.assertFalse(catalog_ok_report_leaks_published_ids())
+        originals = sum(
+            1 for s in cat["songs"] if s.get("classification") == "original"
+        )
+        live_ok = catalog_ok_report(len(cat["songs"]), originals)
+        self.assertIn("3 active lanes", live_ok)
+        self.assertFalse(public_doc_has_published_ids(live_ok))
 
 
 if __name__ == "__main__":
