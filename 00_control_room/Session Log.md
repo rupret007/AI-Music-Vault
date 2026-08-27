@@ -298,3 +298,17 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 
 ### Next continuation point
 Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — not the spine, not a remote URL. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+## StoryBoard rejects the spine — 2026-08-27 (Cloud Agent, no audio)
+### Done
+1. After Vault #17, catalog-gate success stays roles and counts only, but the contract still planned a non-empty spine import. Live StoryBoard #16 rejects `master_catalog.json` at the import boundary. That leftover made the catalog tooling describe a deleted accept path.
+2. Contract + validator now fail closed if the feed still treats the spine as an accepted import, if inspected omits StoryBoard #16, or if APPS.md still describes the deleted remap path. Live spine stays reject-shaped; the feed stays a StoryBoard envelope. #11/#12/#13/#14/#15/#16/#17 locks are unchanged. No second catalog surface. Do not change billing.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Protected opus untouched.
+- Private catalog stays private. No public dump of titles. Did not invent a setlist or a second catalog. Live-lane titles stay out of Jeff-facing docs. Ids stay out of the catalog-gate success line.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.

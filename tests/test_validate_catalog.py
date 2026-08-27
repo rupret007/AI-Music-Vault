@@ -35,6 +35,10 @@ from storyboard_contract import (  # noqa: E402
     show_night_bind_title,
     spine_default_plan_ids,
     storyboard_parse_bpm,
+    vault_payload_looks_like_spine,
+    vault_payload_validation_error,
+    VAULT_FEED_IMPORT_ERROR,
+    VAULT_SPINE_IMPORT_ERROR,
     vault_setlist_identity,
     vault_skip_by_title,
 )
@@ -43,7 +47,9 @@ from validate_catalog import (  # noqa: E402
     PROTECTED_LANES,
     YES_GATE,
     apps_md_admits_empty_runner,
+    apps_md_admits_spine_reject,
     apps_md_claims_hosted_ci,
+    apps_md_claims_spine_still_accepted,
     catalog_ok_report,
     catalog_ok_report_leaks_published_ids,
     duplicate_session_log_headings,
@@ -522,6 +528,14 @@ class ValidateCatalogTests(unittest.TestCase):
         errors = validate(fixture(), extra)
         self.assertTrue(any("StoryBoard #12" in e for e in errors), errors)
 
+    def test_inspected_must_name_storyboard_16(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["inspected"] = (
+            "2026-08-26 after StoryBoard #12 local JSON only"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("StoryBoard #16" in e for e in errors), errors)
+
     def test_missing_local_json_only_fails_closed(self):
         extra = extras_ok()
         extra["app_api"]["storyboard"]["local_json_only"] = False
@@ -589,6 +603,13 @@ class ValidateCatalogTests(unittest.TestCase):
             any("master_catalog" in e or "import_file" in e for e in errors),
             errors,
         )
+
+    def test_claiming_spine_is_accepted_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["master_catalog_is_rejected"] = False
+        extra["app_api"]["storyboard"]["ops"]["master_catalog_is_rejected"] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("master_catalog_is_rejected" in e for e in errors), errors)
 
     def test_missing_show_night_does_not_expand_fails_closed(self):
         extra = extras_ok()
@@ -1065,18 +1086,32 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertNotEqual(action, "bind")
         self.assertIn(reason, {"not_setlist_ready", SHOW_NIGHT_NOT_IN_VAULT})
 
-    def test_spine_plan_is_not_the_published_default_live_feed(self):
-        """StoryBoard pointed at master_catalog drops played-live-only rows."""
+    def test_spine_payload_is_rejected(self):
+        """StoryBoard #16 rejects spine shape. No songs are planned."""
         cat = fixture()
-        cat["songs"][0]["artist_project"] = "Jeff Story"
-        cat["songs"][5]["live_presence"] = [{"band": "Rad Dad", "date": "2026-05"}]
-        payload = build_payload(cat)
-        published = {row["id"] for row in payload["setlist_ready_default_import"]}
-        self.assertEqual(published, {"ST-0001", "JS-0001"})
-        spine = set(spine_default_plan_ids(cat["songs"]))
-        self.assertIn("ST-0001", spine)
-        self.assertNotIn("JS-0001", spine)
-        self.assertNotEqual(spine, published)
+        feed = build_payload(cat)
+        self.assertTrue(vault_payload_looks_like_spine(cat))
+        self.assertFalse(vault_payload_looks_like_spine(feed))
+        self.assertEqual(vault_payload_validation_error(cat), VAULT_SPINE_IMPORT_ERROR)
+        self.assertIsNone(vault_payload_validation_error(feed))
+        self.assertEqual(spine_default_plan_ids(cat["songs"]), [])
+        raw_spine_rows = [
+            {
+                "song_id": "TEST-0001",
+                "canonical_title": "Synthetic Test",
+                "artist_project": "Rad Dad",
+                "classification": "original",
+            }
+        ]
+        self.assertTrue(vault_payload_looks_like_spine(raw_spine_rows))
+        self.assertEqual(
+            vault_payload_validation_error(raw_spine_rows),
+            VAULT_SPINE_IMPORT_ERROR,
+        )
+        self.assertEqual(
+            vault_payload_validation_error([{"id": "TEST-0001", "title": "Synthetic Test"}]),
+            VAULT_FEED_IMPORT_ERROR,
+        )
 
     def test_catalog_import_scope_honors_declared_not_live(self):
         self.assertEqual(catalog_import_scope("Jeff Story"), "default_live")
@@ -1252,11 +1287,45 @@ class ValidateCatalogTests(unittest.TestCase):
         extras["apps_md"] = (
             "Local python3 scripts/validate_catalog.py fails closed "
             "if this file drifts. Hosted catalog-validate may be a "
-            "0-step empty-runner — not a catalog fail.\n"
+            "0-step empty-runner — not a catalog fail. "
+            "StoryBoard rejects the spine as an import.\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertFalse(apps_md_claims_hosted_ci(extras["apps_md"]))
         self.assertTrue(apps_md_admits_empty_runner(extras["apps_md"]))
+        self.assertFalse(apps_md_claims_spine_still_accepted(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_spine_reject(extras["apps_md"]))
+
+    def test_apps_md_spine_remap_lie_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail. "
+            "StoryBoard rejects the spine as an import. "
+            "StoryBoard pointed at master_catalog.json does not remap "
+            "live_presence.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("deleted spine-accept path" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(apps_md_claims_spine_still_accepted(extras["apps_md"]))
+
+    def test_apps_md_without_spine_reject_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("rejects the spine" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(apps_md_admits_spine_reject(extras["apps_md"]))
 
     def test_readme_live_lane_title_fails(self):
         extras = extras_ok()
@@ -1355,7 +1424,8 @@ class ValidateCatalogTests(unittest.TestCase):
             "Roles only: Flagship · Quick win · Experimental. On deck. "
             "Protected opus. Andrea-Assistant is inbound. "
             "Travis rows are travis_books. Write-back songs array uses "
-            "vault ids — do not paste published ids here.\n"
+            "vault ids — do not paste published ids here. "
+            "StoryBoard rejects the spine as an import.\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertEqual(
@@ -1368,6 +1438,8 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertFalse(apps_md_claims_hosted_ci(extras["apps_md"]))
         self.assertTrue(apps_md_admits_empty_runner(extras["apps_md"]))
+        self.assertFalse(apps_md_claims_spine_still_accepted(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_spine_reject(extras["apps_md"]))
 
     def test_validator_docstring_does_not_claim_hosted_ci(self):
         self.assertFalse(module_doc_claims_hosted_ci())
@@ -1488,8 +1560,14 @@ class ValidateCatalogTests(unittest.TestCase):
             api["storyboard"]["parked_named_in_default_live_stay_current_artist"]
         )
         self.assertIn("StoryBoard #12", api["storyboard"]["inspected"])
+        self.assertIn("StoryBoard #16", api["storyboard"]["inspected"])
         self.assertEqual(api["storyboard"]["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(api["storyboard"]["master_catalog_is_not_the_import"])
+        self.assertTrue(api["storyboard"]["master_catalog_is_rejected"])
+        self.assertEqual(
+            api["storyboard"]["vault_spine_import_error"],
+            VAULT_SPINE_IMPORT_ERROR,
+        )
         self.assertTrue(api["storyboard"]["never_auto_post"])
         self.assertTrue(api["storyboard"]["show_night_does_not_expand_vault"])
         self.assertTrue(api["storyboard"]["local_json_only"])
@@ -1501,9 +1579,11 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(LOCAL_JSON_ONLY)
         self.assertIs(REMOTE_CATALOG_URLS, False)
         self.assertTrue(NEVER_AUTO_POST)
-        spine_ids = set(spine_default_plan_ids(cat["songs"]))
-        self.assertNotEqual(spine_ids, default_ids)
-        self.assertGreater(len(spine_ids), len(default_ids))
+        self.assertTrue(vault_payload_looks_like_spine(cat))
+        self.assertFalse(vault_payload_looks_like_spine(api))
+        self.assertEqual(vault_payload_validation_error(cat), VAULT_SPINE_IMPORT_ERROR)
+        self.assertIsNone(vault_payload_validation_error(api))
+        self.assertEqual(spine_default_plan_ids(cat["songs"]), [])
         live_ids = {
             rec["id"]
             for rec, decision in live_default_decisions(
@@ -1566,8 +1646,15 @@ class ValidateCatalogTests(unittest.TestCase):
             "Local validate success is roles and counts only — 2026-08-27 "
             "(Cloud Agent, no audio)"
         )
+        leftover_spine = (
+            "StoryBoard rejects the spine — 2026-08-27 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
+        self.assertIn(leftover_spine, headings)
+        self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
+        self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertFalse(catalog_ok_report_leaks_published_ids())
         originals = sum(
             1 for s in cat["songs"] if s.get("classification") == "original"

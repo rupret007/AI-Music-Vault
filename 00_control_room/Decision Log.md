@@ -106,3 +106,6 @@
 
 ## 2026-08-27 — local validate success is roles and counts only (no audio, no new band)
 69. **Catalog-gate success line still printed published lane ids after #16.** Jeff-facing docs were already roles and counts only. The leftover was the local validate success report: it still echoed published lane ids, so verify output could not be pasted without sanitizing. Success is now roles and counts only. Validator fails closed if that line ships published ids. The #16 public-doc lock is unchanged. The #15 empty-runner lock is unchanged. Do not change billing.
+
+## 2026-08-27 — StoryBoard rejects the spine (no audio, no new band)
+70. **Catalog tooling still planned a spine import after #17.** Jeff-facing docs and catalog-gate success were already roles and counts only. Live StoryBoard #16 rejects `master_catalog.json` at the import boundary, but the contract still computed a non-empty spine plan and APPS.md still described the deleted remap path. Validator now fails closed if the feed hides that reject, if inspected omits StoryBoard #16, or if APPS.md still claims the spine-accept path. The #17 success-line lock is unchanged. The #16 public-doc lock is unchanged. The #15 empty-runner lock is unchanged. Do not change billing.

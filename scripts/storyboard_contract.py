@@ -2,16 +2,16 @@
 """
 StoryBoard import contract — what catalog-import.ts actually does.
 
-Inspected 2026-08-26 from rupret007/StoryBoard main after PR #12
-(`packages/shared/src/catalog-import.ts`). Vault #7–#11 already lock
+Inspected 2026-08-27 from rupret007/StoryBoard main after PR #16
+(`packages/shared/src/catalog-import.ts`). Vault #7–#12 already lock
 the schema-3 published slice, setlist names, catalog counts,
-import file vs spine, Show Night-does-not-expand, and never_auto_post.
-StoryBoard #12 makes this feed usable from Band operations only as
-local JSON: remote catalog URLs are rejected, and a payload that
-looks like a locator is not imported.
+import file vs spine, Show Night-does-not-expand, never_auto_post,
+and local-JSON-only. StoryBoard #16 rejects `master_catalog.json`
+at the catalog import boundary. A rejected Vault payload also
+blocks a paired Show Night plan.
 
 `data/app_api.json` is the StoryBoard import. `master_catalog.json`
-is the spine, not a substitute feed. StoryLiner is promo only.
+is the spine and is rejected as an import. StoryLiner is promo only.
 Nothing auto-posts. Jeff owns feel, set-list, and catalog calls.
 Parked catalogs are not a fourth live band. This private catalog
 is not a public fetch.
@@ -51,6 +51,20 @@ SHOW_NIGHT_NOT_IN_VAULT = "show_night_not_in_vault"
 SHOW_NIGHT_DOES_NOT_EXPAND_VAULT = True
 VAULT_IMPORT_FILE = "data/app_api.json"
 MASTER_CATALOG_IS_NOT_THE_IMPORT = True
+MASTER_CATALOG_IS_REJECTED = True
+VAULT_SPINE_IMPORT_ERROR = (
+    "master_catalog.json is the Vault spine, not the StoryBoard import feed; "
+    "export data/app_api.json."
+)
+VAULT_FEED_IMPORT_ERROR = (
+    "Vault import requires the data/app_api.json StoryBoard feed."
+)
+SPINE_SONG_KEYS = (
+    "song_id",
+    "canonical_title",
+    "artist_project",
+    "classification",
+)
 NEVER_AUTO_POST = True
 # StoryBoard #12: Band operations preview/apply is local JSON only.
 LOCAL_JSON_ONLY = True
@@ -315,55 +329,61 @@ def parked_named_default_live_ids(songs: list[dict], published_ids) -> list[str]
     return out
 
 
-def normalize_spine_song(src: dict) -> dict:
-    """Match StoryBoard normalizeVaultCatalog() on a master_catalog row.
+def _is_record(value) -> bool:
+    return isinstance(value, dict)
 
-    The spine is not the StoryBoard feed: `live_presence` is not remapped
-    to `played_live`, and there is no published slice / import_scope.
+
+def _song_looks_like_spine(song) -> bool:
+    """Match StoryBoard vaultPayloadLooksLikeSpine() song keys after #16."""
+    return _is_record(song) and any(key in song for key in SPINE_SONG_KEYS)
+
+
+def vault_payload_looks_like_spine(payload) -> bool:
+    """Match StoryBoard vaultPayloadLooksLikeSpine() after #16.
+
+    A spine payload is rejected. Do not plan songs from it.
     """
-    sid = as_text(src.get("id")) or as_text(src.get("song_id")) or as_text(
-        src.get("vault_id")
-    )
-    title = as_text(src.get("title")) or as_text(src.get("canonical_title"))
-    project = as_text(src.get("project")) or as_text(src.get("artist_project"))
-    vault_id = as_text(src.get("vault_id")) or sid
-    rec = dict(src)
-    if sid:
-        rec["id"] = sid
-    if title:
-        rec["title"] = title
-    if project:
-        rec["project"] = project
-    if vault_id:
-        rec["vault_id"] = vault_id
-        rec["vault_ref"] = as_text(src.get("vault_ref")) or vault_ref_for(vault_id)
-    is_original = src.get("is_original")
-    if not isinstance(is_original, bool):
-        classification = (as_text(src.get("classification")) or "").lower()
-        if classification == "original":
-            is_original = True
-        elif classification == "cover":
-            is_original = False
-        else:
-            is_original = None
-    if isinstance(is_original, bool):
-        rec["is_original"] = is_original
-    elif "is_original" in rec:
-        rec.pop("is_original", None)
-    # StoryBoard does not remap catalog live_presence → played_live.
-    rec.pop("played_live", None)
-    rec.pop("import_scope", None)
-    return rec
+    if isinstance(payload, list):
+        return any(_song_looks_like_spine(song) for song in payload)
+    if not _is_record(payload):
+        return False
+    if "version" in payload and "schema_version" not in payload:
+        return True
+    songs = payload.get("songs")
+    if not isinstance(songs, list):
+        return False
+    return any(_song_looks_like_spine(song) for song in songs)
 
 
-def spine_default_plan_ids(catalog_songs: list[dict]) -> list[str]:
-    """What StoryBoard would keep if pointed at master_catalog.json."""
-    songs = [normalize_spine_song(src) for src in catalog_songs if isinstance(src, dict)]
-    out: list[str] = []
-    for song, decision in default_decisions(songs, set()):
-        if decision.include and song.get("id"):
-            out.append(song["id"])
-    return out
+def _looks_like_app_api_feed(payload) -> bool:
+    """Enough of StoryBoard vaultAppApiSchema to tell feed from reject."""
+    if not _is_record(payload):
+        return False
+    songs = payload.get("songs")
+    if not isinstance(songs, list):
+        return False
+    for song in songs:
+        if not _is_record(song):
+            return False
+        if not str(song.get("id") or "").strip():
+            return False
+        if not str(song.get("title") or "").strip():
+            return False
+    return True
+
+
+def vault_payload_validation_error(payload):
+    """Match StoryBoard vaultPayloadValidationError() after #16."""
+    if vault_payload_looks_like_spine(payload):
+        return VAULT_SPINE_IMPORT_ERROR
+    if not _looks_like_app_api_feed(payload):
+        return VAULT_FEED_IMPORT_ERROR
+    return None
+
+
+def spine_default_plan_ids(_catalog_songs: list[dict]) -> list[str]:
+    """StoryBoard #16 rejects the spine. No songs are planned."""
+    return []
 
 
 def vault_skip_by_title(
@@ -714,11 +734,16 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
     return {
         "consumer": "StoryBoard",
         "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
-        "inspected": "2026-08-26 after StoryBoard #12",
+        "inspected": (
+            "2026-08-27 after StoryBoard #16 "
+            "(StoryBoard #12 local JSON; spine rejected)"
+        ),
         "policy_version": CATALOG_IMPORT_POLICY_VERSION,
         "import_from": "songs",
         "import_file": VAULT_IMPORT_FILE,
         "master_catalog_is_not_the_import": MASTER_CATALOG_IS_NOT_THE_IMPORT,
+        "master_catalog_is_rejected": MASTER_CATALOG_IS_REJECTED,
+        "vault_spine_import_error": VAULT_SPINE_IMPORT_ERROR,
         "local_json_only": LOCAL_JSON_ONLY,
         "remote_catalog_urls": REMOTE_CATALOG_URLS,
         "band_operations_import": BAND_OPERATIONS_IMPORT,
@@ -764,10 +789,11 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
         "booker_catalog_projects": ["Travis", "Travis Story"],
         "default_import": (
             "THE import file is data/app_api.json — master_catalog.json is the "
-            "spine, not a StoryBoard feed. StoryBoard #12 accepts this file "
-            "only as local JSON (Band operations → Music & setlists). Remote "
-            "catalog URLs are rejected. This private catalog is not a public "
-            "fetch. Published setlist_ready_default_import is the default plan "
+            "spine and is rejected as an import. StoryBoard #16 fails closed "
+            "on that spine. StoryBoard #12 accepts this file only as local "
+            "JSON (Band operations → Music & setlists). Remote catalog URLs "
+            "are rejected. This private catalog is not a public fetch. "
+            "Published setlist_ready_default_import is the default plan "
             "when present (empty published slice stays empty — StoryBoard will "
             "not recompute a live band). StoryBoard names that draft setlist "
             "'Vault default-live'. Songs whose Vault project is a parked "
@@ -779,7 +805,8 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "/ includeAllProjects. Covers stay out. Travis rows are "
             "travis_books — never auto-pitch. When a Vault payload is present, "
             "Show Night only binds planned Vault titles and does not mint "
-            "excluded rows or fill an empty published slice. Nothing auto-posts. "
+            "excluded rows or fill an empty published slice. A rejected Vault "
+            "payload also blocks a paired Show Night plan. Nothing auto-posts. "
             "Jeff owns feel, set-list, and catalog calls. Do not invent Rad "
             "Dad catalog rows or a fourth live band."
         ),
@@ -803,6 +830,7 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "lanes_are_not_a_setlist": True,
             "remote_catalog_urls": False,
             "local_json_only": True,
+            "master_catalog_is_rejected": True,
             "band_operations_import": BAND_OPERATIONS_IMPORT,
             "never_auto_post": True,
             "show_night_does_not_expand_vault": True,

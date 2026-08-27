@@ -26,6 +26,7 @@ from storyboard_contract import (  # noqa: E402
     VAULT_DEFAULT_LIVE_SETLIST_NAME,
     VAULT_IMPORT_FILE,
     VAULT_SETLIST_READY_SETLIST_NAME,
+    VAULT_SPINE_IMPORT_ERROR,
     VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
     catalog_locator_looks_remote,
@@ -98,8 +99,12 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertNotIn("import_scope", mapping["does_not_read"])
         self.assertIn("setlist_ready_default_import", mapping["catalog_reads"])
         self.assertIn("StoryBoard #12", mapping["inspected"])
+        self.assertIn("StoryBoard #16", mapping["inspected"])
         self.assertEqual(mapping["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(mapping["master_catalog_is_not_the_import"])
+        self.assertTrue(mapping["master_catalog_is_rejected"])
+        self.assertEqual(mapping["vault_spine_import_error"], VAULT_SPINE_IMPORT_ERROR)
+        self.assertTrue(mapping["ops"]["master_catalog_is_rejected"])
         self.assertTrue(mapping["never_auto_post"])
         self.assertTrue(mapping["show_night_does_not_expand_vault"])
         self.assertTrue(mapping["local_json_only"])
@@ -310,8 +315,14 @@ class ExportHonestyTests(unittest.TestCase):
             VAULT_DEFAULT_LIVE_SETLIST_NAME,
         )
         self.assertIn("StoryBoard #12", api["storyboard"]["inspected"])
+        self.assertIn("StoryBoard #16", api["storyboard"]["inspected"])
         self.assertEqual(api["storyboard"]["import_file"], VAULT_IMPORT_FILE)
         self.assertTrue(api["storyboard"]["master_catalog_is_not_the_import"])
+        self.assertTrue(api["storyboard"]["master_catalog_is_rejected"])
+        self.assertEqual(
+            api["storyboard"]["vault_spine_import_error"],
+            VAULT_SPINE_IMPORT_ERROR,
+        )
         self.assertTrue(api["storyboard"]["never_auto_post"])
         self.assertTrue(api["storyboard"]["show_night_does_not_expand_vault"])
         self.assertTrue(api["storyboard"]["local_json_only"])

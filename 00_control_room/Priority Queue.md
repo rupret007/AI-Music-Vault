@@ -12,6 +12,7 @@
 *Local validate, not hosted CI 2026-08-26: hosted catalog-validate may be a 0-step empty-runner — not a catalog fail. Still these three songs. Still no new priorities.*
 *Jeff-facing docs roles/counts only 2026-08-26: README.md / APPS.md keep roles and counts — live-lane titles removed, ids removed, no collaborator-as-catalog-map dumps. Still these three songs. Still no new priorities.*
 *Local validate success roles/counts only 2026-08-27: catalog-gate stdout stays roles and counts — published ids removed from the success line. Still these three songs. Still no new priorities.*
+*StoryBoard rejects the spine 2026-08-27: live importer after #16 fails closed on the spine — not a fallback planner. Still these three songs. Still no new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE
