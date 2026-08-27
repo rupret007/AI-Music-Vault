@@ -48,13 +48,22 @@ from storyboard_contract import (
     PARKED_NAMED_IN_DEFAULT_LIVE_WARNING,
     REMOTE_CATALOG_URLS,
     SHOW_CONTROL_IS_OWNER_ONLY,
+    SHOW_NIGHT_BINDS_OFFICIAL_SET_DUMP,
+    SHOW_NIGHT_GUEST_SETS_STAY_OPT_IN,
+    SHOW_NIGHT_OFFICIAL_SET_DUMP_IS_LOCAL,
+    SHOW_NIGHT_OFFICIAL_SET_IMPORT_ERROR,
     SHOW_NIGHT_OFFICIAL_SET_IS_OWNER_ONLY,
     SHOW_NIGHT_OFFICIAL_SET_OWNER_ERROR,
+    SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME,
+    SHOW_NIGHT_OFFICIAL_SET_SLUG,
     SHOW_NIGHT_OFFICIAL_SET_WRITE,
     SHOW_NIGHT_ONE_PUBLIC_SUGGESTION_WRITER,
     SHOW_NIGHT_PUBLIC_SUGGESTION_WRITE,
     SHOW_NIGHT_PUBLIC_SUGGESTIONS_CANNOT_MUTATE_SET,
+    SHOW_NIGHT_ROLE,
     VAULT_FEED_IS_NOT_A_SHOW_NIGHT_WRITER,
+    VAULT_ROLE,
+    RADDAD_SITE_ROLE,
     SCOPE_BOOKER,
     SCOPE_COVER,
     SCOPE_DEFAULT_LIVE,
@@ -223,6 +232,25 @@ def apps_md_claims_feed_writes_official_set(text: str) -> bool:
         "feed writes the official set" in body
         or "catalog writes the official set" in body
         or "this file writes the official set" in body
+    )
+
+
+def apps_md_admits_official_set_dump(text: str) -> bool:
+    """APPS.md must admit the live official-set dump bind."""
+    body = (text or "").lower()
+    has_dump = "official-set dump" in body or "official set dump" in body
+    has_name = "rad dad — official set" in body or "rad dad -- official set" in body
+    has_surface = "live set surface" in body
+    return has_dump and has_name and has_surface
+
+
+def apps_md_claims_suggestion_dump_is_official_set(text: str) -> bool:
+    """Jeff-facing APPS.md must not treat suggestion dumps as the official set."""
+    body = (text or "").lower()
+    return (
+        "suggestion dump is the official set" in body
+        or "suggestions are the official set" in body
+        or "suggestion board is the official set" in body
     )
 
 
@@ -633,6 +661,23 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.inspected must admit Show Night official "
                 "set is owner-only"
             )
+        if "StoryBoard #19" not in inspected:
+            errors.append(
+                "storyboard.inspected must name StoryBoard #19 "
+                "(live importer binds a local official-set dump)"
+            )
+        if "official-set dump" not in inspected and (
+            "Rad Dad — official set" not in inspected
+        ):
+            errors.append(
+                "storyboard.inspected must admit the official-set dump "
+                "binds as Rad Dad — official set"
+            )
+        if "Show Night #3" not in inspected and "live set surface" not in inspected:
+            errors.append(
+                "storyboard.inspected must name Show Night #3 "
+                "(Show Night is the live set surface)"
+            )
         if sb.get("local_json_only") is not LOCAL_JSON_ONLY:
             errors.append(
                 "storyboard.local_json_only must be true — StoryBoard #12 "
@@ -736,6 +781,53 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             errors.append(
                 "storyboard.show_control_is_owner_only must be true"
             )
+        if sb.get("show_night_binds_official_set_dump") is not (
+            SHOW_NIGHT_BINDS_OFFICIAL_SET_DUMP
+        ):
+            errors.append(
+                "storyboard.show_night_binds_official_set_dump must be "
+                "true — StoryBoard #19 binds a local official-set dump"
+            )
+        if sb.get("show_night_official_set_dump_is_local") is not (
+            SHOW_NIGHT_OFFICIAL_SET_DUMP_IS_LOCAL
+        ):
+            errors.append(
+                "storyboard.show_night_official_set_dump_is_local must "
+                "be true — official set is a local songs[] + setSlug dump"
+            )
+        if sb.get("show_night_official_set_slug") != SHOW_NIGHT_OFFICIAL_SET_SLUG:
+            errors.append(
+                "storyboard.show_night_official_set_slug must be rad-dad"
+            )
+        if sb.get("show_night_official_set_setlist_name") != (
+            SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME
+        ):
+            errors.append(
+                "storyboard.show_night_official_set_setlist_name must be "
+                "Rad Dad — official set"
+            )
+        if sb.get("show_night_guest_sets_stay_opt_in") is not (
+            SHOW_NIGHT_GUEST_SETS_STAY_OPT_IN
+        ):
+            errors.append(
+                "storyboard.show_night_guest_sets_stay_opt_in must be "
+                "true — guest/parked slugs are not a fourth live band"
+            )
+        if sb.get("show_night_official_set_import_error") != (
+            SHOW_NIGHT_OFFICIAL_SET_IMPORT_ERROR
+        ):
+            errors.append(
+                "storyboard.show_night_official_set_import_error must "
+                "match the live StoryBoard #19 suggestion-dump refusal"
+            )
+        if sb.get("show_night_role") != SHOW_NIGHT_ROLE:
+            errors.append(
+                "storyboard.show_night_role must be live_set_surface"
+            )
+        if sb.get("vault_role") != VAULT_ROLE:
+            errors.append("storyboard.vault_role must be catalog")
+        if sb.get("raddad_site_role") != RADDAD_SITE_ROLE:
+            errors.append("storyboard.raddad_site_role must be public_site")
         ops = sb.get("ops") or {}
         if ops.get("never_auto_post") is not True:
             errors.append("storyboard.ops.never_auto_post must be true")
@@ -786,6 +878,32 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             errors.append(
                 "storyboard.ops.show_night_public_suggestion_write must "
                 "be /api/suggestions"
+            )
+        if ops.get("show_night_binds_official_set_dump") is not True:
+            errors.append(
+                "storyboard.ops.show_night_binds_official_set_dump "
+                "must be true"
+            )
+        if ops.get("show_night_official_set_dump_is_local") is not True:
+            errors.append(
+                "storyboard.ops.show_night_official_set_dump_is_local "
+                "must be true"
+            )
+        if ops.get("show_night_guest_sets_stay_opt_in") is not True:
+            errors.append(
+                "storyboard.ops.show_night_guest_sets_stay_opt_in "
+                "must be true"
+            )
+        if ops.get("show_night_official_set_setlist_name") != (
+            SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME
+        ):
+            errors.append(
+                "storyboard.ops.show_night_official_set_setlist_name "
+                "must be Rad Dad — official set"
+            )
+        if ops.get("show_night_role") != SHOW_NIGHT_ROLE:
+            errors.append(
+                "storyboard.ops.show_night_role must be live_set_surface"
             )
         if ops.get("jeff_owns_catalog_calls") is not True:
             errors.append(
@@ -1624,6 +1742,16 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
         if not apps_md_admits_show_night_owner_only(apps_md):
             errors.append(
                 "APPS.md must say Show Night official set is owner-only"
+            )
+        if apps_md_claims_suggestion_dump_is_official_set(apps_md):
+            errors.append(
+                "APPS.md still treats a suggestion dump as the official "
+                "set — public suggestions are not the official set"
+            )
+        if not apps_md_admits_official_set_dump(apps_md):
+            errors.append(
+                "APPS.md must admit the official-set dump binds as "
+                "Rad Dad — official set and Show Night is the live set surface"
             )
         errors.extend(public_facing_doc_errors("APPS.md", apps_md, cat))
 
