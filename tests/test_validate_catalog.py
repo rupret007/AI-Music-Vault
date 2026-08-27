@@ -9,6 +9,18 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
+from catalog_surface import (  # noqa: E402
+    ON_DECK_NOTE,
+    SURFACE_STAGE_REPLACEMENT,
+    SURFACE_SUBTITLE,
+    catalog_surface_admits_not_official_set,
+    catalog_surface_claims_official_set,
+    catalog_workspace_uses_vault_framing,
+    overlay_feed_scopes,
+    played_badge_label,
+    surface_row_claims_official_set,
+    surface_stage_label,
+)
 from export_app_api import build_payload  # noqa: E402
 from storyboard_contract import (  # noqa: E402
     BAND_OPERATIONS_IMPORT,
@@ -56,10 +68,12 @@ from validate_catalog import (  # noqa: E402
     ACTIVE_LANES,
     PROTECTED_LANES,
     YES_GATE,
+    apps_md_admits_catalog_not_official_set,
     apps_md_admits_empty_runner,
     apps_md_admits_official_set_dump,
     apps_md_admits_show_night_owner_only,
     apps_md_admits_spine_reject,
+    apps_md_claims_catalog_is_official_set,
     apps_md_claims_feed_writes_official_set,
     apps_md_claims_hosted_ci,
     apps_md_claims_spine_still_accepted,
@@ -143,7 +157,8 @@ APPS_MD_HONEST = (
     "StoryBoard rejects the spine as an import. "
     "Show Night official set is owner-only. "
     "StoryBoard binds a local official-set dump as "
-    "Rad Dad — official set. Show Night is the live set surface.\n"
+    "Rad Dad — official set. Show Night is the live set surface. "
+    "Catalog rows are not the official set. Show Night owns official sets.\n"
 )
 
 OFFICIAL_SET_DUMP = {
@@ -221,7 +236,8 @@ def extras_ok(cat=None):
         ),
         "dashboard_html": (
             "Catalog v1.6 · Turn Over The Flag · Manic · Long Long Drive · "
-            "It's Alright · Blue Skies Fade"
+            "It's Alright · Blue Skies Fade · data/app_api.json · "
+            "Show Night owns official sets · catalog rows are not the live set"
         ),
         "audio_files": [],
     }
@@ -788,6 +804,170 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         errors = validate(fixture(), extra)
         self.assertTrue(any("StoryBoard #19" in e for e in errors), errors)
+
+    def test_missing_catalog_not_official_set_flag_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["catalog_rows_are_not_the_official_set"] = False
+        extra["app_api"]["storyboard"]["ops"][
+            "catalog_rows_are_not_the_official_set"
+        ] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("catalog_rows_are_not_the_official_set" in e for e in errors),
+            errors,
+        )
+
+    def test_missing_default_live_not_official_set_flag_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"][
+            "vault_default_live_is_not_the_official_set"
+        ] = False
+        extra["app_api"]["storyboard"]["ops"][
+            "vault_default_live_is_not_the_official_set"
+        ] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("vault_default_live_is_not_the_official_set" in e for e in errors),
+            errors,
+        )
+
+    def test_inspected_without_storyboard_20_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["inspected"] = (
+            "2026-08-27 after StoryBoard #19 "
+            "(StoryBoard #12 local JSON; StoryBoard #16 spine rejected; "
+            "Show Night #1/#2 official set owner-only; "
+            "official-set dump binds Rad Dad — official set; "
+            "Show Night #3 live set surface)"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("StoryBoard #20" in e for e in errors), errors)
+        self.assertTrue(
+            any("catalog rows are not the official set" in e for e in errors),
+            errors,
+        )
+
+    def test_dump_bind_lock_still_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"] = False
+        extra["app_api"]["storyboard"]["ops"][
+            "show_night_binds_official_set_dump"
+        ] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("show_night_binds_official_set_dump" in e for e in errors),
+            errors,
+        )
+
+    def test_harbor_lights_default_live_is_not_official_set(self):
+        rows = overlay_feed_scopes(
+            [{"id": "VAULT-1", "t": "Harbor Lights"}],
+            {
+                "songs": [
+                    {
+                        "id": "VAULT-1",
+                        "title": "Harbor Lights",
+                        "import_scope": "default_live",
+                    }
+                ]
+            },
+        )
+        self.assertEqual(rows[0]["scope"], "default_live")
+        self.assertIn("not official set", rows[0]["scope_label"])
+        self.assertFalse(surface_row_claims_official_set(rows[0]))
+        self.assertEqual(played_badge_label("2024-04-26"), "played 2024-04-26")
+        self.assertFalse(
+            catalog_surface_claims_official_set(rows[0]["scope_label"])
+        )
+
+    def test_official_set_dump_plus_vault_stays_catalog_framed(self):
+        leftover = catalog_workspace_uses_vault_framing(
+            {
+                "source": "mixed",
+                "vaultSongCount": 3,
+                "showNightSongCount": 0,
+                "demoSongCount": 0,
+                "manualSongCount": 0,
+            }
+        )
+        self.assertTrue(leftover)
+        self.assertFalse(
+            catalog_workspace_uses_vault_framing(
+                {
+                    "source": "mixed",
+                    "vaultSongCount": 3,
+                    "showNightSongCount": 1,
+                    "demoSongCount": 0,
+                    "manualSongCount": 0,
+                }
+            )
+        )
+        self.assertIn("app_api.json", SURFACE_SUBTITLE)
+        self.assertIn("not the live set", SURFACE_SUBTITLE)
+        self.assertIn("not the official set", ON_DECK_NOTE)
+
+    def test_dashboard_in_the_live_set_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = (
+            extra["dashboard_html"] + " · It's Alright — in the live set"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("catalog rows are the live set" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            catalog_surface_claims_official_set(extra["dashboard_html"])
+        )
+
+    def test_dashboard_current_live_set_reprint_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = (
+            extra["dashboard_html"]
+            + " · written + IN CURRENT LIVE SET (Oct 2025 practice)"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("IN CURRENT LIVE SET" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            catalog_surface_claims_official_set(extra["dashboard_html"])
+        )
+
+    def test_surface_stage_label_sanitizes_current_live_set(self):
+        raw = (
+            "written + IN CURRENT LIVE SET (Oct 2025 practice) "
+            "— unrecorded, no lyric doc"
+        )
+        sanitized = surface_stage_label(raw)
+        self.assertIn(SURFACE_STAGE_REPLACEMENT, sanitized)
+        self.assertIn("Oct 2025 practice", sanitized)
+        self.assertIn("unrecorded, no lyric doc", sanitized)
+        self.assertFalse(catalog_surface_claims_official_set(sanitized))
+        self.assertIn("not the official set", sanitized)
+        self.assertFalse(catalog_surface_claims_official_set("not the live set"))
+        self.assertTrue(catalog_surface_claims_official_set("in current live set"))
+        self.assertTrue(catalog_surface_claims_official_set("in the current live set"))
+        self.assertEqual(
+            surface_stage_label("written — catalog only"),
+            "written — catalog only",
+        )
+
+    def test_dashboard_without_feed_reuse_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = (
+            "Catalog v1.6 · Turn Over The Flag · Manic · Long Long Drive · "
+            "It's Alright · Blue Skies Fade"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("reuse data/app_api.json" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            catalog_surface_admits_not_official_set(extra["dashboard_html"])
+        )
 
     def test_default_setlist_name_must_be_vault_default_live(self):
         extra = extras_ok()
@@ -1590,11 +1770,15 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(apps_md_admits_spine_reject(extras["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extras["apps_md"]))
         self.assertTrue(apps_md_admits_official_set_dump(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_catalog_not_official_set(extras["apps_md"]))
         self.assertFalse(
             apps_md_claims_feed_writes_official_set(extras["apps_md"])
         )
         self.assertFalse(
             apps_md_claims_suggestion_dump_is_official_set(extras["apps_md"])
+        )
+        self.assertFalse(
+            apps_md_claims_catalog_is_official_set(extras["apps_md"])
         )
 
     def test_apps_md_spine_remap_lie_fails(self):
@@ -1607,6 +1791,7 @@ class ValidateCatalogTests(unittest.TestCase):
             "Show Night official set is owner-only. "
             "StoryBoard binds a local official-set dump as "
             "Rad Dad — official set. Show Night is the live set surface. "
+            "Catalog rows are not the official set. Show Night owns official sets. "
             "StoryBoard pointed at master_catalog.json does not remap "
             "live_presence.\n"
         )
@@ -1645,6 +1830,36 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(apps_md_admits_show_night_owner_only(extras["apps_md"]))
+
+    def test_apps_md_without_catalog_not_official_set_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail. "
+            "StoryBoard rejects the spine as an import. "
+            "Show Night official set is owner-only. "
+            "StoryBoard binds a local official-set dump as "
+            "Rad Dad — official set. Show Night is the live set surface.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("catalog rows are not the official" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(apps_md_admits_catalog_not_official_set(extras["apps_md"]))
+
+    def test_apps_md_catalog_is_official_set_lie_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            APPS_MD_HONEST + "Catalog rows are the official set.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("catalog rows are the official" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(apps_md_claims_catalog_is_official_set(extras["apps_md"]))
 
     def test_apps_md_without_official_set_dump_fails(self):
         extras = extras_ok()
@@ -1686,6 +1901,7 @@ class ValidateCatalogTests(unittest.TestCase):
             "Show Night official set is owner-only. "
             "StoryBoard binds a local official-set dump as "
             "Rad Dad — official set. Show Night is the live set surface. "
+            "Catalog rows are not the official set. Show Night owns official sets. "
             "This feed writes the official set.\n"
         )
         errors = validate(fixture(), extras)
@@ -1696,6 +1912,16 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(
             apps_md_claims_feed_writes_official_set(extras["apps_md"])
         )
+
+    def test_readme_in_the_live_set_fails(self):
+        extras = extras_ok()
+        extras["readme"] = "On deck — in the live set, lyric recovered\n"
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("README.md" in e and "catalog rows are the live set" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(catalog_surface_claims_official_set(extras["readme"]))
 
     def test_readme_live_lane_title_fails(self):
         extras = extras_ok()
@@ -1798,7 +2024,8 @@ class ValidateCatalogTests(unittest.TestCase):
             "StoryBoard rejects the spine as an import. "
             "Show Night official set is owner-only. "
             "StoryBoard binds a local official-set dump as "
-            "Rad Dad — official set. Show Night is the live set surface.\n"
+            "Rad Dad — official set. Show Night is the live set surface. "
+            "Catalog rows are not the official set. Show Night owns official sets.\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertEqual(
@@ -1815,8 +2042,12 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(apps_md_admits_spine_reject(extras["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extras["apps_md"]))
         self.assertTrue(apps_md_admits_official_set_dump(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_catalog_not_official_set(extras["apps_md"]))
         self.assertFalse(
             apps_md_claims_feed_writes_official_set(extras["apps_md"])
+        )
+        self.assertFalse(
+            apps_md_claims_catalog_is_official_set(extras["apps_md"])
         )
 
     def test_validator_docstring_does_not_claim_hosted_ci(self):
@@ -2060,21 +2291,49 @@ class ValidateCatalogTests(unittest.TestCase):
             "Official-set dump binds Rad Dad — official set — 2026-08-27 "
             "(Cloud Agent, no audio)"
         )
+        leftover_catalog = (
+            "Catalog rows are not the official set — 2026-08-27 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
         self.assertIn(leftover_owner, headings)
         self.assertIn(leftover_dump, headings)
+        self.assertIn(leftover_catalog, headings)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
         self.assertTrue(apps_md_admits_official_set_dump(extra["apps_md"]))
+        self.assertTrue(apps_md_admits_catalog_not_official_set(extra["apps_md"]))
         self.assertFalse(
             apps_md_claims_feed_writes_official_set(extra["apps_md"])
         )
         self.assertFalse(
             apps_md_claims_suggestion_dump_is_official_set(extra["apps_md"])
         )
+        self.assertFalse(
+            apps_md_claims_catalog_is_official_set(extra["apps_md"])
+        )
+        self.assertTrue(extra["app_api"]["storyboard"]["catalog_rows_are_not_the_official_set"])
+        self.assertTrue(
+            extra["app_api"]["storyboard"]["vault_default_live_is_not_the_official_set"]
+        )
+        self.assertTrue(extra["app_api"]["storyboard"]["show_night_owns_official_sets"])
+        self.assertTrue(
+            extra["app_api"]["storyboard"]["ops"]["catalog_rows_are_not_the_official_set"]
+        )
+        self.assertIn("StoryBoard #20", extra["app_api"]["storyboard"]["inspected"])
+        self.assertIn(
+            "catalog rows are not the official set",
+            extra["app_api"]["storyboard"]["inspected"],
+        )
+        self.assertTrue(catalog_surface_admits_not_official_set(extra["dashboard_html"]))
+        self.assertFalse(catalog_surface_claims_official_set(extra["dashboard_html"]))
+        self.assertFalse(catalog_surface_claims_official_set(extra["readme"]))
+        self.assertNotIn("IN CURRENT LIVE SET", extra["dashboard_html"])
+        self.assertNotIn("in the live set", extra["readme"])
+        self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
         self.assertFalse(catalog_ok_report_leaks_published_ids())
         originals = sum(
             1 for s in cat["songs"] if s.get("classification") == "original"
