@@ -10,6 +10,7 @@
 *Session Log once 2026-08-26: the #12 local-JSON heading is listed once. Still these three songs. Still no new priorities.*
 *Session Log resume from latest 2026-08-26: continue from the latest Session Log H2, not Session 1. Still these three songs. Still no new priorities.*
 *Local validate, not hosted CI 2026-08-26: hosted catalog-validate may be a 0-step empty-runner — not a catalog fail. Still these three songs. Still no new priorities.*
+*Jeff-facing docs roles/counts only 2026-08-26: README.md / APPS.md keep roles and counts — live-lane titles removed, ids removed, no collaborator-as-catalog-map dumps. Still these three songs. Still no new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE

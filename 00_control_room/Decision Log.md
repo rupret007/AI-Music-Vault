@@ -100,3 +100,6 @@
 
 ## 2026-08-26 — local validate is the catalog gate (no audio, no new band)
 67. **APPS.md still claimed CI fails closed.** After #14, resume is the latest Session Log H2, but APPS.md and the validator docstring still treated hosted CI as the fail-closed gate. Hosted catalog-validate on this private repo may be a 0-step empty-runner. Local validate is the gate. Validator now fails closed if APPS.md or the validator docstring still claims CI fails closed, and APPS.md must admit the empty-runner is not a catalog fail. #11/#12/#13/#14 locks unchanged. Do not change billing.
+
+## 2026-08-26 — Jeff-facing docs roles and counts only (no audio, no new band)
+68. **README.md and APPS.md still dumped catalog leftovers after #15.** Local validate was already the catalog gate. The leftover was Jeff-facing ecosystem wording: live-lane titles, protected-opus names, collaborator-as-catalog-map dumps, and write-back ids. Those docs are roles and counts only. Validator fails closed if they leak again. The #15 empty-runner lock is unchanged. No public catalog dump. Do not change billing.

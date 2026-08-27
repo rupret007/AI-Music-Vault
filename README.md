@@ -4,7 +4,7 @@
 
 This is the working brain of the Jeff Story catalog: 150 song entities spanning 1999–2026 across Stalemate, Something Dirty, Trailer Swift, Rad Dad, and solo work — plus the tooling that found, matched, scored, and keeps track of all of it.
 
-> ⚠️ **Private repository.** Contains unreleased album material, personal lyrics, collaborators' compositions (Dustin Duffy, Sean, Paco Estrada, Greg Baldia), and home-address strings inside voice-memo titles. Not for public distribution. Audio masters are deliberately **not** stored here — they live in the local vault and Google Drive.
+> ⚠️ **Private repository.** Contains unreleased album material, personal lyrics, collaborators' compositions, and home-address strings inside voice-memo titles. Not for public distribution. Audio masters are deliberately **not** stored here — they live in the local vault and Google Drive.
 
 ---
 
@@ -42,11 +42,11 @@ URL, and not a public catalog dump. Nothing auto-posts.
 
 ## The three lanes (+ on deck)
 
-- **Flagship** — Turn Over The Flag (mix v1.6, two overdubs left)
-- **Quick win** — Manic (one overdub: lead guitar on choruses + solos)
-- **Experimental** — Long Long Drive (Suno arrangement test queued)
-- **On deck** — It's Alright (in the live set, lyric ~85% recovered, unrecorded)
-- **The Opus** — Blue Skies Fade (its own protected lane; Kimberly's suite)
+- **Flagship** — mix v1.6, two overdubs left
+- **Quick win** — one overdub: lead guitar on choruses + solos
+- **Experimental** — Suno arrangement test queued
+- **On deck** — in the live set, lyric ~85% recovered, unrecorded
+- **The Opus** — its own protected lane
 
 Work is capped at three active songs. That cap is the point.
 
@@ -83,7 +83,7 @@ Everything runs on Jeff's own Mac — no audio ever leaves the machine.
 | Tool | Job |
 |---|---|
 | **Whisper** | Transcribed all 916 voice memos → songs findable by lyric |
-| **Demucs** | Stem separation (Blue Skies Fade restoration path) |
+| **Demucs** | Stem separation (protected-opus restoration path) |
 | **Basic Pitch** | Memo melodies → MIDI for Logic (`scripts/basic_pitch_pass.py`) |
 | **Chromaprint** | Fingerprint clustering → version families (`scripts/chromaprint_pass.py`) |
 | **Matchering** | Album-wide level match + true-peak fix |
@@ -113,6 +113,6 @@ The vault is the **song brain**. **StoryBoard** is the band-management OS that c
 
 ## Current state
 
-Catalog v1.6 · 150 entities (126 originals) · 916 memos transcribed, 372 matched · 59 songs scored · 6-track Stalemate album ~16 small items from done. StoryBoard import: `data/app_api.json` (40 setlist-ready keyed originals; 20-id Vault default-live slice). Validate: `python3 scripts/validate_catalog.py`.
+Catalog v1.6 · 150 entities (126 originals) · 916 memos transcribed, 372 matched · 59 songs scored · 6-track Stalemate album ~16 small items from done. StoryBoard import: `data/app_api.json` (40 setlist-ready keyed originals; 20-row Vault default-live slice). Validate: `python3 scripts/validate_catalog.py`.
 
 *Maintained with Claude in the "2026 Song Organization" project. Sessions append to the Decision Log and Session Log — read those first to pick up where the last one left off.*

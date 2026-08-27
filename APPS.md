@@ -1,7 +1,7 @@
 # THE APP ECOSYSTEM — Jeff's music software, and how it connects to the vault
 
 *Vault is the song brain. StoryBoard is the band-management OS that consumes it.
-Updated 2026-08-26 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. The spine is not a substitute import. Remote catalog URLs are rejected.*
+Updated 2026-08-26 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. The spine is not a substitute import. Remote catalog URLs are rejected. Jeff-facing wording here is roles and counts only.*
 
 ## The consolidated path (read this first)
 
@@ -27,8 +27,8 @@ Updated 2026-08-26 — consolidated path: **Vault → local `data/app_api.json` 
 | **One band OS** | **StoryBoard** (`rupret007/StoryBoard`) is the manager. **Not StoryDesk. Not StoryOps.** Those names are not the band OS. |
 | **One import file** | StoryBoard reads local `data/app_api.json` (same `songs[]` array). The spine is not that feed. Remote catalog URLs are rejected. Mapping lives on the import file under `storyboard`. |
 | **No new app** | This repo does not grow a StoryBoard clone. Export + document; StoryBoard already has Song + Setlist. |
-| **Three active songs** | Flagship ST-0001 · Quick win ST-0004 · Experimental ST-0009. On deck JS-0128. Opus JS-0107 (Blue Skies Fade, protected). |
-| **No audio here** | Masters stay local + Drive. The feed carries titles, keys, scores, gates — never files. |
+| **Three active songs** | Flagship · Quick win · Experimental. On deck. Protected opus. Roles only — not a public catalog map. |
+| **No audio here** | Masters stay local + Drive. The feed carries import fields (keys, scores, gates) — never files. |
 
 ### StoryBoard Song mapping (importer-honest, 2026-08-26)
 
@@ -103,11 +103,11 @@ Regenerate after catalog edits: `python3 scripts/export_app_api.py`. Local `pyth
 The highest-value return path is **live-set truth**. Momentum is still inferred from file dates; a played-setlist event per gig makes `live_presence` a fact. Drop JSON into `events/` (see that folder's README):
 
 ```json
-{"event": "show_played", "date": "2026-09-14", "band": "Rad Dad",
- "venue": "…", "songs": ["ST-0002", "ST-0014", "JS-0001"]}
+{"event": "show_played", "date": "…", "band": "…",
+ "venue": "…", "songs": ["<vault-id>", "..."]}
 ```
 
-Prefer vault ids. Titles work as a fallback. Same shape for WebJam bounces (`{"event":"bounce", "song":"ST-0004", "version":"v1.5", "path":"…", "sha256":"…"}`).
+Prefer vault ids. Titles work as a fallback. Same shape for WebJam bounces (`{"event":"bounce", "song":"<vault-id>", "version":"…", "path":"…", "sha256":"…"}`). Do not paste published ids into this document.
 
 ---
 
@@ -122,7 +122,7 @@ Prefer vault ids. Titles work as a fallback. Same shape for WebJam bounces (`{"e
 ## Open questions for Jeff
 - ~~Which of the Story-family repos touch music?~~ **RESOLVED:** StoryBoard = band OS, StoryLiner = promo, Story-Flight-Plan = not music. StoryDesk / StoryOps are not the band OS.
 - ~~StoryBoard song-library schema?~~ **RESOLVED 2026-08-23** (inspected `prisma` `Song`): title / musicalKey / bpm / durationSeconds / leadVocalist / active. Mapping is in `data/app_api.json` → `storyboard`. Duration and lead vocalist stay null until Jeff supplies them.
-- Is **Andrea** the assistant named after the song "Andrea," or a separate thing?
+- Is the assistant named after a catalog row, or a separate thing?
 - Does `rad-dad-show-night` already store setlists in a structured file we can read directly?
 - StoryBoard library today: empty or hand-populated? (Import is a seed vs a merge on `vault:catalog_import_v1:{id}`.)
-- Should any vault `artist_project` be labeled **Rad Dad**, or does Jeff always import with `includeAllProjects` / `includeParked`? Default live is the published 20-id `setlist_ready_default_import` slice (including parked-named Everyday / hybrid rows as current-artist repertoire) — we will not invent Rad Dad rows or a fourth live band.
+- Should any vault `artist_project` be labeled **Rad Dad**, or does Jeff always import with `includeAllProjects` / `includeParked`? Default live is the published 20-row `setlist_ready_default_import` slice (including parked-named / hybrid rows as current-artist repertoire) — we will not invent Rad Dad rows or a fourth live band.

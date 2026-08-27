@@ -101,6 +101,19 @@ STALE_PRODUCER_RESUME_RE = re.compile(
     r'Continue from ["“]NOT done / next continuation point["”]'
 )
 STALE_HOSTED_CI_RE = re.compile(r"CI fails closed")
+PUBLIC_DOC_ID_RE = re.compile(r"\b(?:ST|SD|JS|UNK)-\d{4}\b")
+PUBLIC_DOC_MIN_TITLE_LEN = 6
+PUBLIC_DOC_ALLOWED_TOKENS = (
+    "Andrea-Assistant",
+    "Andrea_NanoBot",
+)
+PUBLIC_DOC_COLLABORATOR_DUMP_NAMES = (
+    "Dustin Duffy",
+    "Paco Estrada",
+    "Greg Baldia",
+    "Kimberly",
+    "Sean",
+)
 
 # Jeff-owned WIP cap. Do not expand. on_deck / opus are parked, not a 4th/5th slot.
 ACTIVE_LANES = {
@@ -177,6 +190,143 @@ def apps_md_admits_empty_runner(text: str) -> bool:
 def module_doc_claims_hosted_ci() -> bool:
     """Validator docstring must not claim hosted CI is the fail-closed gate."""
     return apps_md_claims_hosted_ci(sys.modules[__name__].__doc__ or "")
+
+
+def _public_doc_scan_body(text: str) -> str:
+    """Strip assistant repo names so a catalog title is not a false hit."""
+    body = text or ""
+    for token in PUBLIC_DOC_ALLOWED_TOKENS:
+        body = body.replace(token, "")
+    return body
+
+
+def _phrase_in_public_doc(phrase: str, body: str) -> bool:
+    if not phrase:
+        return False
+    return (
+        re.search(
+            rf"(?<![A-Za-z0-9]){re.escape(phrase)}(?![A-Za-z0-9])",
+            body,
+        )
+        is not None
+    )
+
+
+def _lane_title_for_public_doc(cat: dict, sid: str) -> str:
+    for song in cat.get("songs") or []:
+        if isinstance(song, dict) and song.get("song_id") == sid:
+            title = str(song.get("canonical_title") or "").strip()
+            if title:
+                return title
+    return LANE_TITLES.get(sid, "")
+
+
+def public_doc_live_lane_titles(cat: dict) -> list[str]:
+    """Active lanes plus on-deck. Jeff-facing docs use roles, not these names."""
+    titles: list[str] = []
+    for sid in (*ACTIVE_LANES.values(), PROTECTED_LANES["on_deck"]):
+        title = _lane_title_for_public_doc(cat, sid)
+        if title and title not in titles:
+            titles.append(title)
+    return titles
+
+
+def public_doc_protected_opus_names(cat: dict) -> list[str]:
+    title = _lane_title_for_public_doc(cat, PROTECTED_LANES["opus"])
+    return [title] if title else []
+
+
+def public_doc_catalog_titles(cat: dict) -> list[str]:
+    """Canonical titles long enough to scan, plus leftover live-lane / opus names."""
+    titles: list[str] = []
+    for song in cat.get("songs") or []:
+        if not isinstance(song, dict):
+            continue
+        title = str(song.get("canonical_title") or "").strip()
+        if len(title) >= PUBLIC_DOC_MIN_TITLE_LEN and title not in titles:
+            titles.append(title)
+    for title in public_doc_live_lane_titles(cat):
+        if title not in titles:
+            titles.append(title)
+    for title in public_doc_protected_opus_names(cat):
+        if title not in titles:
+            titles.append(title)
+    return titles
+
+
+def public_doc_collaborator_names(cat: dict) -> list[str]:
+    """Named collaborators must not appear as a public catalog map."""
+    names = list(PUBLIC_DOC_COLLABORATOR_DUMP_NAMES)
+    for song in cat.get("songs") or []:
+        if not isinstance(song, dict):
+            continue
+        for writer in song.get("writers") or []:
+            if not isinstance(writer, str):
+                continue
+            name = writer.strip()
+            if name and name != "Jeff Story" and name not in names:
+                names.append(name)
+    return names
+
+
+def public_doc_has_live_lane_titles(text: str, cat: dict) -> bool:
+    body = _public_doc_scan_body(text)
+    return any(
+        _phrase_in_public_doc(title, body)
+        for title in public_doc_live_lane_titles(cat)
+    )
+
+
+def public_doc_has_protected_opus_names(text: str, cat: dict) -> bool:
+    body = _public_doc_scan_body(text)
+    return any(
+        _phrase_in_public_doc(title, body)
+        for title in public_doc_protected_opus_names(cat)
+    )
+
+
+def public_doc_has_other_catalog_titles(text: str, cat: dict) -> bool:
+    body = _public_doc_scan_body(text)
+    skip = set(public_doc_live_lane_titles(cat)) | set(
+        public_doc_protected_opus_names(cat)
+    )
+    return any(
+        title not in skip and _phrase_in_public_doc(title, body)
+        for title in public_doc_catalog_titles(cat)
+    )
+
+
+def public_doc_has_published_ids(text: str) -> bool:
+    return bool(PUBLIC_DOC_ID_RE.search(text or ""))
+
+
+def public_doc_has_collaborator_map(text: str, cat: dict) -> bool:
+    body = _public_doc_scan_body(text)
+    return any(
+        _phrase_in_public_doc(name, body)
+        for name in public_doc_collaborator_names(cat)
+    )
+
+
+def public_facing_doc_errors(label: str, text: str, cat: dict) -> list[str]:
+    """Jeff-facing ecosystem docs: roles and counts only. Do not echo leaks."""
+    errors: list[str] = []
+    if public_doc_has_live_lane_titles(text, cat):
+        errors.append(f"{label} still ships live-lane titles — roles and counts only")
+    if public_doc_has_protected_opus_names(text, cat):
+        errors.append(
+            f"{label} still ships protected-opus names — roles and counts only"
+        )
+    if public_doc_has_other_catalog_titles(text, cat):
+        errors.append(f"{label} still ships catalog titles — roles and counts only")
+    if public_doc_has_published_ids(text):
+        errors.append(f"{label} still ships published ids — roles and counts only")
+    if public_doc_has_collaborator_map(text, cat):
+        errors.append(
+            f"{label} still ships collaborator-as-catalog-map dumps — "
+            "roles and counts only"
+        )
+    return errors
 
 
 YES_GATE = (
@@ -1271,6 +1421,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "APPS.md must say hosted validate may be an empty-runner, "
                 "not a catalog fail"
             )
+        errors.extend(public_facing_doc_errors("APPS.md", apps_md, cat))
+
+    readme = extras.get("readme")
+    if isinstance(readme, str) and readme.strip():
+        errors.extend(public_facing_doc_errors("README.md", readme, cat))
 
     dash = extras.get("dashboard_html")
     if isinstance(dash, str) and dash.strip():
@@ -1326,6 +1481,7 @@ def load_repo(root: str | None = None) -> tuple[dict, dict]:
         "session_log": None,
         "producer_readme": None,
         "apps_md": None,
+        "readme": None,
         "dashboard_html": None,
         "audio_files": find_audio_files(root),
     }
@@ -1345,6 +1501,7 @@ def load_repo(root: str | None = None) -> tuple[dict, dict]:
         os.path.join(root, "00_control_room", "Producer README.md")
     )
     extras["apps_md"] = load_text(os.path.join(root, "APPS.md"))
+    extras["readme"] = load_text(os.path.join(root, "README.md"))
     extras["dashboard_html"] = load_text(
         os.path.join(root, "Jeff Story Song Vault Dashboard.html")
     )

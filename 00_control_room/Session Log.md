@@ -270,3 +270,17 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 
 ### Next continuation point
 Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — not the spine, not a remote URL. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+## Jeff-facing docs roles and counts only — 2026-08-26 (Cloud Agent, no audio)
+### Done
+1. After Vault #15, local validate is the catalog gate, but README.md and APPS.md still shipped live-lane titles, protected-opus names, collaborator-as-catalog-map dumps, and write-back ids. Jeff-facing ecosystem docs are roles and counts only.
+2. Validator now fails closed if README.md or APPS.md still contain catalog titles, published ids, or collaborator-as-catalog-map dumps. Roles/counts-only wording passes. The #15 local-validate-is-the-gate lock is unchanged. #11/#12/#13/#14 locks are unchanged. No second catalog surface. Do not change billing.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Protected opus untouched.
+- Private catalog stays private. No public dump of titles. Did not invent a setlist or a second catalog. Live-lane titles removed. Ids removed.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — not the spine, not a remote URL. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
