@@ -3,12 +3,13 @@
 StoryBoard import contract — what catalog-import.ts actually does.
 
 Inspected 2026-08-27 from rupret007/StoryBoard main after PR #16
-(`packages/shared/src/catalog-import.ts`). Vault #7–#12 already lock
-the schema-3 published slice, setlist names, catalog counts,
-import file vs spine, Show Night-does-not-expand, never_auto_post,
-and local-JSON-only. StoryBoard #16 rejects `master_catalog.json`
-at the catalog import boundary. A rejected Vault payload also
-blocks a paired Show Night plan.
+(`packages/shared/src/catalog-import.ts`) and rupret007/rad-dad-show-night
+after #1/#2. Vault #7–#18 already lock the schema-3 published slice,
+setlist names, catalog counts, import file vs spine, spine-reject,
+Show Night-does-not-expand, never_auto_post, and local-JSON-only.
+StoryBoard #16 rejects `master_catalog.json` at the catalog import
+boundary. A rejected Vault payload also blocks a paired Show Night
+plan. Show Night official-set writes stay owner-only.
 
 `data/app_api.json` is the StoryBoard import. `master_catalog.json`
 is the spine and is rejected as an import. StoryLiner is promo only.
@@ -49,6 +50,49 @@ PARKED_NAMED_IN_DEFAULT_LIVE_WARNING = (
 # StoryBoard #9: Vault payload present → Show Night does not mint a second catalog.
 SHOW_NIGHT_NOT_IN_VAULT = "show_night_not_in_vault"
 SHOW_NIGHT_DOES_NOT_EXPAND_VAULT = True
+# Show Night #1/#2: official set writes stay owner-only. Public
+# suggestions cannot mutate that set. This feed is not a writer.
+SHOW_NIGHT_OFFICIAL_SET_IS_OWNER_ONLY = True
+SHOW_NIGHT_OFFICIAL_SET_WRITE = "POST /api/show"
+SHOW_NIGHT_OFFICIAL_SET_OWNER_ERROR = "Owner access required."
+SHOW_NIGHT_PUBLIC_SUGGESTIONS_CANNOT_MUTATE_SET = True
+SHOW_NIGHT_PUBLIC_SUGGESTION_WRITE = "/api/suggestions"
+SHOW_NIGHT_ONE_PUBLIC_SUGGESTION_WRITER = True
+VAULT_FEED_IS_NOT_A_SHOW_NIGHT_WRITER = True
+SHOW_CONTROL_IS_OWNER_ONLY = True
+# Field names only — not a catalog dump. A public suggestion that
+# carries any of these is an official-set mutation attempt.
+OFFICIAL_SET_MUTATION_KEYS = (
+    "setSlug",
+    "set_slug",
+    "showSlug",
+    "show_slug",
+    "showId",
+    "show_id",
+    "songs",
+    "position",
+    "order",
+    "songKey",
+    "song_key",
+    "tuning",
+    "transition",
+    "durationSeconds",
+    "duration_seconds",
+    "performanceNote",
+    "performance_note",
+    "rehearsalNotes",
+    "rehearsal_notes",
+    "youtubeUrl",
+    "youtube_url",
+    "youtubeVideoId",
+    "youtube_video_id",
+    "chordsUrl",
+    "chords_url",
+    "lyricsUrl",
+    "lyrics_url",
+    "updatedBy",
+    "updated_by",
+)
 VAULT_IMPORT_FILE = "data/app_api.json"
 MASTER_CATALOG_IS_NOT_THE_IMPORT = True
 MASTER_CATALOG_IS_REJECTED = True
@@ -423,6 +467,31 @@ def planned_vault_titles(
     return planned
 
 
+def public_suggestion_has_official_set_mutation(payload) -> bool:
+    """Match Show Night publicSuggestionHasOfficialSetMutationAttempt().
+
+    Field names only. A public suggestion that carries official-set
+    keys is a mutation attempt and must be refused.
+    """
+    if not isinstance(payload, dict):
+        return False
+    return any(key in payload for key in OFFICIAL_SET_MUTATION_KEYS)
+
+
+def official_set_write_allowed(method, route, *, owner: bool) -> bool:
+    """Show Night official-set writes stay on owner-only POST /api/show."""
+    if str(method or "").upper() != "POST":
+        return False
+    if str(route or "").strip() != "/api/show":
+        return False
+    return bool(owner)
+
+
+def public_suggestion_writer_is_canonical(route) -> bool:
+    """Show Night #2 keeps one public suggestion writer."""
+    return str(route or "").strip() == SHOW_NIGHT_PUBLIC_SUGGESTION_WRITE
+
+
 def show_night_bind_title(
     title,
     planned_titles: dict[str, str],
@@ -736,7 +805,8 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
         "importer": "rupret007/StoryBoard packages/shared/src/catalog-import.ts",
         "inspected": (
             "2026-08-27 after StoryBoard #16 "
-            "(StoryBoard #12 local JSON; spine rejected)"
+            "(StoryBoard #12 local JSON; spine rejected; "
+            "Show Night #1/#2 official set owner-only)"
         ),
         "policy_version": CATALOG_IMPORT_POLICY_VERSION,
         "import_from": "songs",
@@ -757,6 +827,22 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
         "never_auto_post": NEVER_AUTO_POST,
         "show_night_does_not_expand_vault": SHOW_NIGHT_DOES_NOT_EXPAND_VAULT,
         "show_night_binds_planned_vault_titles_only": True,
+        "show_night_official_set_is_owner_only": (
+            SHOW_NIGHT_OFFICIAL_SET_IS_OWNER_ONLY
+        ),
+        "show_night_official_set_write": SHOW_NIGHT_OFFICIAL_SET_WRITE,
+        "show_night_official_set_owner_error": SHOW_NIGHT_OFFICIAL_SET_OWNER_ERROR,
+        "show_night_public_suggestions_cannot_mutate_set": (
+            SHOW_NIGHT_PUBLIC_SUGGESTIONS_CANNOT_MUTATE_SET
+        ),
+        "show_night_public_suggestion_write": SHOW_NIGHT_PUBLIC_SUGGESTION_WRITE,
+        "show_night_one_public_suggestion_writer": (
+            SHOW_NIGHT_ONE_PUBLIC_SUGGESTION_WRITER
+        ),
+        "vault_feed_is_not_a_show_night_writer": (
+            VAULT_FEED_IS_NOT_A_SHOW_NIGHT_WRITER
+        ),
+        "show_control_is_owner_only": SHOW_CONTROL_IS_OWNER_ONLY,
         "booker_policy": CATALOG_BOOKER_POLICY,
         "prefers_published_default_import": True,
         "empty_published_slice_stays_empty": True,
@@ -806,7 +892,10 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "travis_books — never auto-pitch. When a Vault payload is present, "
             "Show Night only binds planned Vault titles and does not mint "
             "excluded rows or fill an empty published slice. A rejected Vault "
-            "payload also blocks a paired Show Night plan. Nothing auto-posts. "
+            "payload also blocks a paired Show Night plan. Show Night official "
+            "set writes stay owner-only (POST /api/show). Public suggestions "
+            "cannot mutate that set. This feed is not a public Show Night "
+            "writer. Nothing auto-posts. "
             "Jeff owns feel, set-list, and catalog calls. Do not invent Rad "
             "Dad catalog rows or a fourth live band."
         ),
@@ -834,6 +923,11 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "band_operations_import": BAND_OPERATIONS_IMPORT,
             "never_auto_post": True,
             "show_night_does_not_expand_vault": True,
+            "show_night_official_set_is_owner_only": True,
+            "show_night_public_suggestions_cannot_mutate_set": True,
+            "vault_feed_is_not_a_show_night_writer": True,
+            "show_night_official_set_write": SHOW_NIGHT_OFFICIAL_SET_WRITE,
+            "show_night_public_suggestion_write": SHOW_NIGHT_PUBLIC_SUGGESTION_WRITE,
             "jeff_owns_catalog_calls": True,
         },
     }
