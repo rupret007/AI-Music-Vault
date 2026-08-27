@@ -48,6 +48,12 @@ from validate_catalog import (  # noqa: E402
     latest_session_log_has_continuation,
     latest_session_log_section,
     module_doc_claims_hosted_ci,
+    public_doc_has_collaborator_map,
+    public_doc_has_live_lane_titles,
+    public_doc_has_other_catalog_titles,
+    public_doc_has_protected_opus_names,
+    public_doc_has_published_ids,
+    public_facing_doc_errors,
     session_log_h2_headings,
     validate,
 )
@@ -1250,6 +1256,117 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(apps_md_claims_hosted_ci(extras["apps_md"]))
         self.assertTrue(apps_md_admits_empty_runner(extras["apps_md"]))
 
+    def test_readme_live_lane_title_fails(self):
+        extras = extras_ok()
+        extras["readme"] = "Flagship — Turn Over The Flag\n"
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("README.md" in e and "live-lane titles" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(public_doc_has_live_lane_titles(extras["readme"], fixture()))
+
+    def test_readme_protected_opus_name_fails(self):
+        extras = extras_ok()
+        extras["readme"] = "The Opus — Blue Skies Fade\n"
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("README.md" in e and "protected-opus names" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            public_doc_has_protected_opus_names(extras["readme"], fixture())
+        )
+
+    def test_readme_published_id_fails(self):
+        extras = extras_ok()
+        extras["readme"] = "Flagship ST-0001\n"
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("README.md" in e and "published ids" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(public_doc_has_published_ids(extras["readme"]))
+
+    def test_readme_collaborator_map_fails(self):
+        extras = extras_ok()
+        extras["readme"] = (
+            "collaborators' compositions (Dustin Duffy, Sean, "
+            "Paco Estrada, Greg Baldia)\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any(
+                "README.md" in e and "collaborator-as-catalog-map" in e
+                for e in errors
+            ),
+            errors,
+        )
+        self.assertTrue(public_doc_has_collaborator_map(extras["readme"], fixture()))
+
+    def test_apps_md_writeback_ids_fail(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail.\n"
+            'songs: ["ST-0002", "ST-0014", "JS-0001"]\n'
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("APPS.md" in e and "published ids" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(public_doc_has_published_ids(extras["apps_md"]))
+        self.assertFalse(apps_md_claims_hosted_ci(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_empty_runner(extras["apps_md"]))
+
+    def test_apps_md_catalog_title_fails(self):
+        extras = extras_ok()
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail.\n"
+            "Drinking Song as a catalog map\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("APPS.md" in e and "catalog titles" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            public_doc_has_other_catalog_titles(extras["apps_md"], fixture())
+        )
+
+    def test_public_docs_roles_counts_only_pass(self):
+        extras = extras_ok()
+        extras["readme"] = (
+            "Vault is the catalog brain. 150 entities. "
+            "Flagship, Quick win, Experimental, On deck, The Opus. "
+            "128 YES / 20 NO / 2 NEEDS-CONSENT. "
+            "40 setlist-ready keyed originals; 20-row Vault default-live slice.\n"
+        )
+        extras["apps_md"] = (
+            "Local python3 scripts/validate_catalog.py fails closed "
+            "if this file drifts. Hosted catalog-validate may be a "
+            "0-step empty-runner — not a catalog fail. "
+            "Roles only: Flagship · Quick win · Experimental. On deck. "
+            "Protected opus. Andrea-Assistant is inbound. "
+            "Travis rows are travis_books. Write-back songs array uses "
+            "vault ids — do not paste published ids here.\n"
+        )
+        self.assertEqual(validate(fixture(), extras), [])
+        self.assertEqual(
+            public_facing_doc_errors("README.md", extras["readme"], fixture()),
+            [],
+        )
+        self.assertEqual(
+            public_facing_doc_errors("APPS.md", extras["apps_md"], fixture()),
+            [],
+        )
+        self.assertFalse(apps_md_claims_hosted_ci(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_empty_runner(extras["apps_md"]))
+
     def test_validator_docstring_does_not_claim_hosted_ci(self):
         self.assertFalse(module_doc_claims_hosted_ci())
 
@@ -1369,6 +1486,30 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(apps_md_claims_hosted_ci(extra["apps_md"]))
         self.assertTrue(apps_md_admits_empty_runner(extra["apps_md"]))
         self.assertNotIn("CI fails closed", extra["apps_md"])
+        self.assertTrue(isinstance(extra["readme"], str) and extra["readme"].strip())
+        self.assertEqual(
+            public_facing_doc_errors("README.md", extra["readme"], cat),
+            [],
+        )
+        self.assertEqual(
+            public_facing_doc_errors("APPS.md", extra["apps_md"], cat),
+            [],
+        )
+        self.assertFalse(public_doc_has_live_lane_titles(extra["readme"], cat))
+        self.assertFalse(public_doc_has_protected_opus_names(extra["readme"], cat))
+        self.assertFalse(public_doc_has_other_catalog_titles(extra["readme"], cat))
+        self.assertFalse(public_doc_has_published_ids(extra["readme"]))
+        self.assertFalse(public_doc_has_collaborator_map(extra["readme"], cat))
+        self.assertFalse(public_doc_has_live_lane_titles(extra["apps_md"], cat))
+        self.assertFalse(public_doc_has_protected_opus_names(extra["apps_md"], cat))
+        self.assertFalse(public_doc_has_other_catalog_titles(extra["apps_md"], cat))
+        self.assertFalse(public_doc_has_published_ids(extra["apps_md"]))
+        self.assertFalse(public_doc_has_collaborator_map(extra["apps_md"], cat))
+        leftover_docs = (
+            "Jeff-facing docs roles and counts only — 2026-08-26 "
+            "(Cloud Agent, no audio)"
+        )
+        self.assertIn(leftover_docs, headings)
 
 
 if __name__ == "__main__":

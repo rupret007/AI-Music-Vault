@@ -1,5 +1,5 @@
 # Jeff Story Song Vault — Producer README
-*How this system works, and how a future session resumes. Last updated: 2026-08-26 (usable catalog: local app_api.json after StoryBoard #12, not the spine, not a remote URL. Session Log #12 heading listed once. Resume from the latest Session Log H2, not Session 1. Local validate is the catalog gate; hosted empty-runner is not a catalog fail).*
+*How this system works, and how a future session resumes. Last updated: 2026-08-26 (usable catalog: local app_api.json after StoryBoard #12, not the spine, not a remote URL. Session Log #12 heading listed once. Resume from the latest Session Log H2, not Session 1. Local validate is the catalog gate; hosted empty-runner is not a catalog fail. Jeff-facing README/APPS.md are roles and counts only).*
 
 ## Mission
 Jeff does not need more songs. He needs the strongest songs he already wrote to be recognized, organized, protected, and FINISHED. Max 3 active songs (flagship / quick win / experimental). Every active song has one clear next action at three energy levels.
