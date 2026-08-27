@@ -1796,7 +1796,9 @@ class ValidateCatalogTests(unittest.TestCase):
             "Travis rows are travis_books. Write-back songs array uses "
             "vault ids — do not paste published ids here. "
             "StoryBoard rejects the spine as an import. "
-            "Show Night official set is owner-only.\n"
+            "Show Night official set is owner-only. "
+            "StoryBoard binds a local official-set dump as "
+            "Rad Dad — official set. Show Night is the live set surface.\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertEqual(
@@ -1812,6 +1814,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(apps_md_claims_spine_still_accepted(extras["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extras["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extras["apps_md"]))
+        self.assertTrue(apps_md_admits_official_set_dump(extras["apps_md"]))
         self.assertFalse(
             apps_md_claims_feed_writes_official_set(extras["apps_md"])
         )
