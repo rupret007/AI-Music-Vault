@@ -22,6 +22,10 @@ from catalog_surface import (  # noqa: E402
     surface_stage_label,
 )
 from export_app_api import build_payload  # noqa: E402
+from export_catalog_csv import (  # noqa: E402
+    csv_rows_from_catalog,
+    covers_rows_from_catalog,
+)
 from storyboard_contract import (  # noqa: E402
     BAND_OPERATIONS_IMPORT,
     LOCAL_JSON_ONLY,
@@ -220,6 +224,10 @@ def extras_ok(cat=None):
     cat = cat or fixture()
     return {
         "app_api": build_payload(cat),
+        "catalog_csv": csv_rows_from_catalog(cat),
+        "covers_csv": covers_rows_from_catalog(cat),
+        "version_chains": {},
+        "momentum": [],
         "vm_matches": {"ST-0001": ["uid-a", "uid-b"]},
         "priority_queue": (
             "ACTIVE (max 3 — unchanged)\n"
@@ -406,6 +414,74 @@ class ValidateCatalogTests(unittest.TestCase):
     def test_validate_without_extras_fails_closed(self):
         errors = validate(fixture())
         self.assertTrue(any("app_api.json is required" in e for e in errors), errors)
+
+    def test_missing_catalog_csv_fails_closed(self):
+        extra = extras_ok()
+        extra["catalog_csv"] = None
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("master_catalog.csv is required" in e for e in errors), errors)
+
+    def test_stale_catalog_csv_fails_closed(self):
+        extra = extras_ok()
+        extra["catalog_csv"] = extra["catalog_csv"][:-1]
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("master_catalog.csv drifted" in e for e in errors),
+            errors,
+        )
+
+    def test_covers_csv_drift_fails_closed(self):
+        cat = fixture()
+        cat["covers"] = [
+            {
+                "title": "Cover Example",
+                "original_artist": "Someone Else",
+                "context": "setlist",
+                "classification": "cover",
+            }
+        ]
+        extra = extras_ok(cat)
+        extra["covers_csv"] = []
+        errors = validate(cat, extra)
+        self.assertTrue(
+            any("covers_reference.csv drifted" in e for e in errors),
+            errors,
+        )
+
+    def test_version_chain_unknown_id_fails_closed(self):
+        extra = extras_ok()
+        extra["version_chains"] = {"JS-9999": {"files": []}}
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("version_chains.json points at unknown" in e for e in errors),
+            errors,
+        )
+
+    def test_momentum_unknown_id_fails_closed(self):
+        extra = extras_ok()
+        extra["momentum"] = [{"id": "JS-9999", "title": "Not A Song"}]
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("momentum.json points at unknown" in e for e in errors),
+            errors,
+        )
+
+    def test_momentum_title_mismatch_fails_closed(self):
+        extra = extras_ok()
+        extra["momentum"] = [{"id": "ST-0001", "title": "Wrong Title", "momentum": 10}]
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("momentum.json ST-0001 title drifted" in e for e in errors),
+            errors,
+        )
+
+    def test_momentum_score_drift_is_not_a_catalog_fail(self):
+        """Live-set floors may lift spine momentum without rewriting momentum.json."""
+        extra = extras_ok()
+        extra["momentum"] = [
+            {"id": "ST-0001", "title": "Turn Over The Flag", "momentum": 10}
+        ]
+        self.assertEqual(validate(fixture(), extra), [])
 
     def test_field_map_bpm_not_bpm_int_fails(self):
         extra = extras_ok()
@@ -2123,6 +2199,16 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertEqual(api["counts"]["originals"], 126)
         self.assertEqual(api["counts"]["scored"], 59)
         self.assertEqual(api["counts"]["ai_upload_ok"], 128)
+        csv_ids = [row["song_id"] for row in extra["catalog_csv"]]
+        spine_ids = [song["song_id"] for song in cat["songs"]]
+        self.assertEqual(csv_ids, spine_ids)
+        self.assertEqual(len(csv_ids), 150)
+        self.assertEqual(len(extra["covers_csv"]), 93)
+        self.assertTrue(
+            set(extra["version_chains"]).issubset({song["song_id"] for song in cat["songs"]})
+        )
+        mom_ids = {row["id"] for row in extra["momentum"]}
+        self.assertTrue(mom_ids.issubset({song["song_id"] for song in cat["songs"]}))
         self.assertNotEqual(
             api["counts"]["setlist_ready"],
             api["counts"]["storyboard_default_live"],
@@ -2295,12 +2381,17 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog rows are not the official set — 2026-08-27 "
             "(Cloud Agent, no audio)"
         )
+        leftover_csv = (
+            "Satellite catalog tables fail closed — 2026-08-28 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
         self.assertIn(leftover_owner, headings)
         self.assertIn(leftover_dump, headings)
         self.assertIn(leftover_catalog, headings)
+        self.assertIn(leftover_csv, headings)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))

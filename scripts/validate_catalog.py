@@ -4,9 +4,11 @@ validate_catalog.py — fail-closed integrity check for the vault spine.
 
 Checks data/master_catalog.json (IDs, scores, AI-upload gates, next actions,
 three-active-song cap) plus the StoryBoard feed (data/app_api.json) when present.
-Session Log is required for resume. H2 headings must be unique, and the
-latest H2 pass must include a Next continuation point so resume cannot
-fall back to Session 1. APPS.md must not treat hosted CI as that gate.
+The derived catalog CSV must match the spine. Covers CSV, version chains,
+and momentum.json must not invent unknown ids. Session Log is required for
+resume. H2 headings must be unique, and the latest H2 pass must include a
+Next continuation point so resume cannot fall back to Session 1. APPS.md
+must not treat hosted CI as that gate.
 
 This does NOT listen to audio, score songs, or invent priorities.
 Jeff owns the three active lanes; this script only verifies they still exist
@@ -20,6 +22,7 @@ empty-runner — that red is not a catalog fail.
 """
 from __future__ import annotations
 
+import csv
 import json
 import os
 import re
@@ -28,6 +31,12 @@ import sys
 from catalog_surface import (
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
+)
+from export_catalog_csv import (
+    comparable_covers,
+    comparable_csv,
+    covers_rows_from_catalog,
+    csv_rows_from_catalog,
 )
 from storyboard_contract import (
     BAND_OPERATIONS_IMPORT,
@@ -1533,6 +1542,96 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
     return errors
 
 
+def _validate_catalog_csv(csv_rows, cat: dict) -> list[str]:
+    """Derived CSV must be the same songs[] as the spine."""
+    if csv_rows is None:
+        return [
+            "master_catalog.csv is required (derived spine table); "
+            "fail closed when missing"
+        ]
+    if not isinstance(csv_rows, list) or any(
+        not isinstance(row, dict) for row in csv_rows
+    ):
+        return ["master_catalog.csv must be a table of objects"]
+    expected = csv_rows_from_catalog(cat)
+    if comparable_csv(csv_rows) != comparable_csv(expected):
+        return [
+            "master_catalog.csv drifted from master_catalog.json — "
+            "re-run python3 scripts/export_catalog_csv.py"
+        ]
+    return []
+
+
+def _validate_covers_csv(cover_rows, covers) -> list[str]:
+    """covers_reference.csv must not invent or drop cover titles."""
+    if cover_rows is None:
+        if covers:
+            return [
+                "covers_reference.csv is required when covers[] is present"
+            ]
+        return []
+    if not isinstance(cover_rows, list) or any(
+        not isinstance(row, dict) for row in cover_rows
+    ):
+        return ["covers_reference.csv must be a table of objects"]
+    expected = covers_rows_from_catalog({"covers": covers or []})
+    if comparable_covers(cover_rows) != comparable_covers(expected):
+        return [
+            "covers_reference.csv drifted from master_catalog.json covers[]"
+        ]
+    return []
+
+
+def _validate_version_chains(chains, by_id: dict) -> list[str]:
+    """version_chains.json may be a subset, but never unknown ids."""
+    if chains is None:
+        return []
+    if not isinstance(chains, dict):
+        return ["version_chains.json must be an object"]
+    unknown = sorted(str(sid) for sid in chains if sid not in by_id)
+    if unknown:
+        return [f"version_chains.json points at unknown song_id values: {unknown}"]
+    return []
+
+
+def _validate_momentum(momentum, by_id: dict) -> list[str]:
+    """momentum.json may be a subset; ids and titles must stay honest.
+
+    Score / last-activity drift is a discovery leftover (live-set floors),
+    not a silent rewrite.
+    """
+    if momentum is None:
+        return []
+    if not isinstance(momentum, list):
+        return ["momentum.json must be a list"]
+    errors: list[str] = []
+    seen: list[str] = []
+    for i, row in enumerate(momentum):
+        if not isinstance(row, dict):
+            errors.append(f"momentum.json[{i}] must be an object")
+            continue
+        sid = row.get("id")
+        if not sid:
+            errors.append(f"momentum.json[{i}] is missing id")
+            continue
+        sid = str(sid)
+        seen.append(sid)
+        if sid not in by_id:
+            errors.append(f"momentum.json points at unknown song_id: {sid}")
+            continue
+        title = str(row.get("title") or "")
+        expected = str(by_id[sid].get("canonical_title") or "")
+        if title and expected and title != expected:
+            errors.append(
+                f"momentum.json {sid} title drifted to {title!r} "
+                f"(spine has {expected!r})"
+            )
+    dups = {sid for sid in seen if seen.count(sid) > 1}
+    if dups:
+        errors.append(f"momentum.json duplicate ids: {sorted(dups)}")
+    return errors
+
+
 def validate(cat: dict, extras: dict | None = None) -> list[str]:
     """Return a list of error strings. Empty list = pass."""
     extras = extras or {}
@@ -1698,6 +1797,13 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             f"covers_reference={cat.get('covers_reference')} "
             f"but covers list length is {len(covers)}"
         )
+
+    if extras.get("catalog_csv") is not None or extras.get("app_api") is not None:
+        errors.extend(_validate_catalog_csv(extras.get("catalog_csv"), cat))
+    if extras.get("covers_csv") is not None or covers:
+        errors.extend(_validate_covers_csv(extras.get("covers_csv"), covers))
+    errors.extend(_validate_version_chains(extras.get("version_chains"), by_id))
+    errors.extend(_validate_momentum(extras.get("momentum"), by_id))
 
     vm_matches = extras.get("vm_matches")
     pool = cat.get("voice_memo_pool")
@@ -1901,11 +2007,20 @@ def load_text(path: str) -> str | None:
         return f.read()
 
 
+def _load_csv(path: str) -> list[dict]:
+    with open(path, encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
 def load_repo(root: str | None = None) -> tuple[dict, dict]:
     root = root or HERE
     cat = load_json(os.path.join(root, "data", "master_catalog.json"))
     extras = {
         "app_api": None,
+        "catalog_csv": None,
+        "covers_csv": None,
+        "version_chains": None,
+        "momentum": None,
         "vm_matches": None,
         "priority_queue": None,
         "session_log": None,
@@ -1918,6 +2033,18 @@ def load_repo(root: str | None = None) -> tuple[dict, dict]:
     api = os.path.join(root, "data", "app_api.json")
     if os.path.exists(api):
         extras["app_api"] = load_json(api)
+    catalog_csv = os.path.join(root, "data", "master_catalog.csv")
+    if os.path.exists(catalog_csv):
+        extras["catalog_csv"] = _load_csv(catalog_csv)
+    covers_csv = os.path.join(root, "data", "covers_reference.csv")
+    if os.path.exists(covers_csv):
+        extras["covers_csv"] = _load_csv(covers_csv)
+    chains = os.path.join(root, "data", "version_chains.json")
+    if os.path.exists(chains):
+        extras["version_chains"] = load_json(chains)
+    momentum = os.path.join(root, "data", "momentum.json")
+    if os.path.exists(momentum):
+        extras["momentum"] = load_json(momentum)
     vm = os.path.join(root, "01_source_manifests", "voicememo", "vm_matches.json")
     if os.path.exists(vm):
         extras["vm_matches"] = load_json(vm)

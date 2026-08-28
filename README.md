@@ -31,6 +31,7 @@ Run the same offline gates used by catalog validation:
 python3 scripts/validate_catalog.py
 python3 -m unittest discover -s tests -v
 python3 scripts/export_app_api.py --check
+python3 scripts/export_catalog_csv.py --check
 ```
 
 These checks read the committed catalog metadata and StoryBoard export only.

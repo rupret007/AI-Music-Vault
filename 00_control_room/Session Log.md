@@ -355,3 +355,19 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 
 ### Next continuation point
 Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Show Night official set is owner-only. Official-set dump binds as Rad Dad — official set. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+## Satellite catalog tables fail closed — 2026-08-28 (Cloud Agent, no audio)
+### Done
+1. Started the existing catalog pipeline on main tip 1420e858 (#21). `validate_catalog.py`, `export_app_api.py --check`, `catalog_surface.py`, and `python3 -m unittest discover -s tests -v` were already green. Catalog≠official-set is already fail-closed on the feed / APPS.md / dashboard.
+2. Walked every spine row plus satellite tables. Leftover honesty bug: `data/master_catalog.csv` was a stale 139-row view of the 150-row spine (JS-0130…0140 missing; potential/key/notes drift on overlapping rows). That is export/validate drift, not a feel rewrite.
+3. Regenerated the derived CSV from the existing spine (same columns; no songs added/dropped/renamed in JSON). Validator now fails closed if the CSV, covers CSV, version-chain ids, or momentum ids/titles drift. Momentum scores may still disagree with live-set floors — reported, not rewritten. Discovery write-up: `00_control_room/Catalog Discovery — satellite cross-walk.md`. #11–#21 locks unchanged. No second catalog. Do not change billing.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No fourth live band. Three-active-song cap unchanged. Protected opus untouched.
+- Spine `data/master_catalog.json` was not rewritten. CSV is a derived projection of songs already on the spine.
+- Catalog rows are not the official set. Show Night owns official sets. Vault default-live stays a catalog slice.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Show Night official set is owner-only. Official-set dump binds as Rad Dad — official set. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Derived `master_catalog.csv` must match the spine. Next honest leftover is Logic-ready field fill on Jeff's Mac (keys / WAV / AIFF / stems) plus the UnRecorded Songs 71-title stub and missing `vm_unmatched.json` — do not invent those rows. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
