@@ -2385,6 +2385,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Satellite catalog tables fail closed — 2026-08-28 "
             "(Cloud Agent, no audio)"
         )
+        leftover_song = (
+            "Song analysis Logic-ready walk — 2026-08-28 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2392,6 +2396,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(leftover_dump, headings)
         self.assertIn(leftover_catalog, headings)
         self.assertIn(leftover_csv, headings)
+        self.assertIn(leftover_song, headings)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
@@ -2432,6 +2437,27 @@ class ValidateCatalogTests(unittest.TestCase):
         live_ok = catalog_ok_report(len(cat["songs"]), originals)
         self.assertIn("3 active lanes", live_ok)
         self.assertFalse(public_doc_has_published_ids(live_ok))
+        discovery = extra.get("song_analysis_discovery")
+        if discovery is None:
+            discovery_path = os.path.join(
+                ROOT, "00_control_room", "Catalog Discovery — song analysis.md"
+            )
+            with open(discovery_path, encoding="utf-8") as handle:
+                discovery = handle.read()
+        original_ids = [
+            song["song_id"]
+            for song in cat["songs"]
+            if song.get("classification") == "original"
+        ]
+        self.assertEqual(len(original_ids), 126)
+        missing = [sid for sid in original_ids if sid not in discovery]
+        self.assertEqual(missing, [], missing)
+        self.assertIn("Official-set originals | 0", discovery)
+        self.assertIn("reported-only", discovery)
+        self.assertIn("Tooted last Tuesday", discovery)
+        self.assertIn("stay unmatched", discovery.lower())
+        self.assertIn("ST-0004 | Manic", discovery)
+        self.assertIn("audio_only", discovery)
 
 
 if __name__ == "__main__":
