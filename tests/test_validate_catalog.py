@@ -2389,6 +2389,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Song analysis Logic-ready walk — 2026-08-28 "
             "(Cloud Agent, no audio)"
         )
+        leftover_covers = (
+            "Covers book leftover walk — 2026-08-28 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2397,6 +2401,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(leftover_catalog, headings)
         self.assertIn(leftover_csv, headings)
         self.assertIn(leftover_song, headings)
+        self.assertIn(leftover_covers, headings)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
@@ -2458,6 +2463,55 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn("stay unmatched", discovery.lower())
         self.assertIn("ST-0004 | Manic", discovery)
         self.assertIn("audio_only", discovery)
+        covers = cat.get("covers") or []
+        self.assertEqual(len(covers), 93)
+        self.assertEqual(cat.get("covers_reference"), 93)
+        self.assertEqual(len(extra["covers_csv"]), 93)
+        for cover in covers:
+            self.assertEqual(
+                set(cover),
+                {"title", "original_artist", "context", "classification"},
+            )
+            self.assertFalse(cover.get("song_id"))
+            self.assertFalse(cover.get("key"))
+            self.assertFalse(cover.get("official_set"))
+        trailer_originals = [
+            song
+            for song in cat["songs"]
+            if song.get("classification") == "original"
+            and "trailer" in str(song.get("artist_project") or "").lower()
+        ]
+        self.assertEqual(trailer_originals, [])
+        official_set_originals = [
+            song
+            for song in cat["songs"]
+            if song.get("classification") == "original" and song.get("official_set")
+        ]
+        self.assertEqual(official_set_originals, [])
+        self.assertEqual(
+            sum(1 for song in extra["app_api"]["songs"] if song.get("official_set")),
+            0,
+        )
+        ready_titles = {row["title"] for row in extra["app_api"]["setlist_ready"]}
+        cover_titles = [cover["title"] for cover in covers]
+        self.assertTrue(set(cover_titles).isdisjoint(ready_titles))
+        manic = next(song for song in cat["songs"] if song["song_id"] == "ST-0004")
+        self.assertFalse(str(manic.get("key") or "").strip())
+        covers_discovery = extra.get("covers_book_discovery")
+        if covers_discovery is None:
+            covers_path = os.path.join(
+                ROOT, "00_control_room", "Catalog Discovery — covers book leftover.md"
+            )
+            with open(covers_path, encoding="utf-8") as handle:
+                covers_discovery = handle.read()
+        missing_covers = [title for title in cover_titles if title not in covers_discovery]
+        self.assertEqual(missing_covers, [], missing_covers)
+        self.assertIn("Official-set originals | 0", covers_discovery)
+        self.assertIn("Trailer Swift original rows | 0", covers_discovery)
+        self.assertIn("empty_logic_ready", covers_discovery)
+        self.assertIn("stay unmatched", covers_discovery.lower())
+        self.assertIn("Speak Now", covers_discovery)
+        self.assertIn("Tooted last Tuesday", covers_discovery)
 
 
 if __name__ == "__main__":
