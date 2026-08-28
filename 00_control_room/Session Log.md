@@ -371,3 +371,19 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 
 ### Next continuation point
 Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Show Night official set is owner-only. Official-set dump binds as Rad Dad — official set. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Derived `master_catalog.csv` must match the spine. Next honest leftover is Logic-ready field fill on Jeff's Mac (keys / WAV / AIFF / stems) plus the UnRecorded Songs 71-title stub and missing `vm_unmatched.json` — do not invent those rows. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+## Song analysis Logic-ready walk — 2026-08-28 (Cloud Agent, no audio)
+### Done
+1. After Vault #22, derived `master_catalog.csv` already matches the 150-row spine. Did not redo that CSV work. Did not rewrite `master_catalog.json` or `app_api.json` song rows.
+2. Walked all 126 originals and 93 covers on the existing spine. Per-song honesty: band lane, recorded vs unrecorded (heuristic), cover vs original, key/BPM/Logicx/stems/MIDI/WAV presence, version-chain, `live_presence` vs setlist-ready vs official-set. Official-set count on this walk is **0**. Catalog rows are not the official set.
+3. Clustered Logic-ready gaps: 9 closest drop-in · 5 Logic+key · 19 Logic/no key · 10 audio+key/no Logic · 31 audio-only (includes Manic) · 16 key-only · 36 empty. Manic stems/MIDI were substring false positives (`system` / future horns) — reported, not rewritten. Everyday / Drinking Song momentum scores stay reported-only. Stalemate unmatched titles stay unmatched. Discovery: `00_control_room/Catalog Discovery — song analysis.md`. No fail-closed code bug after #22. #11–#22 locks unchanged. No second catalog. Do not change billing.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs.
+- No new songs. No invented UnRecorded 71-title list. No invented `vm_unmatched.json`. No minted Stalemate unmatched IDs.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched.
+- Spine song rows were not rewritten. Catalog rows are not the official set. Show Night owns official sets. Vault default-live stays a catalog slice.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Show Night official set is owner-only. Official-set dump binds as Rad Dad — official set. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Derived `master_catalog.csv` must match the spine. Next honest leftover is Logic-ready field fill on Jeff's Mac (keys / WAV / AIFF / stems / `.logicx`) for the 19 Logic-no-key + 36 empty rows — without inventing keys — plus recovering the real UnRecorded / unmatched-memo lists from Drive. Do not mint Stalemate unmatched IDs. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
