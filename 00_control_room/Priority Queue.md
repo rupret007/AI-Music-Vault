@@ -18,6 +18,7 @@
 *Catalog rows are not the official set 2026-08-27: Vault default-live stays a catalog slice; Show Night owns official sets; dashboard reuses data/app_api.json and does not reprint IN CURRENT LIVE SET. Still these three songs. Still no new priorities.*
 *Satellite CSV honesty 2026-08-28: derived master_catalog.csv must match the 150-row spine; covers/version-chain/momentum ids fail closed. Still these three songs. Still no new priorities.*
 *Song analysis leftover 2026-08-28: 126 originals + 93 covers clustered by Logic-ready evidence; catalog still not the official set. Still these three songs. Still no new priorities.*
+*Covers book leftover 2026-08-28: 93 covers stay a reference book (empty on-book Logic-ready); Trailer Swift originals stay 0; official-set originals stay 0. Still these three songs. Still no new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE
