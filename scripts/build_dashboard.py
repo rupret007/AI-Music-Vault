@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from catalog_surface import (  # noqa: E402
     ON_DECK_NOTE,
     SURFACE_SUBTITLE,
+    build_memo_search_index,
     overlay_feed_scopes,
     played_badge_label,
     surface_stage_label,
@@ -41,31 +42,20 @@ for s in cat['songs']:
 overlay_feed_scopes(slim, app_api)
 DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
 
-# transcripts: compact index (title, date, dur, cleaned text capped at 1500 chars)
-# Overlay song_id from vm_matches.json (372/88) — the embedded transcript
-# file still carries the first-pass 326 matches; this join is the live index.
+# Transcripts: compact index (title, date, duration, cleaned text capped at 1500
+# chars). Overlay song_id from vm_matches.json (372/88); the transcript file
+# still carries the first-pass 326 matches. Source totals and searchable-index
+# totals stay separate because short collapsed text is intentionally not useful
+# enough to embed for search.
 joined = json.load(open(TX_PATH))
-TX_TOTAL = len(joined)
+matches_by_song = {}
 if os.path.exists(VM_MATCHES_PATH):
-    _uid2sid = {}
-    for _sid, _uids in json.load(open(VM_MATCHES_PATH)).items():
-        for _uid in _uids:
-            _uid2sid[_uid] = _sid
-    for _row in joined:
-        if _row.get("uid") in _uid2sid:
-            _row["song_id"] = _uid2sid[_row["uid"]]
-def collapse(t):
-    words = t.split(); out=[]
-    for w in words:
-        if len(out)>=2 and out[-1].lower()==w.lower() and out[-2].lower()==w.lower(): continue
-        out.append(w)
-    return ' '.join(out)
-tx = []
-for j in joined:
-    txt = collapse(j['text'])[:1500]
-    if len(txt) < 15: continue
-    tx.append(dict(f=j['file'], n=j['title'] or '(untitled)', d=j['date'], u=j['dur'],
-                   s=j.get('song_id') or '', x=txt))
+    matches_by_song = json.load(open(VM_MATCHES_PATH))
+tx, memo_counts = build_memo_search_index(joined, matches_by_song)
+TX_TOTAL = memo_counts["transcribed"]
+TX_MATCHED_TOTAL = memo_counts["matched"]
+TX_SEARCHABLE_TOTAL = memo_counts["searchable"]
+TX_SEARCHABLE_MATCHED = memo_counts["searchable_matched"]
 TX = json.dumps(tx, ensure_ascii=False).replace('</', '<\\/')
 
 page = r'''<!DOCTYPE html>
@@ -119,7 +109,7 @@ input{flex:1;min-width:160px}
 .mhint{color:var(--ink3);font-size:12px;padding:16px;text-align:center}
 </style></head><body>
 <h1>🎸 Jeff Story Song Vault</h1>
-<div class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index + all 916 memos searchable by what you actually sang · no audio in this repo</div>
+<div class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</div>
 <div class="stats" id="stats"></div>
 <div class="lanes">
  <h2>The three lanes (+ on deck)</h2>
@@ -131,7 +121,7 @@ input{flex:1;min-width:160px}
 </div>
 <div class="tabs">
  <div class="tab on" id="tabS" onclick="showTab('S')">Songs</div>
- <div class="tab" id="tabM" onclick="showTab('M')">Memo Search (916 transcripts)</div>
+ <div class="tab" id="tabM" onclick="showTab('M')">Memo Search (__TX_SEARCHABLE_TOTAL__ searchable)</div>
 </div>
 <div id="paneS">
 <div class="controls">
@@ -151,14 +141,17 @@ input{flex:1;min-width:160px}
 <div class="covers-note">93 covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" style="display:none">
-<div class="controls"><input id="mq" placeholder="Search everything you ever sang into your phone… (try: alright, garden, better than now)"></div>
-<div id="mlist"><div class="mhint">Type 3+ letters to search all 916 memo transcripts. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel.</div></div>
+<div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: alright, garden, better than now)"></div>
+<div id="mlist"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel.</div></div>
 </div>
 <div class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane.</div>
 <script>
 const DATA = __DATA__;
 const TX = __TX__;
 const TX_TOTAL = __TX_TOTAL__;
+const TX_MATCHED_TOTAL = __TX_MATCHED_TOTAL__;
+const TX_SEARCHABLE_TOTAL = __TX_SEARCHABLE_TOTAL__;
+const TX_SEARCHABLE_MATCHED = __TX_SEARCHABLE_MATCHED__;
 function showTab(w){document.getElementById('paneS').style.display=w==='S'?'':'none';
  document.getElementById('paneM').style.display=w==='M'?'':'none';
  document.getElementById('tabS').classList.toggle('on',w==='S');
@@ -171,14 +164,14 @@ projects.forEach(p=>{const o=document.createElement('option');o.value=p;o.textCo
 const scopes=[...new Set(DATA.map(d=>d.scope).filter(Boolean))].sort();
 scopes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=(DATA.find(d=>d.scope===s)||{}).scope_label||s;scope.appendChild(o);});
 const scoredCount=DATA.filter(d=>d.pot).length;
-const matchedCount=TX.filter(t=>t.s).length;
 const defaultLiveCount=DATA.filter(d=>d.scope==='default_live').length;
 document.getElementById('stats').innerHTML=
  `<div class="stat"><b>${DATA.length}</b><span>songs cataloged</span></div>`+
  `<div class="stat"><b>${scoredCount}</b><span>scored</span></div>`+
  `<div class="stat"><b>${defaultLiveCount}</b><span>default-live catalog</span></div>`+
  `<div class="stat"><b>9</b><span>songs recovered from memos</span></div>`+
- `<div class="stat"><b>${matchedCount}</b><span>memos matched</span></div>`+
+ `<div class="stat"><b>${TX_MATCHED_TOTAL}</b><span>memos matched</span></div>`+
+ `<div class="stat"><b>${TX_SEARCHABLE_TOTAL}</b><span>memos searchable</span></div>`+
  `<div class="stat"><b>${TX_TOTAL}</b><span>memos transcribed</span></div>`;
 function esc(s){return (''+(s||'')).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function bar(v,c){return v?`<div class="barwrap"><div class="bar"><i style="width:${v}%;background:var(--${c})"></i></div><span>${v}</span></div>`:'<div class="barwrap"><span style="color:var(--ink3)">—</span></div>';}
@@ -217,7 +210,7 @@ const mq=document.getElementById('mq'), mlist=document.getElementById('mlist');
 const sname={}; DATA.forEach(d=>sname[d.id]=d.t);
 function mrender(){
  const term=mq.value.toLowerCase().trim();
- if(term.length<3){mlist.innerHTML='<div class="mhint">Type 3+ letters to search all 916 memo transcripts. Hits are leads, not gospel — Whisper mishears sung words.</div>';return;}
+ if(term.length<3){mlist.innerHTML=`<div class="mhint">Type 3+ letters to search ${TX_SEARCHABLE_TOTAL} usable-text transcripts. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words.</div>`;return;}
  const hits=[];
  for(const m of TX){
   const lx=m.x.toLowerCase(); const i=lx.indexOf(term);
@@ -238,6 +231,12 @@ function mrender(){
 mq.addEventListener('input',mrender);
 </script></body></html>'''
 
-page = page.replace('__DATA__', DATA).replace('__TX__', TX).replace('__TX_TOTAL__', str(TX_TOTAL))
+page = (page.replace('__DATA__', DATA)
+    .replace('__TX__', TX)
+    .replace('__TX_TOTAL__', str(TX_TOTAL))
+    .replace('__TX_MATCHED_TOTAL__', str(TX_MATCHED_TOTAL))
+    .replace('__TX_SEARCHABLE_TOTAL__', str(TX_SEARCHABLE_TOTAL))
+    .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED)))
 open(OUT_PATH,'w').write(page)
-print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,', len(tx), 'transcripts embedded')
+print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,',
+      TX_SEARCHABLE_TOTAL, 'searchable transcripts from', TX_TOTAL, 'transcribed')
