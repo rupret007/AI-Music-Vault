@@ -22,6 +22,9 @@ SURFACE_SUBTITLE = (
 
 ON_DECK_NOTE = "catalog, not the official set"
 
+MEMO_SEARCH_MIN_CHARS = 15
+MEMO_SEARCH_MAX_CHARS = 1500
+
 PLAYED_BADGE_PREFIX = "played"
 SURFACE_STAGE_REPLACEMENT = "catalog play history — not the official set"
 
@@ -38,6 +41,70 @@ OFFICIAL_SET_SURFACE_CLAIMS = STAGE_LIVE_SET_CLAIMS + (
     "default-live is the official set",
     "vault default-live is the official set",
 )
+
+
+def collapse_transcript_text(text) -> str:
+    """Trim runaway repeated ASR words without treating a short result as searchable."""
+    words = str(text or "").split()
+    out: list[str] = []
+    for word in words:
+        if (
+            len(out) >= 2
+            and out[-1].lower() == word.lower()
+            and out[-2].lower() == word.lower()
+        ):
+            continue
+        out.append(word)
+    return " ".join(out)
+
+
+def build_memo_search_index(transcripts, matches_by_song) -> tuple[list[dict], dict[str, int]]:
+    """Return the compact search index and distinct source/searchable counts.
+
+    A transcript can be transcribed and matched while still being too short to
+    provide a useful search snippet. Keep that row in the source totals without
+    pretending it is present in the browser search index.
+    """
+    uid_to_song: dict[str, str] = {}
+    if isinstance(matches_by_song, dict):
+        for song_id, uids in matches_by_song.items():
+            for uid in uids or []:
+                uid_to_song[str(uid)] = str(song_id)
+
+    prepared: list[dict] = []
+    total_matched = 0
+    searchable_matched = 0
+    for source in transcripts or []:
+        row = dict(source)
+        uid = str(row.get("uid") or "")
+        if uid in uid_to_song:
+            row["song_id"] = uid_to_song[uid]
+        song_id = str(row.get("song_id") or "")
+        if song_id:
+            total_matched += 1
+
+        text = collapse_transcript_text(row.get("text"))[:MEMO_SEARCH_MAX_CHARS]
+        if len(text) < MEMO_SEARCH_MIN_CHARS:
+            continue
+        if song_id:
+            searchable_matched += 1
+        prepared.append(
+            {
+                "f": row.get("file") or "",
+                "n": row.get("title") or "(untitled)",
+                "d": row.get("date") or "",
+                "u": row.get("dur") or 0,
+                "s": song_id,
+                "x": text,
+            }
+        )
+
+    return prepared, {
+        "transcribed": len(transcripts or []),
+        "matched": total_matched,
+        "searchable": len(prepared),
+        "searchable_matched": searchable_matched,
+    }
 
 
 def feed_scope_by_id(app_api) -> dict[str, str]:
