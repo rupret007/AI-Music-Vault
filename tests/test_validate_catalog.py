@@ -18,6 +18,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_displays_owner_audio_index,
     dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
+    dashboard_resumes_song_work_privately,
     catalog_workspace_uses_vault_framing,
     overlay_feed_scopes,
     played_badge_label,
@@ -255,7 +256,13 @@ def extras_ok(cat=None):
             'id="workStarts" id="advancedFilters" '
             'function openWork( function updateWorkSessionState( '
             'function latestMemoForSong( data-open-work= '
-            'Start a work session More filters Sit-down'
+            'Start a work session More filters Sit-down '
+            'id="resumeWork" id="resumeWorkButton" id="forgetWorkSession" '
+            "const WORK_SESSION_KEY='vault:last-work:v1' "
+            'function parseStoredWorkSession( function readStoredWorkSession( '
+            'function storeWorkSession( function clearStoredWorkSession( '
+            "function resumeLastWorkSession( Object.keys(value).sort().join('|')!==\'id|kind|v\' "
+            'JSON.stringify(parsed)'
         ),
         "audio_files": [],
     }
@@ -1061,6 +1068,15 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_exposes_song_work(extra["dashboard_html"]))
+
+    def test_dashboard_without_private_resume_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="resumeWork"', ""
+        ).replace("function parseStoredWorkSession(", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("resume one validated local work session" in e for e in errors), errors)
+        self.assertFalse(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
 
     def test_dashboard_owner_audio_index_fails_closed(self):
         extra = extras_ok()
@@ -2451,6 +2467,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog one-song session start — 2026-09-03 "
             "(Codex Extra High, no audio)"
         )
+        product_session_resume = (
+            "Catalog one-song session resume — 2026-09-03 "
+            "(Codex Extra High, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2464,7 +2484,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(leftover_work, headings)
         self.assertIn(leftover_sitdown, headings)
         self.assertIn(product_session_start, headings)
-        self.assertEqual(headings[-1], product_session_start)
+        self.assertEqual(headings[-1], product_session_resume)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
@@ -2503,6 +2523,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn("Sit-down", extra["dashboard_html"])
         self.assertIn('id="workSession"', extra["dashboard_html"])
         self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
+        self.assertTrue(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
         self.assertFalse(catalog_ok_report_leaks_published_ids())

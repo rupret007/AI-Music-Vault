@@ -604,3 +604,22 @@ def dashboard_exposes_song_work(html: str) -> bool:
         and "More filters" in chrome
         and "Sit-down" in chrome
     )
+
+
+def dashboard_resumes_song_work_privately(html: str) -> bool:
+    """Resume must persist only a validated catalog id and work kind."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        'id="resumeWork"',
+        'id="resumeWorkButton"',
+        'id="forgetWorkSession"',
+        "const WORK_SESSION_KEY='vault:last-work:v1'",
+        "function parseStoredWorkSession(",
+        "function readStoredWorkSession(",
+        "function storeWorkSession(",
+        "function clearStoredWorkSession(",
+        "function resumeLastWorkSession(",
+        "Object.keys(value).sort().join('|')!=='id|kind|v'",
+        "JSON.stringify(parsed)",
+    )
+    return all(marker in chrome for marker in required)

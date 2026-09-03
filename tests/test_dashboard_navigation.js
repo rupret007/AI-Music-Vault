@@ -48,12 +48,20 @@ for (const marker of [
   "function copySongWork(",
   "function openWork(",
   "function updateWorkSessionState(",
+  "function parseStoredWorkSession(",
+  "function readStoredWorkSession(",
+  "function storeWorkSession(",
+  "function clearStoredWorkSession(",
+  "function resumeLastWorkSession(",
   "function latestMemoForSong(",
   "function stepWork(",
   "id=\"evidence\"",
   "id=\"work\"",
   "id=\"workSession\"",
   "id=\"workStarts\"",
+  "id=\"resumeWork\"",
+  "id=\"resumeWorkButton\"",
+  "id=\"forgetWorkSession\"",
   "id=\"advancedFilters\"",
   "Start a work session",
   "More filters",
@@ -208,6 +216,92 @@ if (!extractFunction(script, "copyMemoFile").includes("copyVaultText")) {
 const songWorkKind = new Function(
   "return (" + extractFunction(script, "songWorkKind") + ");",
 )();
+
+const parseStoredWorkSession = new Function(
+  "songWorkKind",
+  "return (" + extractFunction(script, "parseStoredWorkSession") + ");",
+)(songWorkKind);
+const storedNames = { "JS-0001": "First Song", "JS-0002": "Second Song" };
+const storedRows = [
+  { id: "JS-0001", nx: "Jeff: confirm the 2 unclear chorus lines by ear" },
+  { id: "JS-0002", nx: "Record lead guitar over choruses" },
+];
+const parsedSession = parseStoredWorkSession(
+  JSON.stringify({ v: 1, kind: "write", id: "JS-0001" }),
+  storedNames,
+  storedRows,
+);
+if (!parsedSession || parsedSession.id !== "JS-0001" || parsedSession.kind !== "write") {
+  fail("stored work session must accept one matching catalog id and work kind");
+}
+if (parseStoredWorkSession('{"v":1,"kind":"write","id":"JS-9999"}', storedNames, storedRows)) {
+  fail("stored work session must reject an unknown catalog id");
+}
+if (parseStoredWorkSession('{"v":1,"kind":"listen","id":"JS-0001"}', storedNames, storedRows)) {
+  fail("stored work session must reject a kind that no longer matches the catalog next action");
+}
+if (parseStoredWorkSession(
+  '{"v":1,"kind":"write","id":"JS-0001","note":"private mix.wav"}',
+  storedNames,
+  storedRows,
+)) {
+  fail("stored work session must reject extra fields rather than retaining private text");
+}
+
+const storageKeyMatch = script.match(/const WORK_SESSION_KEY='([^']+)'/);
+if (!storageKeyMatch) fail("missing versioned work-session storage key");
+const storageKey = storageKeyMatch[1];
+const readStoredWorkSession = new Function(
+  "WORK_SESSION_KEY",
+  "parseStoredWorkSession",
+  "return (" + extractFunction(script, "readStoredWorkSession") + ");",
+)(storageKey, parseStoredWorkSession);
+const storeWorkSession = new Function(
+  "WORK_SESSION_KEY",
+  "parseStoredWorkSession",
+  "return (" + extractFunction(script, "storeWorkSession") + ");",
+)(storageKey, parseStoredWorkSession);
+const clearStoredWorkSession = new Function(
+  "WORK_SESSION_KEY",
+  "return (" + extractFunction(script, "clearStoredWorkSession") + ");",
+)(storageKey);
+const memory = new Map();
+const storage = {
+  getItem(key) { return memory.has(key) ? memory.get(key) : null; },
+  setItem(key, value) { memory.set(key, value); },
+  removeItem(key) { memory.delete(key); },
+};
+if (!storeWorkSession(storage, "write", "JS-0001", storedNames, storedRows)) {
+  fail("valid work session must be saved");
+}
+const storedPayload = JSON.parse(memory.get(storageKey));
+if (Object.keys(storedPayload).sort().join("|") !== "id|kind|v") {
+  fail("saved work session must contain only version, work kind, and catalog id");
+}
+if (!readStoredWorkSession(storage, storedNames, storedRows)) {
+  fail("valid saved work session must be readable");
+}
+memory.set(
+  storageKey,
+  JSON.stringify({ v: 1, kind: "write", id: "JS-0001", path: "private.logicx" }),
+);
+if (readStoredWorkSession(storage, storedNames, storedRows) || memory.has(storageKey)) {
+  fail("extra-field storage must fail closed and be cleared");
+}
+const blockedStorage = {
+  getItem() { throw new Error("blocked"); },
+  setItem() { throw new Error("blocked"); },
+  removeItem() { throw new Error("blocked"); },
+};
+if (readStoredWorkSession(blockedStorage, storedNames, storedRows) !== null) {
+  fail("unavailable browser storage must fail soft on read");
+}
+if (storeWorkSession(blockedStorage, "write", "JS-0001", storedNames, storedRows)) {
+  fail("unavailable browser storage must fail soft on write");
+}
+if (clearStoredWorkSession(blockedStorage)) {
+  fail("unavailable browser storage must fail soft on clear");
+}
 if (songWorkKind("Jeff: confirm the 2 unclear chorus lines by ear (60s)") !== "write") {
   fail("chorus-line next action must classify as write");
 }
@@ -285,15 +379,15 @@ const workFields = {
 };
 const workCalls = [];
 const workNavigation = new Function(
-  "sname", "q", "proj", "scored", "scope", "sort", "evidence", "work",
+  "sname", "DATA", "songWorkKind", "q", "proj", "scored", "scope", "sort", "evidence", "work",
   "showTab", "paint", "writeVaultHash", "recordFocus",
   "let lastWorkKind = ''; let activeWorkSongId = '';" +
-    "function render(){ paint(); activeWorkSongId = 'JS-0001'; }" +
+    "function render(){ paint(); if(!activeWorkSongId)activeWorkSongId = 'JS-0001'; }" +
     "function focusWorkSong(id){ recordFocus(id); return true; }" +
     "const openWork = " + extractFunction(script, "openWork") + ";" +
     "return { openWork, active: () => activeWorkSongId };",
 )(
-  names, workFields.q, workFields.proj, workFields.scored, workFields.scope,
+  names, storedRows, songWorkKind, workFields.q, workFields.proj, workFields.scored, workFields.scope,
   workFields.sort, workFields.evidence, workFields.work,
   (tab) => workCalls.push(tab), () => workCalls.push("render"),
   (kind, id) => workCalls.push(String(kind) + ":" + String(id)),
@@ -305,6 +399,11 @@ if (workFields.work.value !== "write" || workFields.q.value !== "") {
 }
 if (workCalls.join(",") !== "S,render,work:write,focus:JS-0001") {
   fail("openWork must paint Songs, write the work hash, and open the first match");
+}
+workCalls.length = 0;
+workNavigation.openWork("write", "JS-0001");
+if (workNavigation.active() !== "JS-0001" || workCalls.join(",") !== "S,render,work:write,focus:JS-0001") {
+  fail("resume must reopen the exact validated song inside its matching work queue");
 }
 workNavigation.openWork("not-a-kind");
 if (workFields.work.value !== "write") fail("openWork must reject unknown work kinds");

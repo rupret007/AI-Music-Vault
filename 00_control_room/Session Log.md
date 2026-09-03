@@ -470,3 +470,19 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 
 ### Next continuation point
 Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Use the private dashboard's primary Write / Produce / Listen buttons to start one bounded session; More filters is for catalog exploration, not a new priority system. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Catalog one-song session resume — 2026-09-03 (Codex Extra High, no audio)
+### Done
+1. Started from exact private main `4823cbfb`. The one-song start already selected a highest-momentum item and bounded Previous/Next, but a refresh lost the exact song and made Jeff hunt again.
+2. Reused that work queue and existing catalog work-kind classifier. Once a song is opened, the dashboard stores only schema version + matching work kind + catalog ID in this browser. A visible Resume action reopens that exact validated song; Forget clears it.
+3. The parser rejects unknown IDs, changed work kinds, stale schemas, and any extra fields, then removes the invalid record. Blocked browser storage fails soft. The validator and focused navigation tests lock the privacy boundary and exact-song outcome.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, DATA/TX payloads, or app feed changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Use Resume only for the browser-local one-song work position; use Forget to clear it, and use this latest Session Log section for the authoritative project handoff. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.

@@ -34,6 +34,7 @@ from catalog_surface import (
     dashboard_displays_owner_audio_index,
     dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
+    dashboard_resumes_song_work_privately,
 )
 from export_catalog_csv import (
     comparable_covers,
@@ -1990,6 +1991,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must expose write/produce/listen sit-down from "
                 "existing next actions — work session, sanitized next, "
                 "and memo evidence instead of owner-audio paths"
+            )
+        if not dashboard_resumes_song_work_privately(dash):
+            errors.append(
+                "dashboard must resume one validated local work session using "
+                "only version, work kind, and catalog id — never catalog text "
+                "or owner-audio locators"
             )
 
     audio_hits = extras.get("audio_files")
