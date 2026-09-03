@@ -43,7 +43,10 @@ still contain unreleased, personal, collaborator, or location information.
 The private dashboard links catalog songs that have searchable matched voice
 memos to that evidence, and each matched memo back to its song. Songs with
 searchable matches can be scanned, filtered, and sorted by latest memo date;
-the scoped set is newest-first and can copy the local intake filename. These
+the scoped set is newest-first and can copy the local intake filename. The
+same song brain can filter write / produce / listen work from the existing
+next action, open a lane song, and copy a sanitized work card (hook, next
+action, open questions) without owner-audio or street locators. These
 are local navigation links over the existing index; they do not open, upload,
 or modify audio. Logic projects, keys, and WAVs stay owner-only.
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as

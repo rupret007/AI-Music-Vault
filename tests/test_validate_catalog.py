@@ -15,6 +15,7 @@ from catalog_surface import (  # noqa: E402
     SURFACE_SUBTITLE,
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
+    dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
     catalog_workspace_uses_vault_framing,
     overlay_feed_scopes,
@@ -246,7 +247,10 @@ def extras_ok(cat=None):
         "dashboard_html": (
             "Catalog v1.6 · Turn Over The Flag · Manic · Long Long Drive · "
             "It's Alright · Blue Skies Fade · data/app_api.json · "
-            "Show Night owns official sets · catalog rows are not the live set"
+            "Show Night owns official sets · catalog rows are not the live set "
+            'id="work" Copy work card function songWorkKind( '
+            'function buildSongWorkCard( data-copy-work '
+            'data-open-song="ST-0001"'
         ),
         "audio_files": [],
     }
@@ -1040,6 +1044,18 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertTrue(dashboard_opens_owner_audio(extra["dashboard_html"]))
+
+    def test_dashboard_without_song_work_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="work"', ""
+        ).replace("Copy work card", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("write/produce work" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_exposes_song_work(extra["dashboard_html"]))
 
     def test_dashboard_without_feed_reuse_fails_closed(self):
         extra = extras_ok()
@@ -2453,6 +2469,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(dashboard_opens_owner_audio(extra["dashboard_html"]))
         self.assertIn("this page does not open audio", extra["dashboard_html"])
         self.assertIn("Has searchable memos", extra["dashboard_html"])
+        self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
         self.assertFalse(catalog_ok_report_leaks_published_ids())

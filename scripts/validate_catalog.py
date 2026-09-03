@@ -31,6 +31,7 @@ import sys
 from catalog_surface import (
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
+    dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
 )
 from export_catalog_csv import (
@@ -1977,6 +1978,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard must not open Logic keys, WAVs, or audio — "
                 "those stay owner-only on Jeff's Mac"
+            )
+        if not dashboard_exposes_song_work(dash):
+            errors.append(
+                "dashboard must expose write/produce work from existing "
+                "next actions — filter, lane jump, and a sanitized work card"
             )
 
     audio_hits = extras.get("audio_files")
