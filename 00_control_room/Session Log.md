@@ -403,3 +403,20 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 
 ### Next continuation point
 Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Show Night official set is owner-only. Official-set dump binds as Rad Dad — official set. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Derived `master_catalog.csv` must match the spine. Cover book stays 93 / official-set originals stay 0 / Trailer Swift originals stay 0. Next honest leftover is Logic-ready field fill on Jeff's Mac for the 19 Logic-no-key + 36 empty originals, plus the two already-inventoried cover `.logicx` files (Ours, Grandma) — without inventing keys or minting cover IDs — plus recovering the real UnRecorded / unmatched-memo lists from Drive. Do not mint unmatched Trailer Swift / Rad Dad / Stalemate titles. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+## Catalog memo evidence find-and-act — 2026-09-03 (Cloud Agent, no audio)
+### Done
+1. After leftover-squash #26, songs and searchable matched memos already connect. The leftover was usability, not another spine walk: Jeff still had to expand every row to see evidence, and the scoped memo set was not newest-first or copyable.
+2. Deepened that same Songs / Memo Search workflow. Songs with searchable matches now show the count and latest memo date, can be filtered or sorted by that evidence, and still open the scoped memo set. Scoped memos are newest-first, show the catalog next action, copy the local intake filename, and keep a local `#memos=` / `#song=` hash. Escape clears the scope. Catalog feel is unchanged.
+3. Security leftover: the generated dashboard fail-closes if it opens Logic keys, WAVs, or audio. Copy is the already-visible intake name only. No unmatched-memo address dump. No catalog 0.22.5 mutation. No audio open/upload. No AI contact. Logic keys/WAVs stay owner-only on Jeff's Mac. #11–#26 locks unchanged. No second catalog. Do not change billing.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened or uploaded.
+- No new songs. No invented UnRecorded 71-title list. No invented `vm_unmatched.json`. No minted IDs. No invented keys. No Manic / Blasting Room work.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched.
+- Spine song rows were not rewritten. Cover book rows were not rewritten. Embedded DATA/TX payloads stay projections of the existing index.
+- Catalog rows are not the official set. Show Night owns official sets. Vault default-live stays a catalog slice.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Show Night official set is owner-only. Official-set dump binds as Rad Dad — official set. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Derived `master_catalog.csv` must match the spine. Cover book stays 93 / official-set originals stay 0 / Trailer Swift originals stay 0. The private dashboard now lets Jeff find songs with searchable matched memos and act on that scoped set (newest first, copy intake name) without opening audio. Logic keys/WAVs stay owner-only on Jeff's Mac — do not invent keys or fill Logic-ready from this page. Next honest leftover is still recovering the real UnRecorded / unmatched-memo lists from Drive, plus Jeff-Mac Logic-ready field fill, without inventing keys or minting IDs. Do not mint unmatched Trailer Swift / Rad Dad / Stalemate titles. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.

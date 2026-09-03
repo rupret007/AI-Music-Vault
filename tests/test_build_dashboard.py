@@ -10,7 +10,13 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
-from catalog_surface import build_memo_search_index  # noqa: E402
+from catalog_surface import (  # noqa: E402
+    build_memo_search_index,
+    dashboard_opens_owner_audio,
+    memo_evidence_by_song,
+    parse_vault_hash,
+    sort_memo_evidence_rows,
+)
 
 
 class DashboardMemoHonestyTests(unittest.TestCase):
@@ -94,6 +100,103 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("355 matched rows have enough text", dashboard)
         self.assertNotIn("all 916 memos searchable", dashboard)
         self.assertNotIn("search all 916 memo transcripts", dashboard)
+
+    def test_memo_evidence_uses_searchable_matches_only(self):
+        rows = [
+            {"s": "JS-0001", "d": "2024-01-02", "f": "b.m4a"},
+            {"s": "JS-0001", "d": "2022-03-01", "f": "a.m4a"},
+            {"s": "", "d": "2025-01-01", "f": "unmatched.m4a"},
+            {"s": "JS-0002", "d": "", "f": "empty.m4a"},
+        ]
+        evidence = memo_evidence_by_song(rows)
+        self.assertEqual(
+            evidence,
+            {
+                "JS-0001": {"n": 2, "first": "2022-03-01", "last": "2024-01-02"},
+                "JS-0002": {"n": 1, "first": "", "last": ""},
+            },
+        )
+
+    def test_memo_evidence_sorts_newest_first_and_sinks_empty_dates(self):
+        ordered = sort_memo_evidence_rows(
+            [
+                {"d": "2020-01-01", "f": "old.m4a"},
+                {"d": "2024-12-01", "f": "new.m4a"},
+                {"d": "", "f": "z-empty.m4a"},
+                {"d": "2024-12-01", "f": "newer-name.m4a"},
+            ]
+        )
+        self.assertEqual(
+            [row["f"] for row in ordered],
+            ["newer-name.m4a", "new.m4a", "old.m4a", "z-empty.m4a"],
+        )
+
+    def test_vault_hash_only_accepts_known_catalog_ids(self):
+        names = {"JS-0001": "First Song"}
+        self.assertEqual(
+            parse_vault_hash("#memos=JS-0001", names),
+            {"kind": "memos", "id": "JS-0001"},
+        )
+        self.assertEqual(
+            parse_vault_hash("song=JS-0001", names),
+            {"kind": "song", "id": "JS-0001"},
+        )
+        self.assertIsNone(parse_vault_hash("#memos=JS-0002", names))
+        self.assertIsNone(parse_vault_hash("#open=JS-0001", names))
+        self.assertIsNone(parse_vault_hash("#memos=JS-0001<script>", names))
+
+    def test_dashboard_must_not_open_owner_audio(self):
+        self.assertTrue(dashboard_opens_owner_audio('<a href="mix.wav">open</a>'))
+        self.assertTrue(dashboard_opens_owner_audio("<audio src='x.m4a'></audio>"))
+        self.assertTrue(dashboard_opens_owner_audio('<a href="file:///tmp/x.wav">x</a>'))
+        self.assertTrue(dashboard_opens_owner_audio('<button onclick="play()">x</button>'))
+        self.assertFalse(
+            dashboard_opens_owner_audio(
+                "const DATA = [];\nconst TX = [];\n<button>Copy intake name</button>"
+            )
+        )
+        self.assertFalse(
+            dashboard_opens_owner_audio(
+                "const DATA = [];\n"
+                'const TX = [{"f": "clip.wav", "x": "said file:// once"}];\n'
+                "<div>index only</div>\n"
+            )
+        )
+
+    def test_committed_dashboard_deepens_find_and_act_without_opening_audio(self):
+        with open(
+            os.path.join(ROOT, "data", "vm_transcribed.json"), encoding="utf-8"
+        ) as handle:
+            transcripts = json.load(handle)
+        with open(
+            os.path.join(
+                ROOT, "01_source_manifests", "voicememo", "vm_matches.json"
+            ),
+            encoding="utf-8",
+        ) as handle:
+            matches = json.load(handle)
+        prepared, counts = build_memo_search_index(transcripts, matches)
+        evidence = memo_evidence_by_song(prepared)
+        self.assertEqual(counts["searchable_matched"], 355)
+        self.assertEqual(sum(item["n"] for item in evidence.values()), 355)
+        self.assertGreater(len(evidence), 0)
+
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertIn('id="evidence"', dashboard)
+        self.assertIn("Has searchable memos", dashboard)
+        self.assertIn("Sort: Latest memo evidence", dashboard)
+        self.assertIn("data-copy-file", dashboard)
+        self.assertIn("Copy intake name", dashboard)
+        self.assertIn("newest first", dashboard)
+        self.assertIn("this page does not open audio", dashboard)
+        self.assertIn("function parseVaultHash(", dashboard)
+        self.assertIn("function sortMemoHits(", dashboard)
+        self.assertIn("function handleVaultKey(", dashboard)
+        self.assertFalse(dashboard_opens_owner_audio(dashboard))
 
 
 if __name__ == "__main__":

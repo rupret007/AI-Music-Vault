@@ -6,6 +6,8 @@ Do not invent songs, lyrics dumps, or a second catalog.
 """
 from __future__ import annotations
 
+import re
+
 SCOPE_SURFACE_LABELS = {
     "default_live": "Vault default-live — catalog, not official set",
     "parked_catalog": "Parked catalog — not a live band",
@@ -208,3 +210,110 @@ def catalog_surface_admits_not_official_set(text: str) -> bool:
         or "catalog rows are not the live set" in body
     )
     return has_not and "app_api.json" in body and "show night" in body
+
+
+OWNER_AUDIO_OPEN_MARKERS = (
+    "<audio",
+    "file://",
+    "onclick=",
+)
+
+OWNER_AUDIO_HREF_RE = re.compile(
+    r"""href\s*=\s*['"]([^'"]+)['"]""",
+    re.IGNORECASE,
+)
+
+OWNER_AUDIO_HREF_SUFFIXES = (
+    ".wav",
+    ".aiff",
+    ".aif",
+    ".logicx",
+    ".m4a",
+    ".mp3",
+    ".flac",
+    ".band",
+)
+
+VAULT_HASH_KINDS = ("memos", "song")
+
+
+def memo_evidence_by_song(index_rows) -> dict[str, dict]:
+    """Searchable matched-memo evidence already in the dashboard index.
+
+    Counts and dates come from existing searchable rows only. Short matched
+    transcripts stay out, same as the browser index. This does not invent
+    unmatched memos, keys, or WAV paths.
+    """
+    out: dict[str, dict] = {}
+    for row in index_rows or []:
+        if not isinstance(row, dict):
+            continue
+        song_id = str(row.get("s") or row.get("song_id") or "").strip()
+        if not song_id:
+            continue
+        ev = out.setdefault(song_id, {"n": 0, "first": "", "last": ""})
+        ev["n"] += 1
+        date = str(row.get("d") or row.get("date") or "").strip()
+        if not date:
+            continue
+        if not ev["first"] or date < ev["first"]:
+            ev["first"] = date
+        if not ev["last"] or date > ev["last"]:
+            ev["last"] = date
+    return out
+
+
+def sort_memo_evidence_rows(rows) -> list[dict]:
+    """Newest searchable memo first so Jeff can act on the latest take."""
+    dated: list[dict] = []
+    empty: list[dict] = []
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("d") or "").strip():
+            dated.append(row)
+        else:
+            empty.append(row)
+    dated.sort(
+        key=lambda row: (str(row.get("d") or ""), str(row.get("f") or "")),
+        reverse=True,
+    )
+    empty.sort(key=lambda row: str(row.get("f") or ""), reverse=True)
+    return dated + empty
+
+
+def parse_vault_hash(raw, names) -> dict | None:
+    """Allow only known catalog ids on the local #memos= / #song= hash."""
+    text = str(raw or "").lstrip("#")
+    if "=" not in text:
+        return None
+    kind, song_id = text.split("=", 1)
+    if kind not in VAULT_HASH_KINDS:
+        return None
+    if not isinstance(names, dict) or song_id not in names:
+        return None
+    return {"kind": kind, "id": song_id}
+
+
+def dashboard_markup_chrome(html: str) -> str:
+    """Drop embedded DATA/TX payloads so transcript text cannot trip markup checks."""
+    body = html or ""
+    body = re.sub(r"const DATA = .*?;\n", "const DATA = [];\n", body, count=1)
+    body = re.sub(r"const TX = .*?;\n", "const TX = [];\n", body, count=1)
+    return body
+
+
+def dashboard_opens_owner_audio(html: str) -> bool:
+    """Local index must not open Logic keys, WAVs, or audio."""
+    chrome = dashboard_markup_chrome(html)
+    lowered = chrome.lower()
+    if any(marker in lowered for marker in OWNER_AUDIO_OPEN_MARKERS):
+        return True
+    for match in OWNER_AUDIO_HREF_RE.finditer(chrome):
+        href = match.group(1).strip().lower()
+        if href.startswith("file:"):
+            return True
+        path = href.split("?", 1)[0].split("#", 1)[0]
+        if any(path.endswith(ext) for ext in OWNER_AUDIO_HREF_SUFFIXES):
+            return True
+    return False

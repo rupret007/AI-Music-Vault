@@ -15,6 +15,7 @@ from catalog_surface import (  # noqa: E402
     SURFACE_SUBTITLE,
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
+    dashboard_opens_owner_audio,
     catalog_workspace_uses_vault_framing,
     overlay_feed_scopes,
     played_badge_label,
@@ -1029,6 +1030,16 @@ class ValidateCatalogTests(unittest.TestCase):
             surface_stage_label("written — catalog only"),
             "written — catalog only",
         )
+
+    def test_dashboard_owner_audio_open_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"] + '<audio src="take.wav"></audio>'
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("must not open Logic keys, WAVs, or audio" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(dashboard_opens_owner_audio(extra["dashboard_html"]))
 
     def test_dashboard_without_feed_reuse_fails_closed(self):
         extra = extras_ok()
@@ -2393,6 +2404,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Covers book leftover walk — 2026-08-28 "
             "(Cloud Agent, no audio)"
         )
+        leftover_memos = (
+            "Catalog memo evidence find-and-act — 2026-09-03 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2402,6 +2417,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(leftover_csv, headings)
         self.assertIn(leftover_song, headings)
         self.assertIn(leftover_covers, headings)
+        self.assertIn(leftover_memos, headings)
+        self.assertEqual(headings[-1], leftover_memos)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
@@ -2433,6 +2450,9 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(catalog_surface_claims_official_set(extra["dashboard_html"]))
         self.assertFalse(catalog_surface_claims_official_set(extra["readme"]))
         self.assertNotIn("IN CURRENT LIVE SET", extra["dashboard_html"])
+        self.assertFalse(dashboard_opens_owner_audio(extra["dashboard_html"]))
+        self.assertIn("this page does not open audio", extra["dashboard_html"])
+        self.assertIn("Has searchable memos", extra["dashboard_html"])
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
         self.assertFalse(catalog_ok_report_leaks_published_ids())

@@ -31,6 +31,7 @@ import sys
 from catalog_surface import (
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
+    dashboard_opens_owner_audio,
 )
 from export_catalog_csv import (
     comparable_covers,
@@ -1971,6 +1972,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard must reuse data/app_api.json and admit "
                 "catalog rows are not the official set"
+            )
+        if dashboard_opens_owner_audio(dash):
+            errors.append(
+                "dashboard must not open Logic keys, WAVs, or audio — "
+                "those stay owner-only on Jeff's Mac"
             )
 
     audio_hits = extras.get("audio_files")
