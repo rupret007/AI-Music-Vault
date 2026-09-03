@@ -41,8 +41,11 @@ They do not open or upload audio, modify originals, or contact an AI service.
 Keep the repository and its test output private because catalog metadata can
 still contain unreleased, personal, collaborator, or location information.
 The private dashboard links catalog songs that have searchable matched voice
-memos to that evidence, and each matched memo back to its song. These are local
-navigation links over the existing index; they do not open, upload, or modify audio.
+memos to that evidence, and each matched memo back to its song. Songs with
+searchable matches can be scanned, filtered, and sorted by latest memo date;
+the scoped set is newest-first and can copy the local intake filename. These
+are local navigation links over the existing index; they do not open, upload,
+or modify audio. Logic projects, keys, and WAVs stay owner-only.
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public
 catalog dump. Nothing auto-posts.

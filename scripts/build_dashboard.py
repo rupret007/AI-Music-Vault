@@ -112,6 +112,8 @@ input{flex:1;min-width:160px}
 .subtle-btn,.memo-link,.song-link{cursor:pointer;font-weight:600}
 .subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:4px 8px;color:var(--pot)}
 .song-link{border:0;background:transparent;padding:0;font-size:inherit;text-decoration:underline;text-underline-offset:2px}
+.memo-next{color:var(--ink3);font-size:12px;margin-top:3px}
+.copied{color:var(--good)}
 </style></head><body>
 <h1>🎸 Jeff Story Song Vault</h1>
 <div class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</div>
@@ -135,9 +137,11 @@ input{flex:1;min-width:160px}
  <select id="sort">
   <option value="mom">Sort: Momentum (what's alive)</option>
   <option value="pot">Sort: Potential</option><option value="rdy">Sort: Readiness</option>
-  <option value="id">Sort: Catalog ID</option><option value="t">Sort: Title</option></select>
+  <option value="id">Sort: Catalog ID</option><option value="t">Sort: Title</option>
+  <option value="memo">Sort: Latest memo evidence</option></select>
  <select id="scored"><option value="">All songs</option><option value="1">Scored only</option><option value="0">Unscored / to explore</option></select>
  <select id="scope"><option value="">All StoryBoard scopes</option></select>
+ <select id="evidence"><option value="">Any memo evidence</option><option value="1">Has searchable memos</option><option value="0">No searchable memos</option></select>
 </div>
 <div class="resultbar"><span id="songResults" aria-live="polite"></span><button type="button" class="subtle-btn" id="clearSongFilters">Clear filters</button></div>
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
@@ -148,10 +152,10 @@ input{flex:1;min-width:160px}
 </div>
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
 <div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: alright, garden, better than now)"></div>
-<div class="memo-scope" id="memoScope" hidden><span id="memoScopeText"></span><button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></div>
+<div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div></div><button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></div>
 <div id="mlist"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel.</div></div>
 </div>
-<div class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane.</div>
+<div class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAVs stay on your Mac — this page does not open audio.</div>
 <script>
 const DATA = __DATA__;
 const TX = __TX__;
@@ -161,16 +165,27 @@ const TX_SEARCHABLE_TOTAL = __TX_SEARCHABLE_TOTAL__;
 const TX_SEARCHABLE_MATCHED = __TX_SEARCHABLE_MATCHED__;
 const q=document.getElementById('q'),proj=document.getElementById('proj'),
  sort=document.getElementById('sort'),scored=document.getElementById('scored'),
- scope=document.getElementById('scope'),list=document.getElementById('list'),
+ scope=document.getElementById('scope'),evidence=document.getElementById('evidence'),
+ list=document.getElementById('list'),
  songResults=document.getElementById('songResults'),clearSongFilters=document.getElementById('clearSongFilters'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
  mq=document.getElementById('mq'),mlist=document.getElementById('mlist'),
  memoScope=document.getElementById('memoScope'),memoScopeText=document.getElementById('memoScopeText'),
+ memoScopeNext=document.getElementById('memoScopeNext'),
  clearMemoScope=document.getElementById('clearMemoScope');
 const sname={}; DATA.forEach(d=>sname[d.id]=d.t);
+const memoEvidenceBySong={};
 const memoCountBySong={};
-TX.forEach(m=>{if(m.s&&sname[m.s])memoCountBySong[m.s]=(memoCountBySong[m.s]||0)+1;});
+TX.forEach(m=>{
+ if(m.s&&sname[m.s]){
+  const ev=memoEvidenceBySong[m.s]||(memoEvidenceBySong[m.s]={n:0,first:'',last:''});
+  ev.n+=1;
+  if(m.d&&(!ev.first||m.d<ev.first))ev.first=m.d;
+  if(m.d&&(!ev.last||m.d>ev.last))ev.last=m.d;
+  memoCountBySong[m.s]=ev.n;
+ }
+});
 let activeMemoSong='';
 function showTab(w){
  const memo=w==='M';
@@ -200,21 +215,36 @@ function bar(v,c){
  return `<div class="barwrap"><div class="bar"><i style="width:${safe}%;background:var(--${c})"></i></div><span>${esc(n)}</span></div>`;
 }
 function render(){
- const term=q.value.toLowerCase().trim(), pv=proj.value, sv=scored.value, scv=scope.value;
+ const term=q.value.toLowerCase().trim(), pv=proj.value, sv=scored.value, scv=scope.value,
+  evv=(typeof evidence!=='undefined'&&evidence)?evidence.value:'';
  let rows=DATA.filter(d=>{
   if(pv&&d.p!==pv)return false;
   if(scv&&d.scope!==scv)return false;
   if(sv==='1'&&!d.pot)return false; if(sv==='0'&&d.pot)return false;
+  if(evv==='1'&&!memoEvidenceBySong[d.id])return false;
+  if(evv==='0'&&memoEvidenceBySong[d.id])return false;
   if(!term)return true;
   return (d.t+' '+d.id+' '+d.th+' '+d.hk+' '+d.c+' '+d.st+' '+(d.wr||'')+' '+(d.nx||'')+' '+(d.oq||'')+' '+(d.gate||'')+' '+(d.scope_label||'')+' '+(d.src||[]).join(' ')).toLowerCase().includes(term);});
  const k=sort.value;
- rows.sort((a,b)=> k==='t'?a.t.localeCompare(b.t): k==='id'?a.id.localeCompare(b.id):((b[k]||0)-(a[k]||0)) || a.id.localeCompare(b.id));
+ if(k==='memo'){
+  rows.sort((a,b)=>{
+   const ea=memoEvidenceBySong[a.id]||{n:0,last:''};
+   const eb=memoEvidenceBySong[b.id]||{n:0,last:''};
+   const da=String(ea.last||''), db=String(eb.last||'');
+   if(!da&&!db)return (eb.n-ea.n)||a.id.localeCompare(b.id);
+   if(!da)return 1;
+   if(!db)return -1;
+   return db.localeCompare(da) || (eb.n-ea.n) || a.id.localeCompare(b.id);
+  });
+ }else{
+  rows.sort((a,b)=> k==='t'?a.t.localeCompare(b.t): k==='id'?a.id.localeCompare(b.id):((b[k]||0)-(a[k]||0)) || a.id.localeCompare(b.id));
+ }
  songResults.textContent=`Showing ${rows.length} of ${DATA.length} songs`;
- clearSongFilters.disabled=!(term||pv||sv||scv||k!=='mom');
+ clearSongFilters.disabled=!(term||pv||sv||scv||evv||k!=='mom');
  list.innerHTML=rows.length?rows.map((d,i)=>`
  <div class="row" data-song-id="${esc(d.id)}"><div class="rhead" role="button" tabindex="0" aria-expanded="false" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
-  <span><span class="rtitle">${esc(d.t)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${d.la?` · last touched ${esc(d.la)}`:''}</span></span>
+  <span><span class="rtitle">${esc(d.t)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
  </div><div class="detail" hidden>
   ${d.th?`<h4>Theme</h4>${esc(d.th)}`:''}
@@ -236,21 +266,63 @@ function toggleSong(head,forceOpen){
  const open=forceOpen===true?true:detail.hidden;
  detail.hidden=!open;head.setAttribute('aria-expanded',String(open));
 }
+function parseVaultHash(raw,names){
+ const text=String(raw||'').replace(/^#/,'');
+ const eq=text.indexOf('=');
+ if(eq<0)return null;
+ const kind=text.slice(0,eq), id=text.slice(eq+1);
+ if((kind!=='memos'&&kind!=='song')||!names||!names[id])return null;
+ return {kind:kind,id:id};
+}
+function writeVaultHash(kind,id){
+ try{
+  if(typeof history==='undefined'||!history.replaceState||typeof location==='undefined')return;
+  const next=(kind&&id)?'#'+kind+'='+id:'';
+  const dest=next||(location.pathname+location.search);
+  if((location.hash||'')!==next)history.replaceState(null,'',dest);
+ }catch(err){}
+}
+function applyVaultHash(){
+ const hit=parseVaultHash(typeof location==='undefined'?'':location.hash,sname);
+ if(!hit)return;
+ if(hit.kind==='memos')openSongMemos(hit.id);
+ else openSong(hit.id);
+}
 function openSong(songId){
  const id=String(songId||'');
  if(!sname[id])return;
  q.value=id;proj.value='';scored.value='';scope.value='';sort.value='id';
+ if(typeof evidence!=='undefined'&&evidence)evidence.value='';
  showTab('S');render();
  requestAnimationFrame(()=>{
   const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
   const head=row&&row.querySelector('[data-toggle-song]');
   if(head){toggleSong(head,true);head.focus();head.scrollIntoView({block:'center'});}
  });
+ if(typeof writeVaultHash==='function')writeVaultHash('song',id);
 }
 function openSongMemos(songId){
  const id=String(songId||'');
  if(!sname[id]||!memoCountBySong[id])return;
  activeMemoSong=id;mq.value='';showTab('M');mrender();mq.focus();
+ if(typeof writeVaultHash==='function')writeVaultHash('memos',id);
+}
+function handleVaultKey(e){
+ if(!e||e.key!=='Escape')return false;
+ if(typeof paneM!=='undefined'&&paneM&&!paneM.hidden&&activeMemoSong){
+  activeMemoSong='';mq.value='';
+  if(typeof writeVaultHash==='function')writeVaultHash('','');
+  mrender();mq.focus();
+  return true;
+ }
+ if(typeof paneS!=='undefined'&&paneS&&!paneS.hidden&&sname[q.value]){
+  q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';
+  if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+  if(typeof writeVaultHash==='function')writeVaultHash('','');
+  render();q.focus();
+  return true;
+ }
+ return false;
 }
 list.addEventListener('click',e=>{
  const memos=e.target.closest('[data-open-memos]');
@@ -258,11 +330,12 @@ list.addEventListener('click',e=>{
  const head=e.target.closest('[data-toggle-song]');if(head)toggleSong(head);
 });
 list.addEventListener('keydown',e=>{
+ if(e.target.closest('[data-open-memos]'))return;
  const head=e.target.closest('[data-toggle-song]');
  if(head&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleSong(head);}
 });
-[q,proj,sort,scored,scope].forEach(el=>el.addEventListener('input',render));
-clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';render();q.focus();});
+[q,proj,sort,scored,scope,evidence].forEach(el=>{if(el)el.addEventListener('input',render);});
+clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
 tabS.addEventListener('click',()=>showTab('S'));tabM.addEventListener('click',()=>showTab('M'));
 render();
 // ---- memo transcript search ----
@@ -271,35 +344,85 @@ function memoMatches(m,term,songId){
  if(!term)return !!songId;
  return String(m.x||'').toLowerCase().includes(term)||String(m.n||'').toLowerCase().includes(term)||String(sname[m.s]||'').toLowerCase().includes(term);
 }
+function markHay(text,term){
+ const src=String(text||'');
+ if(!term)return esc(src);
+ const i=src.toLowerCase().indexOf(term);
+ if(i<0)return esc(src);
+ return esc(src.slice(0,i))+'<mark>'+esc(src.slice(i,i+term.length))+'</mark>'+esc(src.slice(i+term.length));
+}
+function sortMemoHits(hits){
+ const dated=[], empty=[];
+ (hits||[]).forEach(hit=>{
+  const row=hit&&(hit.m||hit);
+  if(row&&String(row.d||'').trim())dated.push(hit); else empty.push(hit);
+ });
+ const byDateThenFile=(a,b)=>{
+  const am=a.m||a, bm=b.m||b;
+  const dd=String(bm.d||'').localeCompare(String(am.d||''));
+  return dd||String(bm.f||'').localeCompare(String(am.f||''));
+ };
+ dated.sort(byDateThenFile);
+ empty.sort((a,b)=>String((b.m||b).f||'').localeCompare(String((a.m||a).f||'')));
+ return dated.concat(empty);
+}
+function copyMemoFile(name,btn){
+ const text=String(name||'');
+ if(!text)return false;
+ const done=()=>{
+  if(btn){btn.textContent='Copied';btn.classList.add('copied');
+   setTimeout(()=>{btn.textContent='Copy intake name';btn.classList.remove('copied');},1200);}
+ };
+ if(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.writeText){
+  navigator.clipboard.writeText(text).then(done).catch(()=>{});
+  return true;
+ }
+ return false;
+}
 function mrender(){
  const term=mq.value.toLowerCase().trim();
  if(activeMemoSong&&!sname[activeMemoSong])activeMemoSong='';
+ const ev=memoEvidenceBySong[activeMemoSong];
  memoScope.hidden=!activeMemoSong;
- memoScopeText.textContent=activeMemoSong?`Matched memos for ${sname[activeMemoSong]}`:'';
+ const span=ev&&ev.first&&ev.last?(ev.first===ev.last?` · ${ev.first}`:` · ${ev.first} → ${ev.last}`):'';
+ memoScopeText.textContent=activeMemoSong?`${ev?ev.n:0} searchable memo${ev&&ev.n===1?'':'s'} for ${sname[activeMemoSong]}${span}`:'';
+ const song=activeMemoSong&&DATA.find(d=>d.id===activeMemoSong);
+ if(memoScopeNext){
+  memoScopeNext.hidden=!(song&&song.nx);
+  memoScopeNext.textContent=(song&&song.nx)?`Next action: ${song.nx}`:'';
+ }
  if((!activeMemoSong&&term.length<3)||(term.length>0&&term.length<3)){
-  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words.</div>`;return;
+  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words. Copy the intake name; do not open audio from this page.</div>`;return;
  }
  const hits=[];
  for(const m of TX){
-  const lx=m.x.toLowerCase(); const i=lx.indexOf(term);
   if(!memoMatches(m,term,activeMemoSong))continue;
+  const lx=m.x.toLowerCase(); const i=term?lx.indexOf(term):-1;
   let snip='';
   if(term&&i>=0){const a=Math.max(0,i-80),b=Math.min(m.x.length,i+term.length+120);
    snip=(a>0?'…':'')+esc(m.x.slice(a,i))+'<mark>'+esc(m.x.slice(i,i+term.length))+'</mark>'+esc(m.x.slice(i+term.length,b))+(b<m.x.length?'…':'');}
   else snip=esc(m.x.slice(0,160))+(m.x.length>160?'…':'');
   hits.push({m,snip});
  }
- const visible=hits.slice(0,80);
- const summary=hits.length?`<div class="resultbar"><span>Showing ${visible.length}${hits.length>visible.length?` of ${hits.length}`:''} matching memo${hits.length===1?'':'s'}</span></div>`:'';
- mlist.innerHTML=hits.length?summary+visible.map(({m,snip})=>`
+ const ordered=sortMemoHits(hits);
+ const visible=ordered.slice(0,80);
+ const summary=ordered.length?`<div class="resultbar"><span>Showing ${visible.length}${ordered.length>visible.length?` of ${ordered.length}`:''} matching memo${ordered.length===1?'':'s'} · newest first</span></div>`:'';
+ mlist.innerHTML=ordered.length?summary+visible.map(({m,snip})=>`
   <div class="mrow"><div class="mmeta">${esc(m.d)} · ${Math.round((Number(m.u)||0)/60)}min${m.s&&sname[m.s]?` · matched to <button type="button" class="song-link" data-open-song="${esc(m.s)}">${esc(sname[m.s])}</button>`:' · unmatched'}</div>
-  <b>${esc(m.n)}</b><div class="msnip">${snip}</div>
-  <div class="mmeta" style="margin-top:4px">file: ${esc(m.f)} (Voice Memo Intake)</div></div>`).join('')
+  <b>${markHay(m.n,term)}</b><div class="msnip">${snip}</div>
+  <div class="mmeta" style="margin-top:4px">file: ${esc(m.f)} (Voice Memo Intake) <button type="button" class="subtle-btn" data-copy-file="${esc(m.f)}">Copy intake name</button></div></div>`).join('')
   :'<div class="empty">No matched memo evidence found — clear the song filter or try a different word.</div>';
 }
 mq.addEventListener('input',mrender);
-mlist.addEventListener('click',e=>{const song=e.target.closest('[data-open-song]');if(song)openSong(song.dataset.openSong);});
-clearMemoScope.addEventListener('click',()=>{activeMemoSong='';mq.value='';mrender();mq.focus();});
+mlist.addEventListener('click',e=>{
+ const copy=e.target.closest('[data-copy-file]');
+ if(copy){copyMemoFile(copy.dataset.copyFile,copy);return;}
+ const song=e.target.closest('[data-open-song]');
+ if(song)openSong(song.dataset.openSong);
+});
+clearMemoScope.addEventListener('click',()=>{activeMemoSong='';mq.value='';if(typeof writeVaultHash==='function')writeVaultHash('','');mrender();mq.focus();});
+if(typeof document!=='undefined')document.addEventListener('keydown',handleVaultKey);
+if(typeof window!=='undefined'){window.addEventListener('hashchange',applyVaultHash);applyVaultHash();}
 </script></body></html>'''
 
 page = (page.replace('__DATA__', DATA)
