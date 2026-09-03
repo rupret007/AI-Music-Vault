@@ -30,6 +30,9 @@ jobs:
       - name: Catalog validator unit tests
         run: python -m unittest discover -s tests -v
 
+      - name: Dashboard song and memo navigation smoke
+        run: node tests/test_dashboard_navigation.js
+
       - name: StoryBoard export stays honest
         run: python scripts/export_app_api.py --check
 
