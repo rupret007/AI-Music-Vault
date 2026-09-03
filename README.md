@@ -30,14 +30,19 @@ Run the same offline gates used by catalog validation:
 ```bash
 python3 scripts/validate_catalog.py
 python3 -m unittest discover -s tests -v
+node tests/test_dashboard_navigation.js
 python3 scripts/export_app_api.py --check
 python3 scripts/export_catalog_csv.py --check
 ```
 
-These checks read the committed catalog metadata and StoryBoard export only.
+These checks read the committed catalog metadata, StoryBoard export, and local
+generated dashboard only.
 They do not open or upload audio, modify originals, or contact an AI service.
 Keep the repository and its test output private because catalog metadata can
 still contain unreleased, personal, collaborator, or location information.
+The private dashboard links catalog songs that have searchable matched voice
+memos to that evidence, and each matched memo back to its song. These are local
+navigation links over the existing index; they do not open, upload, or modify audio.
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public
 catalog dump. Nothing auto-posts.
