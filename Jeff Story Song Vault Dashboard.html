@@ -234,10 +234,11 @@ function openSong(songId){
  q.value=id;proj.value='';scored.value='';scope.value='';sort.value='id';
  if(typeof evidence!=='undefined'&&evidence)evidence.value='';
  showTab('S');render();
+ const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
+ const head=row&&row.querySelector('[data-toggle-song]');
+ if(head)toggleSong(head,true);
  requestAnimationFrame(()=>{
-  const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
-  const head=row&&row.querySelector('[data-toggle-song]');
-  if(head){toggleSong(head,true);head.focus();head.scrollIntoView({block:'center'});}
+  if(head){head.focus();head.scrollIntoView({block:'center'});}
  });
  if(typeof writeVaultHash==='function')writeVaultHash('song',id);
 }
@@ -276,7 +277,7 @@ list.addEventListener('keydown',e=>{
 });
 [q,proj,sort,scored,scope,evidence].forEach(el=>{if(el)el.addEventListener('input',render);});
 clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
-tabS.addEventListener('click',()=>showTab('S'));tabM.addEventListener('click',()=>showTab('M'));
+tabS.addEventListener('click',()=>showTab('S'));tabM.addEventListener('click',()=>{showTab('M');mrender();});
 render();
 // ---- memo transcript search ----
 function memoMatches(m,term,songId){
