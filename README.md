@@ -45,10 +45,13 @@ memos to that evidence, and each matched memo back to its song. Songs with
 searchable matches can be scanned, filtered, and sorted by latest memo date;
 the scoped set is newest-first and can copy the local intake filename. The
 same song brain can filter write / produce / listen work from the existing
-next action, open a lane song, and copy a sanitized work card (hook, next
-action, open questions) without owner-audio or street locators. These
-are local navigation links over the existing index; they do not open, upload,
-or modify audio. Logic projects, keys, and WAVs stay owner-only.
+next action, open a resumable work session, sit down on a lane song, and copy
+a sanitized work card (hook, next action, open questions, memo count/date)
+without owner-audio or street locators. Expanded sit-down uses the sanitized
+next action and latest memo intake name — it does not reprint Logic / WAV /
+best_source paths. These are local navigation links over the existing index;
+they do not open, upload, or modify audio. Logic projects, keys, and WAVs
+stay owner-only.
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public
 catalog dump. Nothing auto-posts.

@@ -21,6 +21,7 @@
 *Covers book leftover 2026-08-28: 93 covers stay a reference book (empty on-book Logic-ready); Trailer Swift originals stay 0; official-set originals stay 0. Still these three songs. Still no new priorities.*
 *Catalog memo evidence find-and-act 2026-09-03: songs with searchable matched memos can be scanned, filtered, and opened newest-first; intake names copy; Logic keys/WAVs stay owner-only. Still these three songs. Still no new priorities.*
 *Catalog song work card 2026-09-03: existing next actions classify into write/produce/listen so the private dashboard can filter, open a lane, and copy a sanitized work card. Still these three songs. Still no new priorities.*
+*Catalog write/produce/listen sit-down 2026-09-03: the same song brain now keeps a resumable work session, sits down on sanitized next action plus memo evidence, and does not reprint Logic/WAV paths. Still these three songs. Still no new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE

@@ -15,9 +15,11 @@ from catalog_surface import (  # noqa: E402
     EMBEDDED_DATA_SHA256,
     EMBEDDED_TX_SHA256,
     build_memo_search_index,
+    dashboard_displays_owner_audio_index,
     dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
     embedded_dashboard_payloads,
+    latest_memo_for_song,
     memo_evidence_by_song,
     parse_vault_hash,
     song_work_card,
@@ -153,6 +155,16 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIsNone(parse_vault_hash("#memos=JS-0002", names))
         self.assertIsNone(parse_vault_hash("#open=JS-0001", names))
         self.assertIsNone(parse_vault_hash("#memos=JS-0001<script>", names))
+        self.assertEqual(
+            parse_vault_hash("#work=write", names),
+            {"kind": "work", "id": "write"},
+        )
+        self.assertEqual(
+            parse_vault_hash("#work=listen", names),
+            {"kind": "work", "id": "listen"},
+        )
+        self.assertIsNone(parse_vault_hash("#work=unknown", names))
+        self.assertIsNone(parse_vault_hash("#work=JS-0001", names))
 
     def test_dashboard_must_not_open_owner_audio(self):
         self.assertTrue(dashboard_opens_owner_audio('<a href="mix.wav">open</a>'))
@@ -207,10 +219,17 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("function handleVaultKey(", dashboard)
         self.assertFalse(dashboard_opens_owner_audio(dashboard))
         self.assertTrue(dashboard_exposes_song_work(dashboard))
+        self.assertFalse(dashboard_displays_owner_audio_index(dashboard))
         self.assertIn('id="work"', dashboard)
+        self.assertIn('id="workSession"', dashboard)
+        self.assertIn("Sit-down", dashboard)
         self.assertIn("Copy work card", dashboard)
         self.assertIn("function songWorkKind(", dashboard)
         self.assertIn("function buildSongWorkCard(", dashboard)
+        self.assertIn("function openWork(", dashboard)
+        self.assertIn("function latestMemoForSong(", dashboard)
+        self.assertNotIn("Latest source (auto-resolved)", dashboard)
+        self.assertNotIn("<h4>Known assets</h4>", dashboard)
 
 
 class DashboardSongWorkTests(unittest.TestCase):
@@ -321,6 +340,33 @@ class DashboardSongWorkTests(unittest.TestCase):
         self.assertNotIn(".logicx", card)
         self.assertNotIn("file://", card)
         self.assertFalse(work_card_leaks_private_locators(card))
+
+    def test_latest_memo_is_newest_searchable_row(self):
+        latest = latest_memo_for_song(
+            "JS-0001",
+            [
+                {"s": "JS-0001", "d": "2020-01-01", "f": "old.m4a"},
+                {"s": "JS-0001", "d": "2024-12-01", "f": "new.m4a"},
+                {"s": "JS-0002", "d": "2025-01-01", "f": "other.m4a"},
+            ],
+        )
+        self.assertEqual(latest["f"], "new.m4a")
+        self.assertIsNone(latest_memo_for_song("JS-9999", [{"s": "JS-0001", "f": "x.m4a"}]))
+
+    def test_work_card_can_include_memo_count_without_intake_name(self):
+        card = song_work_card(
+            {
+                "id": "JS-0128",
+                "t": "It's Alright",
+                "nx": "Jeff: confirm the 2 unclear chorus lines by ear (60s)",
+                "hk": "I know it's alright",
+            },
+            {"n": 5, "last": "2025-10-14", "f": "1922 Maxwell Dr.m4a"},
+        )
+        self.assertIn("Work: write", card)
+        self.assertIn("Memos: 5 searchable · latest 2025-10-14", card)
+        self.assertNotIn("Maxwell", card)
+        self.assertNotIn(".m4a", card)
 
     def test_work_card_omits_sources_and_fails_closed_on_leftover_locator(self):
         safe = song_work_card(

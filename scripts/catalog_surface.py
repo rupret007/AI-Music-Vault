@@ -234,7 +234,15 @@ OWNER_AUDIO_HREF_SUFFIXES = (
     ".band",
 )
 
-VAULT_HASH_KINDS = ("memos", "song")
+VAULT_HASH_KINDS = ("memos", "song", "work")
+WORK_HASH_KINDS = (
+    "write",
+    "produce",
+    "listen",
+    "rest",
+    "inventory",
+    "decide",
+)
 
 
 def memo_evidence_by_song(index_rows) -> dict[str, dict]:
@@ -283,16 +291,35 @@ def sort_memo_evidence_rows(rows) -> list[dict]:
 
 
 def parse_vault_hash(raw, names) -> dict | None:
-    """Allow only known catalog ids on the local #memos= / #song= hash."""
+    """Allow known catalog ids on #memos= / #song=, or a work-kind on #work=."""
     text = str(raw or "").lstrip("#")
     if "=" not in text:
         return None
-    kind, song_id = text.split("=", 1)
-    if kind not in VAULT_HASH_KINDS:
+    kind, value = text.split("=", 1)
+    if kind == "work":
+        if value in WORK_HASH_KINDS:
+            return {"kind": kind, "id": value}
         return None
-    if not isinstance(names, dict) or song_id not in names:
+    if kind not in ("memos", "song"):
         return None
-    return {"kind": kind, "id": song_id}
+    if not isinstance(names, dict) or value not in names:
+        return None
+    return {"kind": kind, "id": value}
+
+
+def latest_memo_for_song(song_id, index_rows) -> dict | None:
+    """Newest searchable memo for a catalog id — sit-down listen/write target."""
+    sid = str(song_id or "").strip()
+    if not sid:
+        return None
+    hits = [
+        row
+        for row in (index_rows or [])
+        if isinstance(row, dict) and str(row.get("s") or row.get("song_id") or "").strip() == sid
+    ]
+    if not hits:
+        return None
+    return sort_memo_evidence_rows(hits)[0]
 
 
 def dashboard_markup_chrome(html: str) -> str:
@@ -455,13 +482,14 @@ def work_card_leaks_private_locators(text) -> bool:
     return any(name in low for name in _PRIVATE_STREET_NAMES)
 
 
-def song_work_card(row) -> str:
-    """Copyable write/produce card from already-visible catalog fields.
+def song_work_card(row, evidence=None) -> str:
+    """Copyable write/produce/listen card from already-visible catalog fields.
 
     Includes title, work kind, next action, hook, theme, open questions,
-    lyric/audio status, key, BPM, and the gate class. Omits sources,
-    best_source, writers, memo titles, and intake filenames. Returns
-    empty if the sanitized card still leaks a private locator.
+    lyric/audio status, key, BPM, gate class, and optional searchable-memo
+    count/date. Omits sources, best_source, writers, memo titles, and
+    intake filenames. Returns empty if the sanitized card still leaks a
+    private locator.
     """
     if not isinstance(row, dict):
         return ""
@@ -481,6 +509,7 @@ def song_work_card(row) -> str:
     gate = flatten_work_field(row.get("gate") or row.get("ai_upload_ok"))
     if "—" in gate:
         gate = gate.split("—", 1)[0].strip()
+    ev = evidence if isinstance(evidence, dict) else row.get("memo_evidence")
 
     lines = []
     heading = title
@@ -508,6 +537,17 @@ def song_work_card(row) -> str:
         lines.append(f"BPM: {bpm}")
     if gate:
         lines.append(f"Gate: {gate}")
+    if isinstance(ev, dict):
+        try:
+            memo_n = int(ev.get("n") or 0)
+        except (TypeError, ValueError):
+            memo_n = 0
+        last = str(ev.get("last") or "").strip()
+        if memo_n:
+            memo_line = f"Memos: {memo_n} searchable"
+            if last:
+                memo_line += f" · latest {last}"
+            lines.append(memo_line)
     card = "\n".join(line for line in lines if line)
     if work_card_leaks_private_locators(card):
         return ""
@@ -525,8 +565,26 @@ def embedded_dashboard_payloads(html: str) -> dict[str, str]:
     return out
 
 
+OWNER_AUDIO_INDEX_MARKERS = (
+    "Latest source (auto-resolved)",
+    "<h4>Known assets</h4>",
+    "${esc(d.bs)}",
+    "${esc(d.nx)}",
+)
+
+
+def dashboard_displays_owner_audio_index(html: str) -> bool:
+    """Sit-down chrome must not reprint Logic/WAV/best_source locators."""
+    chrome = dashboard_markup_chrome(html)
+    if any(marker in chrome for marker in OWNER_AUDIO_INDEX_MARKERS):
+        return True
+    if "d.src.map" in chrome or "d.src&&d.src" in chrome:
+        return True
+    return False
+
+
 def dashboard_exposes_song_work(html: str) -> bool:
-    """First useful surface must let Jeff filter and copy write/produce work."""
+    """First useful surface must let Jeff sit down to write/produce/listen."""
     chrome = dashboard_markup_chrome(html)
     return (
         'id="work"' in chrome
@@ -535,4 +593,9 @@ def dashboard_exposes_song_work(html: str) -> bool:
         and "function buildSongWorkCard(" in chrome
         and "data-copy-work" in chrome
         and 'data-open-song="ST-0001"' in chrome
+        and 'id="workSession"' in chrome
+        and "function openWork(" in chrome
+        and "function latestMemoForSong(" in chrome
+        and "data-open-work=" in chrome
+        and "Sit-down" in chrome
     )
