@@ -112,19 +112,22 @@ input{flex:1;min-width:160px}
 .subtle-btn,.memo-link,.song-link{cursor:pointer;font-weight:600}
 .subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:4px 8px;color:var(--pot)}
 .song-link{border:0;background:transparent;padding:0;font-size:inherit;text-decoration:underline;text-underline-offset:2px}
+.lane .song-link{font-weight:700;color:var(--ink)}
 .memo-next{color:var(--ink3);font-size:12px;margin-top:3px}
 .copied{color:var(--good)}
+.pill.wk-write{color:var(--pot)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--mom)}
+.work-copy{margin-top:8px}
 </style></head><body>
 <h1>🎸 Jeff Story Song Vault</h1>
 <div class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</div>
 <div class="stats" id="stats"></div>
 <div class="lanes">
  <h2>The three lanes (+ on deck)</h2>
- <div class="lane"><span class="tag f">Flagship</span><b>Turn Over The Flag</b><span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
- <div class="lane"><span class="tag q">Quick win</span><b>Manic</b><span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
- <div class="lane"><span class="tag x">Experimental</span><b>Long Long Drive</b><span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
- <div class="lane"><span class="tag">On deck</span><b>It's Alright</b><span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
- <div class="lane"><span class="tag">The Opus</span><b>Blue Skies Fade</b><span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
+ <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button><span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
+ <div class="lane"><span class="tag q">Quick win</span><button type="button" class="song-link" data-open-song="ST-0004">Manic</button><span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
+ <div class="lane"><span class="tag x">Experimental</span><button type="button" class="song-link" data-open-song="ST-0009">Long Long Drive</button><span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
+ <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button><span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
+ <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button><span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
 </div>
 <div class="tabs" role="tablist" aria-label="Vault views">
  <button type="button" class="tab on" id="tabS" role="tab" aria-controls="paneS" aria-selected="true">Songs</button>
@@ -142,6 +145,7 @@ input{flex:1;min-width:160px}
  <select id="scored"><option value="">All songs</option><option value="1">Scored only</option><option value="0">Unscored / to explore</option></select>
  <select id="scope"><option value="">All StoryBoard scopes</option></select>
  <select id="evidence"><option value="">Any memo evidence</option><option value="1">Has searchable memos</option><option value="0">No searchable memos</option></select>
+ <select id="work"><option value="">Any work</option><option value="write">Write</option><option value="produce">Produce</option><option value="listen">Listen</option><option value="rest">Rest</option><option value="inventory">Inventory</option><option value="decide">Decide</option></select>
 </div>
 <div class="resultbar"><span id="songResults" aria-live="polite"></span><button type="button" class="subtle-btn" id="clearSongFilters">Clear filters</button></div>
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
@@ -152,7 +156,7 @@ input{flex:1;min-width:160px}
 </div>
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
 <div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: alright, garden, better than now)"></div>
-<div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div></div><button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></div>
+<div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div><div class="memo-next" id="memoScopeHook" hidden></div></div><span><button type="button" class="subtle-btn" id="copyMemoWork" hidden data-copy-work="">Copy work card</button> <button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></span></div>
 <div id="mlist"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel.</div></div>
 </div>
 <div class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAVs stay on your Mac — this page does not open audio.</div>
@@ -166,6 +170,7 @@ const TX_SEARCHABLE_MATCHED = __TX_SEARCHABLE_MATCHED__;
 const q=document.getElementById('q'),proj=document.getElementById('proj'),
  sort=document.getElementById('sort'),scored=document.getElementById('scored'),
  scope=document.getElementById('scope'),evidence=document.getElementById('evidence'),
+ work=document.getElementById('work'),
  list=document.getElementById('list'),
  songResults=document.getElementById('songResults'),clearSongFilters=document.getElementById('clearSongFilters'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
@@ -173,6 +178,8 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  mq=document.getElementById('mq'),mlist=document.getElementById('mlist'),
  memoScope=document.getElementById('memoScope'),memoScopeText=document.getElementById('memoScopeText'),
  memoScopeNext=document.getElementById('memoScopeNext'),
+ memoScopeHook=document.getElementById('memoScopeHook'),
+ copyMemoWork=document.getElementById('copyMemoWork'),
  clearMemoScope=document.getElementById('clearMemoScope');
 const sname={}; DATA.forEach(d=>sname[d.id]=d.t);
 const memoEvidenceBySong={};
@@ -208,6 +215,63 @@ document.getElementById('stats').innerHTML=
  `<div class="stat"><b>${TX_SEARCHABLE_TOTAL}</b><span>memos searchable</span></div>`+
  `<div class="stat"><b>${TX_TOTAL}</b><span>memos transcribed</span></div>`;
 function esc(s){return (s===null||s===undefined?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function flattenWorkField(value){
+ if(value==null)return '';
+ if(Array.isArray(value))return value.map(v=>String(v||'').trim()).filter(Boolean).join('; ');
+ return String(value).trim();
+}
+function songWorkKind(nx){
+ const text=String(nx||'').trim();
+ if(!text)return 'unknown';
+ const low=text.toLowerCase();
+ if(low.startsWith('released')||low.includes('archive-with-honor')||low.includes('not a development priority')||low.includes('rests unless'))return 'rest';
+ if(low.includes('inventory pass')||low.includes('no dated source')||low.includes('voice memo intake')||low.includes('connector limit'))return 'inventory';
+ if(['chorus lines','transcribe','read lyric','locate/transcribe','hum 30','has lyric','lyric rethink','confirm the 2','catch the real chorus'].some(m=>low.includes(m)))return 'write';
+ if(['overdub','bounce mix','track background','record lead guitar','record bridge','add rhythm guitar','full-band arrangement','arrangement built'].some(m=>low.includes(m)))return 'produce';
+ if(low.startsWith('listen')||low.includes('listen:')||low.includes('listen first')||low.includes('listen + verdict'))return 'listen';
+ if(low.startsWith('decide')||low.startsWith('hold for')||low.includes('candidate for next-ep'))return 'decide';
+ return 'unknown';
+}
+function stripPrivateLocators(text){
+ let s=String(text||'');
+ s=s.replace(/\([^()]{0,200}\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\)/ig,'');
+ s=s.replace(/\b[\w./' -]+\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\b/ig,'');
+ s=s.replace(new RegExp('file:'+'//\\S+','ig'),'');
+ s=s.replace(/\b(?:Maxwell Dr|Crescent Dr|Eagle Mountain Dr)\b[^,.;]*/ig,'');
+ return s.replace(/\s{2,}/g,' ').replace(/\s+([,.;:])/g,'$1').replace(/^[\s-]+|[\s-]+$/g,'');
+}
+function workCardLeaks(text){
+ const low=String(text||'').toLowerCase();
+ if(low.includes('file:'+'//'))return true;
+ if(/\.(wav|aiff|aif|logicx|m4a|mp3|flac|band)\b/.test(low))return true;
+ return low.includes('maxwell dr')||low.includes('crescent dr')||low.includes('eagle mountain dr');
+}
+function buildSongWorkCard(song){
+ if(!song)return '';
+ const kind=songWorkKind(song.nx);
+ const title=flattenWorkField(song.t), id=flattenWorkField(song.id);
+ const lines=[];
+ if(title||id)lines.push(title?(id?title+' ('+id+')':title):id);
+ lines.push('Work: '+kind);
+ const nx=stripPrivateLocators(flattenWorkField(song.nx));
+ if(nx)lines.push('Next: '+nx);
+ const hk=stripPrivateLocators(flattenWorkField(song.hk));
+ if(hk)lines.push('Hook: '+hk);
+ const th=stripPrivateLocators(flattenWorkField(song.th));
+ if(th)lines.push('Theme: '+th);
+ const oq=stripPrivateLocators(flattenWorkField(song.oq));
+ if(oq)lines.push('Open questions: '+oq);
+ const ly=stripPrivateLocators(flattenWorkField(song.ly));
+ if(ly)lines.push('Lyrics: '+ly);
+ const au=stripPrivateLocators(flattenWorkField(String(song.au||'').split('—')[0]));
+ if(au)lines.push('Audio: '+au);
+ if(song.key)lines.push('Key: '+String(song.key));
+ if(song.bpm)lines.push('BPM: '+String(song.bpm));
+ const gate=flattenWorkField(String(song.gate||'').split('—')[0]);
+ if(gate)lines.push('Gate: '+gate);
+ const card=lines.filter(Boolean).join('\n');
+ return workCardLeaks(card)?'':card;
+}
 function bar(v,c){
  const n=Number(v);
  if(!Number.isFinite(n)||n<=0)return '<div class="barwrap"><span style="color:var(--ink3)">—</span></div>';
@@ -216,13 +280,15 @@ function bar(v,c){
 }
 function render(){
  const term=q.value.toLowerCase().trim(), pv=proj.value, sv=scored.value, scv=scope.value,
-  evv=(typeof evidence!=='undefined'&&evidence)?evidence.value:'';
+  evv=(typeof evidence!=='undefined'&&evidence)?evidence.value:'',
+  wv=(typeof work!=='undefined'&&work)?work.value:'';
  let rows=DATA.filter(d=>{
   if(pv&&d.p!==pv)return false;
   if(scv&&d.scope!==scv)return false;
   if(sv==='1'&&!d.pot)return false; if(sv==='0'&&d.pot)return false;
   if(evv==='1'&&!memoEvidenceBySong[d.id])return false;
   if(evv==='0'&&memoEvidenceBySong[d.id])return false;
+  if(wv&&songWorkKind(d.nx)!==wv)return false;
   if(!term)return true;
   return (d.t+' '+d.id+' '+d.th+' '+d.hk+' '+d.c+' '+d.st+' '+(d.wr||'')+' '+(d.nx||'')+' '+(d.oq||'')+' '+(d.gate||'')+' '+(d.scope_label||'')+' '+(d.src||[]).join(' ')).toLowerCase().includes(term);});
  const k=sort.value;
@@ -240,11 +306,15 @@ function render(){
   rows.sort((a,b)=> k==='t'?a.t.localeCompare(b.t): k==='id'?a.id.localeCompare(b.id):((b[k]||0)-(a[k]||0)) || a.id.localeCompare(b.id));
  }
  songResults.textContent=`Showing ${rows.length} of ${DATA.length} songs`;
- clearSongFilters.disabled=!(term||pv||sv||scv||evv||k!=='mom');
- list.innerHTML=rows.length?rows.map((d,i)=>`
+ clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||k!=='mom');
+ list.innerHTML=rows.length?rows.map((d,i)=>{
+  const wk=songWorkKind(d.nx);
+  const nxt=stripPrivateLocators(d.nx||'');
+  const nxtShort=nxt.length>90?nxt.slice(0,87)+'…':nxt;
+  return `
  <div class="row" data-song-id="${esc(d.id)}"><div class="rhead" role="button" tabindex="0" aria-expanded="false" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
-  <span><span class="rtitle">${esc(d.t)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
+  <span><span class="rtitle">${esc(d.t)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
  </div><div class="detail" hidden>
   ${d.th?`<h4>Theme</h4>${esc(d.th)}`:''}
@@ -256,9 +326,10 @@ function render(){
   ${d.lp&&d.lp.length?`<h4>Played live</h4>${d.lp.map(x=>`<span class="pill">${esc(x)}</span>`).join('')}`:''}
   ${d.src&&d.src.length?`<h4>Known assets</h4><ul>${d.src.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
   ${d.sc&&d.sc.length?`<h4>SoundCloud</h4><ul>${d.sc.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
-  ${d.oq?`<h4>Open questions</h4>${esc(d.oq)}`:''}
+  ${d.oq?`<h4>Open questions</h4>${esc(flattenWorkField(d.oq))}`:''}
+  <div class="work-copy"><button type="button" class="subtle-btn" data-copy-work="${esc(d.id)}">Copy work card</button></div>
   ${memoCountBySong[d.id]?`<h4>Matched memo evidence</h4><button type="button" class="memo-link" data-open-memos="${esc(d.id)}">Open ${memoCountBySong[d.id]} searchable memo${memoCountBySong[d.id]===1?'':'s'}</button>`:''}
- </div></div>`).join(''):'<div class="empty">No songs match — clear a filter?</div>';
+ </div></div>`;}).join(''):'<div class="empty">No songs match — clear a filter?</div>';
 }
 function toggleSong(head,forceOpen){
  const detail=head&&head.nextElementSibling;
@@ -293,6 +364,7 @@ function openSong(songId){
  if(!sname[id])return;
  q.value=id;proj.value='';scored.value='';scope.value='';sort.value='id';
  if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+ if(typeof work!=='undefined'&&work)work.value='';
  showTab('S');render();
  const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
  const head=row&&row.querySelector('[data-toggle-song]');
@@ -319,24 +391,60 @@ function handleVaultKey(e){
  if(typeof paneS!=='undefined'&&paneS&&!paneS.hidden&&sname[q.value]){
   q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';
   if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+  if(typeof work!=='undefined'&&work)work.value='';
   if(typeof writeVaultHash==='function')writeVaultHash('','');
   render();q.focus();
   return true;
  }
  return false;
 }
+function copyVaultText(text,btn,idleLabel){
+ const value=String(text||'');
+ if(!value)return false;
+ const done=()=>{
+  if(btn){btn.textContent='Copied';btn.classList.add('copied');
+   setTimeout(()=>{btn.textContent=idleLabel||'Copy';btn.classList.remove('copied');},1200);}
+ };
+ const fallback=()=>{
+  try{
+   const ta=document.createElement('textarea');
+   ta.value=value;ta.setAttribute('readonly','');
+   ta.style.position='fixed';ta.style.left='-9999px';
+   document.body.appendChild(ta);ta.select();
+   const ok=document.execCommand('copy');
+   document.body.removeChild(ta);
+   if(ok)done();
+   return ok;
+  }catch(err){return false;}
+ };
+ if(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.writeText){
+  navigator.clipboard.writeText(value).then(done).catch(()=>{fallback();});
+  return true;
+ }
+ return fallback();
+}
+function copySongWork(songId,btn){
+ const song=DATA.find(d=>d.id===String(songId||''));
+ return copyVaultText(buildSongWorkCard(song),btn,'Copy work card');
+}
 list.addEventListener('click',e=>{
+ const copy=e.target.closest('[data-copy-work]');
+ if(copy){copySongWork(copy.dataset.copyWork,copy);return;}
  const memos=e.target.closest('[data-open-memos]');
  if(memos){openSongMemos(memos.dataset.openMemos);return;}
  const head=e.target.closest('[data-toggle-song]');if(head)toggleSong(head);
 });
 list.addEventListener('keydown',e=>{
- if(e.target.closest('[data-open-memos]'))return;
+ if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]'))return;
  const head=e.target.closest('[data-toggle-song]');
  if(head&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleSong(head);}
 });
-[q,proj,sort,scored,scope,evidence].forEach(el=>{if(el)el.addEventListener('input',render);});
-clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
+[q,proj,sort,scored,scope,evidence,work].forEach(el=>{if(el)el.addEventListener('input',render);});
+clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(work)work.value='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
+document.querySelector('.lanes').addEventListener('click',e=>{
+ const song=e.target.closest('[data-open-song]');
+ if(song)openSong(song.dataset.openSong);
+});
 tabS.addEventListener('click',()=>showTab('S'));tabM.addEventListener('click',()=>{showTab('M');mrender();});
 render();
 // ---- memo transcript search ----
@@ -368,29 +476,7 @@ function sortMemoHits(hits){
  return dated.concat(empty);
 }
 function copyMemoFile(name,btn){
- const text=String(name||'');
- if(!text)return false;
- const done=()=>{
-  if(btn){btn.textContent='Copied';btn.classList.add('copied');
-   setTimeout(()=>{btn.textContent='Copy intake name';btn.classList.remove('copied');},1200);}
- };
- const fallback=()=>{
-  try{
-   const ta=document.createElement('textarea');
-   ta.value=text;ta.setAttribute('readonly','');
-   ta.style.position='fixed';ta.style.left='-9999px';
-   document.body.appendChild(ta);ta.select();
-   const ok=document.execCommand('copy');
-   document.body.removeChild(ta);
-   if(ok)done();
-   return ok;
-  }catch(err){return false;}
- };
- if(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.writeText){
-  navigator.clipboard.writeText(text).then(done).catch(()=>{fallback();});
-  return true;
- }
- return fallback();
+ return copyVaultText(name,btn,'Copy intake name');
 }
 function mrender(){
  const term=mq.value.toLowerCase().trim();
@@ -403,6 +489,15 @@ function mrender(){
  if(memoScopeNext){
   memoScopeNext.hidden=!(song&&song.nx);
   memoScopeNext.textContent=(song&&song.nx)?`Next action: ${song.nx}`:'';
+ }
+ if(memoScopeHook){
+  const hook=song?stripPrivateLocators(flattenWorkField(song.hk)):'';
+  memoScopeHook.hidden=!hook;
+  memoScopeHook.textContent=hook?`Hook: ${hook}`:'';
+ }
+ if(copyMemoWork){
+  copyMemoWork.hidden=!song;
+  copyMemoWork.dataset.copyWork=song?song.id:'';
  }
  if((!activeMemoSong&&term.length<3)||(term.length>0&&term.length<3)){
   mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words. Copy the intake name; do not open audio from this page.</div>`;return;
@@ -430,8 +525,14 @@ mq.addEventListener('input',mrender);
 mlist.addEventListener('click',e=>{
  const copy=e.target.closest('[data-copy-file]');
  if(copy){copyMemoFile(copy.dataset.copyFile,copy);return;}
+ const workCard=e.target.closest('[data-copy-work]');
+ if(workCard){copySongWork(workCard.dataset.copyWork,workCard);return;}
  const song=e.target.closest('[data-open-song]');
  if(song)openSong(song.dataset.openSong);
+});
+if(copyMemoWork)copyMemoWork.addEventListener('click',e=>{
+ copySongWork(copyMemoWork.dataset.copyWork,copyMemoWork);
+ e.preventDefault();
 });
 clearMemoScope.addEventListener('click',()=>{activeMemoSong='';mq.value='';if(typeof writeVaultHash==='function')writeVaultHash('','');mrender();mq.focus();});
 if(typeof document!=='undefined')document.addEventListener('keydown',handleVaultKey);

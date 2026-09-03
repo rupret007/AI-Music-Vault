@@ -317,3 +317,222 @@ def dashboard_opens_owner_audio(html: str) -> bool:
         if any(path.endswith(ext) for ext in OWNER_AUDIO_HREF_SUFFIXES):
             return True
     return False
+
+
+SONG_WORK_KINDS = (
+    "write",
+    "produce",
+    "listen",
+    "rest",
+    "inventory",
+    "decide",
+    "unknown",
+)
+
+# Already-visible catalog next_action text. First match wins. Do not invent
+# energy levels or a second score.
+_WRITE_MARKS = (
+    "chorus lines",
+    "transcribe",
+    "read lyric",
+    "locate/transcribe",
+    "hum 30",
+    "has lyric",
+    "lyric rethink",
+    "confirm the 2",
+    "catch the real chorus",
+)
+_PRODUCE_MARKS = (
+    "overdub",
+    "bounce mix",
+    "track background",
+    "record lead guitar",
+    "record bridge",
+    "add rhythm guitar",
+    "full-band arrangement",
+    "arrangement built",
+)
+_OWNER_AUDIO_IN_TEXT_RE = re.compile(
+    r"\([^()]{0,200}\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\)|"
+    r"\b[\w./' -]+\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\b|"
+    r"file://\S+",
+    re.IGNORECASE,
+)
+# Home-address fragments already present in a few gem next_actions.
+# Copy must not put them on the clipboard. Do not match song titles like
+# "Candi Lane".
+_PRIVATE_STREET_RE = re.compile(
+    r"\b(?:Maxwell Dr|Crescent Dr|Eagle Mountain Dr)\b[^,.;]*",
+    re.IGNORECASE,
+)
+_PRIVATE_STREET_NAMES = (
+    "maxwell dr",
+    "crescent dr",
+    "eagle mountain dr",
+)
+
+# Locked hashes of the embedded DATA / TX JSON blobs on main 2ff49baa.
+# Prefer unchanged. A real product test may document a fixture-only change.
+EMBEDDED_DATA_SHA256 = (
+    "1b057c495207674cf7ae5392dc275791dd563b5fe6307a5c6be7259690cc20f4"
+)
+EMBEDDED_TX_SHA256 = (
+    "4d809dc53540f8c5acfe63ffcee94844634405c2a0583b2accddc9178807b467"
+)
+
+
+def song_work_kind(next_action) -> str:
+    """Classify an existing next_action for write / produce scanning.
+
+    This is a readout of catalog text, not a new score and not a lane change.
+    Empty next_action stays unknown. Protected-opus / collaborator blanks
+    stay unknown. Do not invent keys or overdubs.
+    """
+    text = str(next_action or "").strip()
+    if not text:
+        return "unknown"
+    low = text.lower()
+
+    if (
+        low.startswith("released")
+        or "archive-with-honor" in low
+        or "not a development priority" in low
+        or "rests unless" in low
+    ):
+        return "rest"
+    if (
+        "inventory pass" in low
+        or "no dated source" in low
+        or "voice memo intake" in low
+        or "connector limit" in low
+    ):
+        return "inventory"
+    if any(mark in low for mark in _WRITE_MARKS):
+        return "write"
+    if any(mark in low for mark in _PRODUCE_MARKS):
+        return "produce"
+    if (
+        low.startswith("listen")
+        or "listen:" in low
+        or "listen first" in low
+        or "listen + verdict" in low
+    ):
+        return "listen"
+    if (
+        low.startswith("decide")
+        or low.startswith("hold for")
+        or "candidate for next-ep" in low
+    ):
+        return "decide"
+    return "unknown"
+
+
+def flatten_work_field(value) -> str:
+    """Turn catalog open_questions lists into one copyable line."""
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple)):
+        return "; ".join(str(item).strip() for item in value if str(item).strip())
+    return str(value).strip()
+
+
+def strip_private_locators(text) -> str:
+    """Drop owner-audio filenames and known street fragments from copy text."""
+    cleaned = _OWNER_AUDIO_IN_TEXT_RE.sub("", str(text or ""))
+    cleaned = _PRIVATE_STREET_RE.sub("", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s+([,.;:])", r"\1", cleaned)
+    return cleaned.strip(" -")
+
+
+def work_card_leaks_private_locators(text) -> bool:
+    """Fail closed if a work card still carries Logic/WAV/address locators."""
+    low = str(text or "").lower()
+    if "file://" in low:
+        return True
+    if re.search(r"\.(wav|aiff|aif|logicx|m4a|mp3|flac|band)\b", low):
+        return True
+    return any(name in low for name in _PRIVATE_STREET_NAMES)
+
+
+def song_work_card(row) -> str:
+    """Copyable write/produce card from already-visible catalog fields.
+
+    Includes title, work kind, next action, hook, theme, open questions,
+    lyric/audio status, key, BPM, and the gate class. Omits sources,
+    best_source, writers, memo titles, and intake filenames. Returns
+    empty if the sanitized card still leaks a private locator.
+    """
+    if not isinstance(row, dict):
+        return ""
+    title = flatten_work_field(row.get("t") or row.get("canonical_title"))
+    song_id = flatten_work_field(row.get("id") or row.get("song_id"))
+    next_action = flatten_work_field(row.get("nx") or row.get("next_action"))
+    kind = song_work_kind(next_action)
+    hook = flatten_work_field(row.get("hk") or row.get("hook"))
+    theme = flatten_work_field(row.get("th") or row.get("theme"))
+    questions = flatten_work_field(row.get("oq") or row.get("open_questions"))
+    lyrics = flatten_work_field(row.get("ly") or row.get("lyric_status"))
+    audio = flatten_work_field(row.get("au") or row.get("audio_status"))
+    if "—" in audio:
+        audio = audio.split("—", 1)[0].strip()
+    key = flatten_work_field(row.get("key"))
+    bpm = flatten_work_field(row.get("bpm"))
+    gate = flatten_work_field(row.get("gate") or row.get("ai_upload_ok"))
+    if "—" in gate:
+        gate = gate.split("—", 1)[0].strip()
+
+    lines = []
+    heading = title
+    if song_id:
+        heading = f"{title} ({song_id})" if title else song_id
+    if heading:
+        lines.append(heading)
+    lines.append(f"Work: {kind}")
+    nxt = strip_private_locators(next_action)
+    if nxt:
+        lines.append(f"Next: {nxt}")
+    if hook:
+        lines.append(f"Hook: {strip_private_locators(hook)}")
+    if theme:
+        lines.append(f"Theme: {strip_private_locators(theme)}")
+    if questions:
+        lines.append(f"Open questions: {strip_private_locators(questions)}")
+    if lyrics:
+        lines.append(f"Lyrics: {strip_private_locators(lyrics)}")
+    if audio:
+        lines.append(f"Audio: {strip_private_locators(audio)}")
+    if key:
+        lines.append(f"Key: {key}")
+    if bpm:
+        lines.append(f"BPM: {bpm}")
+    if gate:
+        lines.append(f"Gate: {gate}")
+    card = "\n".join(line for line in lines if line)
+    if work_card_leaks_private_locators(card):
+        return ""
+    return card
+
+
+def embedded_dashboard_payloads(html: str) -> dict[str, str]:
+    """Return the raw DATA and TX JSON blobs embedded in the dashboard."""
+    body = html or ""
+    out = {"DATA": "", "TX": ""}
+    for name in ("DATA", "TX"):
+        match = re.search(rf"const {name} = (.*?);\n", body, flags=re.S)
+        if match:
+            out[name] = match.group(1)
+    return out
+
+
+def dashboard_exposes_song_work(html: str) -> bool:
+    """First useful surface must let Jeff filter and copy write/produce work."""
+    chrome = dashboard_markup_chrome(html)
+    return (
+        'id="work"' in chrome
+        and "Copy work card" in chrome
+        and "function songWorkKind(" in chrome
+        and "function buildSongWorkCard(" in chrome
+        and "data-copy-work" in chrome
+        and 'data-open-song="ST-0001"' in chrome
+    )

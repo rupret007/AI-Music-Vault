@@ -2,6 +2,7 @@
 """Dashboard transcript totals must stay distinct from its useful search index."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -11,11 +12,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from catalog_surface import (  # noqa: E402
+    EMBEDDED_DATA_SHA256,
+    EMBEDDED_TX_SHA256,
     build_memo_search_index,
+    dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
+    embedded_dashboard_payloads,
     memo_evidence_by_song,
     parse_vault_hash,
+    song_work_card,
+    song_work_kind,
     sort_memo_evidence_rows,
+    strip_private_locators,
+    work_card_leaks_private_locators,
 )
 
 
@@ -197,6 +206,179 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("function sortMemoHits(", dashboard)
         self.assertIn("function handleVaultKey(", dashboard)
         self.assertFalse(dashboard_opens_owner_audio(dashboard))
+        self.assertTrue(dashboard_exposes_song_work(dashboard))
+        self.assertIn('id="work"', dashboard)
+        self.assertIn("Copy work card", dashboard)
+        self.assertIn("function songWorkKind(", dashboard)
+        self.assertIn("function buildSongWorkCard(", dashboard)
+
+
+class DashboardSongWorkTests(unittest.TestCase):
+    def test_work_kind_reads_existing_next_action_text(self):
+        self.assertEqual(
+            song_work_kind(
+                "Jeff: confirm the 2 unclear chorus lines by ear (60s), "
+                "then this is a finished lyric."
+            ),
+            "write",
+        )
+        self.assertEqual(
+            song_work_kind(
+                "Record lead guitar over choruses + solos "
+                "(the one finishing overdub)."
+            ),
+            "produce",
+        )
+        self.assertEqual(
+            song_work_kind(
+                "Listen to latest (Jeff Story - Morgan the Wizard v1.0.logicx) "
+                "and rate: finish / rest."
+            ),
+            "listen",
+        )
+        self.assertEqual(
+            song_work_kind(
+                "Archive-with-honor: finished, released, still playable live; "
+                "not a development priority"
+            ),
+            "rest",
+        )
+        self.assertEqual(
+            song_work_kind("No dated source resolved — flag for next inventory pass."),
+            "inventory",
+        )
+        self.assertEqual(
+            song_work_kind(
+                "Candidate for next-EP shortlist; v1.5 mix may be nearly done "
+                "— needs a listening pass"
+            ),
+            "decide",
+        )
+        self.assertEqual(song_work_kind(""), "unknown")
+        self.assertEqual(song_work_kind("   "), "unknown")
+
+    def test_write_beats_later_produce_clause(self):
+        self.assertEqual(
+            song_work_kind(
+                'Locate/transcribe lyrics (no doc exists!); then guitar solos '
+                '+ "Jeff take me away" chorus vox per Overdubs doc'
+            ),
+            "write",
+        )
+
+    def test_live_originals_classify_without_unknown(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        kinds = {}
+        for song in catalog["songs"]:
+            if song.get("classification") != "original":
+                continue
+            kind = song_work_kind(song.get("next_action"))
+            kinds[kind] = kinds.get(kind, 0) + 1
+        self.assertEqual(
+            kinds,
+            {
+                "listen": 56,
+                "write": 29,
+                "inventory": 23,
+                "rest": 11,
+                "produce": 5,
+                "decide": 2,
+            },
+        )
+        self.assertNotIn("unknown", kinds)
+
+    def test_work_card_strips_owner_audio_and_street_fragments(self):
+        self.assertEqual(
+            strip_private_locators(
+                "Listen to latest (Jeff Story - Morgan the Wizard v1.0.logicx) "
+                "and rate: finish / rest."
+            ),
+            "Listen to latest and rate: finish / rest.",
+        )
+        self.assertEqual(
+            strip_private_locators(
+                'LISTEN: play Maxwell Dr 99 (latest take). Verdict: gem / meh.'
+            ),
+            "LISTEN: play. Verdict: gem / meh.",
+        )
+        card = song_work_card(
+            {
+                "id": "JS-0130",
+                "t": "Been Loving You",
+                "nx": 'LISTEN: play Maxwell Dr 99 (latest take). Verdict: gem.',
+                "hk": "Been loving you",
+                "src": ["mix.wav", "song.logicx"],
+                "bs": "file:///Users/jeff/Music/take.wav",
+            }
+        )
+        self.assertIn("Work: listen", card)
+        self.assertIn("Hook: Been loving you", card)
+        self.assertNotIn("Maxwell", card)
+        self.assertNotIn(".wav", card)
+        self.assertNotIn(".logicx", card)
+        self.assertNotIn("file://", card)
+        self.assertFalse(work_card_leaks_private_locators(card))
+
+    def test_work_card_omits_sources_and_fails_closed_on_leftover_locator(self):
+        safe = song_work_card(
+            {
+                "canonical_title": "It's Alright",
+                "song_id": "JS-0128",
+                "next_action": "Jeff: confirm the 2 unclear chorus lines by ear (60s)",
+                "hook": "I know it's alright",
+                "open_questions": ["noisy and Something Dirty?"],
+            }
+        )
+        self.assertIn("It's Alright (JS-0128)", safe)
+        self.assertIn("Work: write", safe)
+        self.assertIn("Open questions: noisy and Something Dirty?", safe)
+        self.assertNotIn("sources", safe.lower())
+        leaked = song_work_card(
+            {
+                "t": "Leak",
+                "id": "JS-9999",
+                "nx": "do the thing",
+                "key": "open mix.wav",
+            }
+        )
+        self.assertEqual(leaked, "")
+
+    def test_live_work_cards_do_not_leak_private_locators(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        cards = 0
+        for song in catalog["songs"]:
+            card = song_work_card(song)
+            if not card:
+                continue
+            cards += 1
+            self.assertFalse(
+                work_card_leaks_private_locators(card),
+                song.get("song_id"),
+            )
+            self.assertNotIn("file://", card)
+        self.assertGreater(cards, 100)
+
+    def test_embedded_data_and_tx_hashes_stay_on_main(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        payloads = embedded_dashboard_payloads(dashboard)
+        self.assertEqual(
+            hashlib.sha256(payloads["DATA"].encode()).hexdigest(),
+            EMBEDDED_DATA_SHA256,
+        )
+        self.assertEqual(
+            hashlib.sha256(payloads["TX"].encode()).hexdigest(),
+            EMBEDDED_TX_SHA256,
+        )
 
 
 if __name__ == "__main__":

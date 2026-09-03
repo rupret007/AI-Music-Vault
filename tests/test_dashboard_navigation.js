@@ -42,10 +42,17 @@ for (const marker of [
   "function sortMemoHits(",
   "function handleVaultKey(",
   "function copyMemoFile(",
+  "function copyVaultText(",
+  "function songWorkKind(",
+  "function buildSongWorkCard(",
+  "function copySongWork(",
   "id=\"evidence\"",
+  "id=\"work\"",
   "Sort: Latest memo evidence",
   "Copy intake name",
+  "Copy work card",
   "newest first",
+  "data-copy-work",
   "this page does not open audio",
   "aria-selected",
   "aria-expanded",
@@ -167,8 +174,66 @@ if (markHay("Hello Garden", "garden") !== "Hello <mark>Garden</mark>") {
   fail("title match must highlight without changing catalog feel");
 }
 if (markHay("<x>", "x") !== "&lt;<mark>x</mark>&gt;") fail("markHay must escape");
-if (!extractFunction(script, "copyMemoFile").includes("execCommand")) {
+if (!extractFunction(script, "copyVaultText").includes("execCommand")) {
   fail("copy must fall back when the clipboard API is blocked");
+}
+if (!extractFunction(script, "copyMemoFile").includes("copyVaultText")) {
+  fail("intake-name copy must reuse the shared clipboard helper");
+}
+
+const songWorkKind = new Function(
+  "return (" + extractFunction(script, "songWorkKind") + ");",
+)();
+if (songWorkKind("Jeff: confirm the 2 unclear chorus lines by ear (60s)") !== "write") {
+  fail("chorus-line next action must classify as write");
+}
+if (songWorkKind("Record lead guitar over choruses + solos (the one finishing overdub).") !== "produce") {
+  fail("overdub next action must classify as produce");
+}
+if (songWorkKind("Listen to latest (take.logicx) and rate: finish / rest.") !== "listen") {
+  fail("listen-to-latest next action must classify as listen");
+}
+if (songWorkKind("") !== "unknown") fail("empty next action must stay unknown");
+
+const stripPrivateLocators = new Function(
+  "return (" + extractFunction(script, "stripPrivateLocators") + ");",
+)();
+if (stripPrivateLocators("Listen to latest (mix.wav) and rate") !== "Listen to latest and rate") {
+  fail("work preview must strip owner-audio filenames");
+}
+if (stripPrivateLocators("LISTEN: play Maxwell Dr 99 (latest take). Verdict.") !== "LISTEN: play. Verdict.") {
+  fail("work preview must strip known street fragments");
+}
+
+const buildSongWorkCard = new Function(
+  "flattenWorkField",
+  "songWorkKind",
+  "stripPrivateLocators",
+  "workCardLeaks",
+  "return (" + extractFunction(script, "buildSongWorkCard") + ");",
+)(
+  new Function("return (" + extractFunction(script, "flattenWorkField") + ");")(),
+  songWorkKind,
+  stripPrivateLocators,
+  new Function("return (" + extractFunction(script, "workCardLeaks") + ");")(),
+);
+const card = buildSongWorkCard({
+  id: "JS-0128",
+  t: "It's Alright",
+  nx: "Jeff: confirm the 2 unclear chorus lines by ear (60s)",
+  hk: "I know it's alright",
+  oq: ["noisy and Something Dirty?"],
+  src: ["take.wav"],
+  bs: "file:///tmp/take.wav",
+});
+if (!card.includes("It's Alright (JS-0128)") || !card.includes("Work: write") || !card.includes("Hook: I know it's alright")) {
+  fail("work card must carry title, write kind, and hook");
+}
+if (card.includes(".wav") || card.includes("file://") || card.includes("Maxwell")) {
+  fail("work card must omit owner-audio locators and sources");
+}
+if (buildSongWorkCard({ id: "JS-9999", t: "Leak", nx: "do it", key: "open mix.wav" }) !== "") {
+  fail("work card must fail closed when a locator remains");
 }
 
 const escapeNav = new Function(
