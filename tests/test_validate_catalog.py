@@ -252,8 +252,10 @@ def extras_ok(cat=None):
             'id="work" Copy work card function songWorkKind( '
             'function buildSongWorkCard( data-copy-work '
             'data-open-song="ST-0001" id="workSession" '
-            'function openWork( function latestMemoForSong( '
-            'data-open-work= Sit-down'
+            'id="workStarts" id="advancedFilters" '
+            'function openWork( function updateWorkSessionState( '
+            'function latestMemoForSong( data-open-work= '
+            'Start a work session More filters Sit-down'
         ),
         "audio_files": [],
     }
@@ -2445,6 +2447,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog write/produce/listen sit-down — 2026-09-03 "
             "(Cloud Agent, no audio)"
         )
+        product_session_start = (
+            "Catalog one-song session start — 2026-09-03 "
+            "(Codex Extra High, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2457,7 +2463,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(leftover_memos, headings)
         self.assertIn(leftover_work, headings)
         self.assertIn(leftover_sitdown, headings)
-        self.assertEqual(headings[-1], leftover_sitdown)
+        self.assertIn(product_session_start, headings)
+        self.assertEqual(headings[-1], product_session_start)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))

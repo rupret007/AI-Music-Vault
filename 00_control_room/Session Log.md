@@ -454,3 +454,19 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 
 ### Next continuation point
 Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connects · Needs Jeff #1–5 · BSF file into intake. StoryBoard import stays local `data/app_api.json` — the spine is rejected as an import, not a remote URL. Show Night official set is owner-only. Official-set dump binds as Rad Dad — official set. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Derived `master_catalog.csv` must match the spine. Cover book stays 93 / official-set originals stay 0 / Trailer Swift originals stay 0. The private dashboard now lets Jeff sit down to write/produce/listen from existing next actions: resumable work session, sanitized next, latest memo evidence, no owner-audio paths. Logic keys/WAVs stay owner-only on Jeff's Mac — do not invent keys or fill Logic-ready from this page. Next honest leftover is still recovering the real UnRecorded / unmatched-memo lists from Drive, plus Jeff-Mac Logic-ready field fill, without inventing keys or minting IDs. Do not mint unmatched Trailer Swift / Rad Dad / Stalemate titles. Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+## Catalog one-song session start — 2026-09-03 (Codex Extra High, no audio)
+### Done
+1. Started from exact private main `c3bd8885`. The previous sit-down work was real, but Write / Produce / Listen still looked like passive counts and opened a collapsed list, so Jeff had to hunt again before acting.
+2. Kept the existing Songs / Memo Search surface and existing catalog logic. Three explicit work-session buttons now open the highest-momentum matching song immediately, name the exact queue position, preserve that selection through sorting/filtering, and stop Previous/Next at the real boundaries instead of wrapping.
+3. Reduced first-glance controls to search, sort, and one native More filters disclosure. Project, scored, StoryBoard scope, memo-evidence, and all-work filters remain available inside it. Generated dashboard JavaScript compiles; focused dashboard/privacy tests pass; a headless Chrome walk confirmed `#work=write` lands on one expanded item with `1 of 30` and Previous disabled.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, DATA/TX payloads, or app feed changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- Work buttons navigate the existing private local index only. Next actions remain sanitized; Logic/WAV/best_source paths and known street fragments stay out of the work card. The repository stays private.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Use the private dashboard's primary Write / Produce / Listen buttons to start one bounded session; More filters is for catalog exploration, not a new priority system. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
