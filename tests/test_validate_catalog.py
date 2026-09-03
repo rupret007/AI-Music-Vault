@@ -2441,6 +2441,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog song work card — 2026-09-03 "
             "(Cloud Agent, no audio)"
         )
+        leftover_sitdown = (
+            "Catalog write/produce/listen sit-down — 2026-09-03 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2452,7 +2456,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(leftover_covers, headings)
         self.assertIn(leftover_memos, headings)
         self.assertIn(leftover_work, headings)
-        self.assertEqual(headings[-1], leftover_work)
+        self.assertIn(leftover_sitdown, headings)
+        self.assertEqual(headings[-1], leftover_sitdown)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
