@@ -47,11 +47,16 @@ for (const marker of [
   "function buildSongWorkCard(",
   "function copySongWork(",
   "function openWork(",
+  "function updateWorkSessionState(",
   "function latestMemoForSong(",
   "function stepWork(",
   "id=\"evidence\"",
   "id=\"work\"",
   "id=\"workSession\"",
+  "id=\"workStarts\"",
+  "id=\"advancedFilters\"",
+  "Start a work session",
+  "More filters",
   "Sit-down",
   "data-open-work=",
   "data-work-step",
@@ -279,25 +284,62 @@ const workFields = {
   work: { value: "", focus() { this.focused = true; } },
 };
 const workCalls = [];
-const openWork = new Function(
+const workNavigation = new Function(
   "sname", "q", "proj", "scored", "scope", "sort", "evidence", "work",
-  "showTab", "render", "writeVaultHash",
-  "let lastWorkKind = ''; return (" + extractFunction(script, "openWork") + ");",
+  "showTab", "paint", "writeVaultHash", "recordFocus",
+  "let lastWorkKind = ''; let activeWorkSongId = '';" +
+    "function render(){ paint(); activeWorkSongId = 'JS-0001'; }" +
+    "function focusWorkSong(id){ recordFocus(id); return true; }" +
+    "const openWork = " + extractFunction(script, "openWork") + ";" +
+    "return { openWork, active: () => activeWorkSongId };",
 )(
   names, workFields.q, workFields.proj, workFields.scored, workFields.scope,
   workFields.sort, workFields.evidence, workFields.work,
   (tab) => workCalls.push(tab), () => workCalls.push("render"),
   (kind, id) => workCalls.push(String(kind) + ":" + String(id)),
+  (id) => workCalls.push("focus:" + id),
 );
-openWork("write");
+workNavigation.openWork("write");
 if (workFields.work.value !== "write" || workFields.q.value !== "") {
   fail("openWork must set the write filter without isolating a song");
 }
-if (workCalls.join(",") !== "S,render,work:write") {
-  fail("openWork must paint Songs and write the work hash");
+if (workCalls.join(",") !== "S,render,work:write,focus:JS-0001") {
+  fail("openWork must paint Songs, write the work hash, and open the first match");
 }
-openWork("not-a-kind");
+workNavigation.openWork("not-a-kind");
 if (workFields.work.value !== "write") fail("openWork must reject unknown work kinds");
+
+const sessionUi = {
+  panel: { hidden: true }, text: { textContent: "" }, prev: {}, next: {},
+};
+const updateWorkSessionState = new Function(
+  "workSession", "work", "workSessionText", "workPrev", "workNext",
+  "visibleSongIds", "activeWorkSongId", "sname",
+  "return (" + extractFunction(script, "updateWorkSessionState") + ");",
+)(
+  sessionUi.panel, { value: "write" }, sessionUi.text, sessionUi.prev, sessionUi.next,
+  ["JS-0001", "JS-0002"], "JS-0002", names,
+);
+updateWorkSessionState();
+if (sessionUi.panel.hidden || sessionUi.text.textContent !== "Write · 2 of 2 · Second Song") {
+  fail("work session must name the exact current song and position");
+}
+if (sessionUi.prev.disabled || !sessionUi.next.disabled) {
+  fail("work session navigation must stop honestly at the queue boundary");
+}
+
+const workStepper = new Function(
+  "let visibleSongIds = ['JS-0001', 'JS-0002']; let activeWorkSongId = 'JS-0001';" +
+    "function focusWorkSong(id){ activeWorkSongId = id; return true; }" +
+    "const stepWork = " + extractFunction(script, "stepWork") + ";" +
+    "return { stepWork, active: () => activeWorkSongId };",
+)();
+if (!workStepper.stepWork(1) || workStepper.active() !== "JS-0002") {
+  fail("next must advance to the following work item");
+}
+if (workStepper.stepWork(1) || workStepper.active() !== "JS-0002") {
+  fail("next must not wrap and pretend the queue has not ended");
+}
 
 const escapeNav = new Function(
   "paneM",

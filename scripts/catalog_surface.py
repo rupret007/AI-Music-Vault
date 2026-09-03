@@ -594,8 +594,13 @@ def dashboard_exposes_song_work(html: str) -> bool:
         and "data-copy-work" in chrome
         and 'data-open-song="ST-0001"' in chrome
         and 'id="workSession"' in chrome
+        and 'id="workStarts"' in chrome
+        and 'id="advancedFilters"' in chrome
         and "function openWork(" in chrome
+        and "function updateWorkSessionState(" in chrome
         and "function latestMemoForSong(" in chrome
         and "data-open-work=" in chrome
+        and "Start a work session" in chrome
+        and "More filters" in chrome
         and "Sit-down" in chrome
     )

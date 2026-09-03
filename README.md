@@ -49,7 +49,10 @@ next action, open a resumable work session, sit down on a lane song, and copy
 a sanitized work card (hook, next action, open questions, memo count/date)
 without owner-audio or street locators. Expanded sit-down uses the sanitized
 next action and latest memo intake name — it does not reprint Logic / WAV /
-best_source paths. These are local navigation links over the existing index;
+best_source paths. The primary work buttons open the highest-momentum matching
+song immediately, name its position in a bounded queue, and keep secondary
+catalog filters collapsed until they are needed. These are local navigation
+links over the existing index;
 they do not open, upload, or modify audio. Logic projects, keys, and WAVs
 stay owner-only.
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
