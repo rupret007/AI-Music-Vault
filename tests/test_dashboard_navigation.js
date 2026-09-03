@@ -167,6 +167,9 @@ if (markHay("Hello Garden", "garden") !== "Hello <mark>Garden</mark>") {
   fail("title match must highlight without changing catalog feel");
 }
 if (markHay("<x>", "x") !== "&lt;<mark>x</mark>&gt;") fail("markHay must escape");
+if (!extractFunction(script, "copyMemoFile").includes("execCommand")) {
+  fail("copy must fall back when the clipboard API is blocked");
+}
 
 const escapeNav = new Function(
   "paneM",

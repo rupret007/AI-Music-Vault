@@ -313,11 +313,23 @@ function copyMemoFile(name,btn){
   if(btn){btn.textContent='Copied';btn.classList.add('copied');
    setTimeout(()=>{btn.textContent='Copy intake name';btn.classList.remove('copied');},1200);}
  };
+ const fallback=()=>{
+  try{
+   const ta=document.createElement('textarea');
+   ta.value=text;ta.setAttribute('readonly','');
+   ta.style.position='fixed';ta.style.left='-9999px';
+   document.body.appendChild(ta);ta.select();
+   const ok=document.execCommand('copy');
+   document.body.removeChild(ta);
+   if(ok)done();
+   return ok;
+  }catch(err){return false;}
+ };
  if(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.writeText){
-  navigator.clipboard.writeText(text).then(done).catch(()=>{});
+  navigator.clipboard.writeText(text).then(done).catch(()=>{fallback();});
   return true;
  }
- return false;
+ return fallback();
 }
 function mrender(){
  const term=mq.value.toLowerCase().trim();
