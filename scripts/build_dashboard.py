@@ -16,6 +16,7 @@ from catalog_surface import (  # noqa: E402
     build_memo_search_index,
     overlay_feed_scopes,
     played_badge_label,
+    song_work_kind,
     surface_stage_label,
 )
 
@@ -40,6 +41,15 @@ for s in cat['songs']:
         live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
         gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved','')))
 overlay_feed_scopes(slim, app_api)
+
+
+def _lane_work_pill(song_id: str) -> str:
+    row = next((item for item in slim if item.get("id") == song_id), None)
+    kind = song_work_kind((row or {}).get("nx"))
+    if not kind or kind == "unknown":
+        return ""
+    return f'<span class="pill wk-{kind} lane-work">{kind}</span>'
+
 DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
 
 # Transcripts: compact index (title, date, duration, cleaned text capped at 1500
@@ -116,18 +126,22 @@ input{flex:1;min-width:160px}
 .memo-next{color:var(--ink3);font-size:12px;margin-top:3px}
 .copied{color:var(--good)}
 .pill.wk-write{color:var(--pot)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--mom)}
-.work-copy{margin-top:8px}
+.work-copy,.sit-down{margin-top:8px}
+.sit-memo{margin-top:4px}
+.lane-work{margin-left:4px}
+.stat[data-open-work]{cursor:pointer}
+.stat[data-open-work]:hover,.stat[data-open-work]:focus-visible{outline:2px solid var(--pot);outline-offset:2px}
 </style></head><body>
 <h1>🎸 Jeff Story Song Vault</h1>
 <div class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</div>
 <div class="stats" id="stats"></div>
 <div class="lanes">
  <h2>The three lanes (+ on deck)</h2>
- <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button><span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
- <div class="lane"><span class="tag q">Quick win</span><button type="button" class="song-link" data-open-song="ST-0004">Manic</button><span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
- <div class="lane"><span class="tag x">Experimental</span><button type="button" class="song-link" data-open-song="ST-0009">Long Long Drive</button><span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
- <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button><span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
- <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button><span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
+ <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button> ''' + _lane_work_pill("ST-0001") + r'''<span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
+ <div class="lane"><span class="tag q">Quick win</span><button type="button" class="song-link" data-open-song="ST-0004">Manic</button> ''' + _lane_work_pill("ST-0004") + r'''<span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
+ <div class="lane"><span class="tag x">Experimental</span><button type="button" class="song-link" data-open-song="ST-0009">Long Long Drive</button> ''' + _lane_work_pill("ST-0009") + r'''<span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
+ <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button> ''' + _lane_work_pill("JS-0128") + r'''<span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
+ <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button> ''' + _lane_work_pill("JS-0107") + r'''<span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
 </div>
 <div class="tabs" role="tablist" aria-label="Vault views">
  <button type="button" class="tab on" id="tabS" role="tab" aria-controls="paneS" aria-selected="true">Songs</button>
@@ -148,6 +162,7 @@ input{flex:1;min-width:160px}
  <select id="work"><option value="">Any work</option><option value="write">Write</option><option value="produce">Produce</option><option value="listen">Listen</option><option value="rest">Rest</option><option value="inventory">Inventory</option><option value="decide">Decide</option></select>
 </div>
 <div class="resultbar"><span id="songResults" aria-live="polite"></span><button type="button" class="subtle-btn" id="clearSongFilters">Clear filters</button></div>
+<div class="memo-scope" id="workSession" hidden><div><span id="workSessionText"></span><div class="memo-next">Sit-down from the catalog next action. Copy the intake name to write, produce, or listen on your Mac. This page does not open audio.</div></div><span><button type="button" class="subtle-btn" id="workPrev" data-work-step="-1">Previous</button> <button type="button" class="subtle-btn" id="workNext" data-work-step="1">Next</button></span></div>
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
@@ -173,6 +188,8 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  work=document.getElementById('work'),
  list=document.getElementById('list'),
  songResults=document.getElementById('songResults'),clearSongFilters=document.getElementById('clearSongFilters'),
+ workSession=document.getElementById('workSession'),workSessionText=document.getElementById('workSessionText'),
+ workPrev=document.getElementById('workPrev'),workNext=document.getElementById('workNext'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
  mq=document.getElementById('mq'),mlist=document.getElementById('mlist'),
@@ -181,6 +198,8 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  memoScopeHook=document.getElementById('memoScopeHook'),
  copyMemoWork=document.getElementById('copyMemoWork'),
  clearMemoScope=document.getElementById('clearMemoScope');
+let lastWorkKind='';
+let visibleSongIds=[];
 const sname={}; DATA.forEach(d=>sname[d.id]=d.t);
 const memoEvidenceBySong={};
 const memoCountBySong={};
@@ -206,6 +225,8 @@ const scopes=[...new Set(DATA.map(d=>d.scope).filter(Boolean))].sort();
 scopes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=(DATA.find(d=>d.scope===s)||{}).scope_label||s;scope.appendChild(o);});
 const scoredCount=DATA.filter(d=>d.pot).length;
 const defaultLiveCount=DATA.filter(d=>d.scope==='default_live').length;
+const workCounts={write:0,produce:0,listen:0};
+DATA.forEach(d=>{const wk=songWorkKind(d.nx);if(workCounts[wk]!=null)workCounts[wk]+=1;});
 document.getElementById('stats').innerHTML=
  `<div class="stat"><b>${DATA.length}</b><span>songs cataloged</span></div>`+
  `<div class="stat"><b>${scoredCount}</b><span>scored</span></div>`+
@@ -213,7 +234,10 @@ document.getElementById('stats').innerHTML=
  `<div class="stat"><b>9</b><span>songs recovered from memos</span></div>`+
  `<div class="stat"><b>${TX_MATCHED_TOTAL}</b><span>memos matched</span></div>`+
  `<div class="stat"><b>${TX_SEARCHABLE_TOTAL}</b><span>memos searchable</span></div>`+
- `<div class="stat"><b>${TX_TOTAL}</b><span>memos transcribed</span></div>`;
+ `<div class="stat"><b>${TX_TOTAL}</b><span>memos transcribed</span></div>`+
+ `<div class="stat" data-open-work="write" role="button" tabindex="0"><b>${workCounts.write}</b><span>write</span></div>`+
+ `<div class="stat" data-open-work="produce" role="button" tabindex="0"><b>${workCounts.produce}</b><span>produce</span></div>`+
+ `<div class="stat" data-open-work="listen" role="button" tabindex="0"><b>${workCounts.listen}</b><span>listen</span></div>`;
 function esc(s){return (s===null||s===undefined?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function flattenWorkField(value){
  if(value==null)return '';
@@ -246,7 +270,19 @@ function workCardLeaks(text){
  if(/\.(wav|aiff|aif|logicx|m4a|mp3|flac|band)\b/.test(low))return true;
  return low.includes('maxwell dr')||low.includes('crescent dr')||low.includes('eagle mountain dr');
 }
-function buildSongWorkCard(song){
+function latestMemoForSong(songId,rows){
+ const id=String(songId||'');
+ const src=rows||(typeof TX!=='undefined'?TX:[]);
+ let best=null;
+ for(const m of src){
+  if(!m||String(m.s||'')!==id)continue;
+  if(!best){best=m;continue;}
+  const dd=String(m.d||'').localeCompare(String(best.d||''));
+  if(dd>0||(dd===0&&String(m.f||'').localeCompare(String(best.f||''))>0))best=m;
+ }
+ return best;
+}
+function buildSongWorkCard(song,evidence){
  if(!song)return '';
  const kind=songWorkKind(song.nx);
  const title=flattenWorkField(song.t), id=flattenWorkField(song.id);
@@ -269,6 +305,8 @@ function buildSongWorkCard(song){
  if(song.bpm)lines.push('BPM: '+String(song.bpm));
  const gate=flattenWorkField(String(song.gate||'').split('—')[0]);
  if(gate)lines.push('Gate: '+gate);
+ const ev=evidence||(song&&typeof memoEvidenceBySong!=='undefined'&&memoEvidenceBySong[song.id])||null;
+ if(ev&&ev.n)lines.push('Memos: '+ev.n+' searchable'+(ev.last?' · latest '+ev.last:''));
  const card=lines.filter(Boolean).join('\n');
  return workCardLeaks(card)?'':card;
 }
@@ -290,7 +328,7 @@ function render(){
   if(evv==='0'&&memoEvidenceBySong[d.id])return false;
   if(wv&&songWorkKind(d.nx)!==wv)return false;
   if(!term)return true;
-  return (d.t+' '+d.id+' '+d.th+' '+d.hk+' '+d.c+' '+d.st+' '+(d.wr||'')+' '+(d.nx||'')+' '+(d.oq||'')+' '+(d.gate||'')+' '+(d.scope_label||'')+' '+(d.src||[]).join(' ')).toLowerCase().includes(term);});
+  return (d.t+' '+d.id+' '+d.th+' '+d.hk+' '+d.c+' '+d.st+' '+(d.wr||'')+' '+stripPrivateLocators(d.nx||'')+' '+(d.oq||'')+' '+(d.gate||'')+' '+(d.scope_label||'')).toLowerCase().includes(term);});
  const k=sort.value;
  if(k==='memo'){
   rows.sort((a,b)=>{
@@ -307,26 +345,33 @@ function render(){
  }
  songResults.textContent=`Showing ${rows.length} of ${DATA.length} songs`;
  clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||k!=='mom');
+ if(typeof visibleSongIds!=='undefined')visibleSongIds=rows.map(d=>d.id);
+ if(typeof workSession!=='undefined'&&workSession){
+  workSession.hidden=!wv;
+  if(workSessionText)workSessionText.textContent=wv?`${wv} work · ${rows.length} song${rows.length===1?'':'s'} · sit-down from the catalog`:'';
+ }
  list.innerHTML=rows.length?rows.map((d,i)=>{
   const wk=songWorkKind(d.nx);
   const nxt=stripPrivateLocators(d.nx||'');
   const nxtShort=nxt.length>90?nxt.slice(0,87)+'…':nxt;
+  const latest=latestMemoForSong(d.id);
+  const hook=stripPrivateLocators(flattenWorkField(d.hk));
+  const theme=stripPrivateLocators(flattenWorkField(d.th));
+  const questions=stripPrivateLocators(flattenWorkField(d.oq));
   return `
  <div class="row" data-song-id="${esc(d.id)}"><div class="rhead" role="button" tabindex="0" aria-expanded="false" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
   <span><span class="rtitle">${esc(d.t)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
  </div><div class="detail" hidden>
-  ${d.th?`<h4>Theme</h4>${esc(d.th)}`:''}
-  ${d.hk?`<h4>Hook</h4>${esc(d.hk)}`:''}
-  ${d.nx?`<h4>Next action</h4>${esc(d.nx)}`:''}
-  <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(d.au).split('—')[0]}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${d.mom?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
+  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:''}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latest.f)}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latest.f)}">Copy intake name</button><div class="memo-next">Copy the intake name; write, produce, or listen on your Mac. This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen on your Mac. This page does not open audio.</div>`}</div>
+  ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
+  ${hook?`<h4>Hook</h4>${esc(hook)}`:''}
+  <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${d.mom?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
   ${d.gate?`<h4>AI-upload gate</h4><span class="pill" style="color:${d.gate.startsWith('YES')?'var(--good)':d.gate.startsWith('NEEDS')?'var(--rdy)':'var(--ink3)'}">${esc(d.gate)}</span>`:''}
-  ${d.bs?`<h4>Latest source (auto-resolved)</h4>${esc(d.bs)}`:''}
   ${d.lp&&d.lp.length?`<h4>Played live</h4>${d.lp.map(x=>`<span class="pill">${esc(x)}</span>`).join('')}`:''}
-  ${d.src&&d.src.length?`<h4>Known assets</h4><ul>${d.src.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
   ${d.sc&&d.sc.length?`<h4>SoundCloud</h4><ul>${d.sc.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
-  ${d.oq?`<h4>Open questions</h4>${esc(flattenWorkField(d.oq))}`:''}
+  ${questions?`<h4>Open questions</h4>${esc(questions)}`:''}
   <div class="work-copy"><button type="button" class="subtle-btn" data-copy-work="${esc(d.id)}">Copy work card</button></div>
   ${memoCountBySong[d.id]?`<h4>Matched memo evidence</h4><button type="button" class="memo-link" data-open-memos="${esc(d.id)}">Open ${memoCountBySong[d.id]} searchable memo${memoCountBySong[d.id]===1?'':'s'}</button>`:''}
  </div></div>`;}).join(''):'<div class="empty">No songs match — clear a filter?</div>';
@@ -334,7 +379,7 @@ function render(){
 function toggleSong(head,forceOpen){
  const detail=head&&head.nextElementSibling;
  if(!detail||!detail.classList.contains('detail'))return;
- const open=forceOpen===true?true:detail.hidden;
+ const open=forceOpen===true?true:forceOpen===false?false:detail.hidden;
  detail.hidden=!open;head.setAttribute('aria-expanded',String(open));
 }
 function parseVaultHash(raw,names){
@@ -342,6 +387,9 @@ function parseVaultHash(raw,names){
  const eq=text.indexOf('=');
  if(eq<0)return null;
  const kind=text.slice(0,eq), id=text.slice(eq+1);
+ if(kind==='work'){
+  return (id==='write'||id==='produce'||id==='listen'||id==='rest'||id==='inventory'||id==='decide')?{kind:kind,id:id}:null;
+ }
  if((kind!=='memos'&&kind!=='song')||!names||!names[id])return null;
  return {kind:kind,id:id};
 }
@@ -357,7 +405,41 @@ function applyVaultHash(){
  const hit=parseVaultHash(typeof location==='undefined'?'':location.hash,sname);
  if(!hit)return;
  if(hit.kind==='memos')openSongMemos(hit.id);
+ else if(hit.kind==='work')openWork(hit.id);
  else openSong(hit.id);
+}
+function openWork(kind){
+ const k=String(kind||'');
+ if(k!=='write'&&k!=='produce'&&k!=='listen'&&k!=='rest'&&k!=='inventory'&&k!=='decide')return;
+ if(typeof lastWorkKind!=='undefined')lastWorkKind=k;
+ q.value='';proj.value='';scored.value='';scope.value='';
+ if(typeof sort!=='undefined'&&sort)sort.value='mom';
+ if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+ if(typeof work!=='undefined'&&work)work.value=k;
+ showTab('S');render();
+ if(typeof writeVaultHash==='function')writeVaultHash('work',k);
+ if(typeof work!=='undefined'&&work&&work.focus)work.focus();
+}
+function focusWorkSong(id){
+ const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
+ const head=row&&row.querySelector('[data-toggle-song]');
+ if(!head)return false;
+ list.querySelectorAll('[data-toggle-song][aria-expanded="true"]').forEach(open=>{
+  if(open!==head)toggleSong(open,false);
+ });
+ toggleSong(head,true);
+ requestAnimationFrame(()=>{head.focus();head.scrollIntoView({block:'center'});});
+ return true;
+}
+function stepWork(delta){
+ const ids=typeof visibleSongIds!=='undefined'?visibleSongIds:[];
+ if(!ids.length)return false;
+ const openHead=list.querySelector('[data-toggle-song][aria-expanded="true"]');
+ const openRow=openHead&&openHead.closest('[data-song-id]');
+ let idx=openRow?ids.indexOf(openRow.dataset.songId):-1;
+ if(idx<0)idx=delta>0?-1:0;
+ const next=ids[(idx+Number(delta||0)+ids.length)%ids.length];
+ return focusWorkSong(next);
 }
 function openSong(songId){
  const id=String(songId||'');
@@ -377,6 +459,7 @@ function openSong(songId){
 function openSongMemos(songId){
  const id=String(songId||'');
  if(!sname[id]||!memoCountBySong[id])return;
+ if(typeof lastWorkKind!=='undefined'&&typeof work!=='undefined'&&work&&work.value)lastWorkKind=work.value;
  activeMemoSong=id;mq.value='';showTab('M');mrender();mq.focus();
  if(typeof writeVaultHash==='function')writeVaultHash('memos',id);
 }
@@ -384,14 +467,18 @@ function handleVaultKey(e){
  if(!e||e.key!=='Escape')return false;
  if(typeof paneM!=='undefined'&&paneM&&!paneM.hidden&&activeMemoSong){
   activeMemoSong='';mq.value='';
-  if(typeof writeVaultHash==='function')writeVaultHash('','');
+  if(typeof lastWorkKind!=='undefined'&&lastWorkKind){
+   if(typeof writeVaultHash==='function')writeVaultHash('work',lastWorkKind);
+  }else if(typeof writeVaultHash==='function')writeVaultHash('','');
   mrender();mq.focus();
   return true;
  }
- if(typeof paneS!=='undefined'&&paneS&&!paneS.hidden&&sname[q.value]){
+ const hasWork=typeof work!=='undefined'&&work&&work.value;
+ if(typeof paneS!=='undefined'&&paneS&&!paneS.hidden&&(sname[q.value]||hasWork)){
   q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';
   if(typeof evidence!=='undefined'&&evidence)evidence.value='';
   if(typeof work!=='undefined'&&work)work.value='';
+  if(typeof lastWorkKind!=='undefined')lastWorkKind='';
   if(typeof writeVaultHash==='function')writeVaultHash('','');
   render();q.focus();
   return true;
@@ -428,6 +515,8 @@ function copySongWork(songId,btn){
  return copyVaultText(buildSongWorkCard(song),btn,'Copy work card');
 }
 list.addEventListener('click',e=>{
+ const copyFile=e.target.closest('[data-copy-file]');
+ if(copyFile){copyMemoFile(copyFile.dataset.copyFile,copyFile);return;}
  const copy=e.target.closest('[data-copy-work]');
  if(copy){copySongWork(copy.dataset.copyWork,copy);return;}
  const memos=e.target.closest('[data-open-memos]');
@@ -435,17 +524,38 @@ list.addEventListener('click',e=>{
  const head=e.target.closest('[data-toggle-song]');if(head)toggleSong(head);
 });
 list.addEventListener('keydown',e=>{
- if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]'))return;
+ if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]')||e.target.closest('[data-copy-file]'))return;
  const head=e.target.closest('[data-toggle-song]');
  if(head&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleSong(head);}
 });
-[q,proj,sort,scored,scope,evidence,work].forEach(el=>{if(el)el.addEventListener('input',render);});
-clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(work)work.value='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
+[q,proj,sort,scored,scope,evidence,work].forEach(el=>{if(el)el.addEventListener('input',()=>{
+ if(el===work&&typeof lastWorkKind!=='undefined')lastWorkKind=work.value||'';
+ render();
+ if(el===work){
+  if(work.value)writeVaultHash('work',work.value);
+  else writeVaultHash('','');
+ }
+});});
+clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(work)work.value='';if(typeof lastWorkKind!=='undefined')lastWorkKind='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
 document.querySelector('.lanes').addEventListener('click',e=>{
  const song=e.target.closest('[data-open-song]');
  if(song)openSong(song.dataset.openSong);
 });
-tabS.addEventListener('click',()=>showTab('S'));tabM.addEventListener('click',()=>{showTab('M');mrender();});
+document.getElementById('stats').addEventListener('click',e=>{
+ const hit=e.target.closest('[data-open-work]');
+ if(hit)openWork(hit.dataset.openWork);
+});
+document.getElementById('stats').addEventListener('keydown',e=>{
+ const hit=e.target.closest('[data-open-work]');
+ if(hit&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openWork(hit.dataset.openWork);}
+});
+if(workPrev)workPrev.addEventListener('click',()=>stepWork(-1));
+if(workNext)workNext.addEventListener('click',()=>stepWork(1));
+tabS.addEventListener('click',()=>{
+ showTab('S');
+ if(typeof lastWorkKind!=='undefined'&&lastWorkKind&&work&&!work.value&&!q.value)openWork(lastWorkKind);
+});
+tabM.addEventListener('click',()=>{showTab('M');mrender();});
 render();
 // ---- memo transcript search ----
 function memoMatches(m,term,songId){
@@ -487,8 +597,9 @@ function mrender(){
  memoScopeText.textContent=activeMemoSong?`${ev?ev.n:0} searchable memo${ev&&ev.n===1?'':'s'} for ${sname[activeMemoSong]}${span}`:'';
  const song=activeMemoSong&&DATA.find(d=>d.id===activeMemoSong);
  if(memoScopeNext){
-  memoScopeNext.hidden=!(song&&song.nx);
-  memoScopeNext.textContent=(song&&song.nx)?`Next action: ${song.nx}`:'';
+  const nxt=song?stripPrivateLocators(flattenWorkField(song.nx)):'';
+  memoScopeNext.hidden=!nxt;
+  memoScopeNext.textContent=nxt?`Next action: ${nxt}`:'';
  }
  if(memoScopeHook){
   const hook=song?stripPrivateLocators(flattenWorkField(song.hk)):'';

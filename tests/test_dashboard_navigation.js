@@ -46,8 +46,15 @@ for (const marker of [
   "function songWorkKind(",
   "function buildSongWorkCard(",
   "function copySongWork(",
+  "function openWork(",
+  "function latestMemoForSong(",
+  "function stepWork(",
   "id=\"evidence\"",
   "id=\"work\"",
+  "id=\"workSession\"",
+  "Sit-down",
+  "data-open-work=",
+  "data-work-step",
   "Sort: Latest memo evidence",
   "Copy intake name",
   "Copy work card",
@@ -61,6 +68,9 @@ for (const marker of [
 }
 if (html.includes("onclick=")) fail("generated dashboard must use delegated events, not inline clicks");
 if (html.includes("<audio")) fail("generated dashboard must not open audio");
+if (html.includes("Latest source (auto-resolved)") || html.includes("<h4>Known assets</h4>")) {
+  fail("generated dashboard must not display owner-audio locators");
+}
 
 const names = { "JS-0001": "First Song", "JS-0002": "Second Song" };
 const memoMatches = new Function(
@@ -143,6 +153,10 @@ toggleSong(head);
 if (detail.hidden || attrs["aria-expanded"] !== "true") fail("closed song must open honestly");
 toggleSong(head);
 if (!detail.hidden || attrs["aria-expanded"] !== "false") fail("open song must close honestly");
+toggleSong(head, true);
+if (detail.hidden || attrs["aria-expanded"] !== "true") fail("force-open must expand a song");
+toggleSong(head, false);
+if (!detail.hidden || attrs["aria-expanded"] !== "false") fail("force-close must collapse a song");
 
 const parseVaultHash = new Function(
   "return (" + extractFunction(script, "parseVaultHash") + ");",
@@ -153,6 +167,11 @@ if (!parseVaultHash("#memos=JS-0001", names) || parseVaultHash("#memos=JS-0001",
 if (parseVaultHash("#memos=JS-9999", names)) fail("hash must reject unknown ids");
 if (parseVaultHash("#open=JS-0001", names)) fail("hash must reject other kinds");
 if (parseVaultHash("#memos=JS-0001<script>", names)) fail("hash must reject injected ids");
+if (!parseVaultHash("#work=write", names) || parseVaultHash("#work=write", names).kind !== "work") {
+  fail("hash must accept a known work kind");
+}
+if (parseVaultHash("#work=unknown", names)) fail("hash must reject unknown work");
+if (parseVaultHash("#work=JS-0001", names)) fail("hash must reject a catalog id as work");
 
 const sortMemoHits = new Function(
   "return (" + extractFunction(script, "sortMemoHits") + ");",
@@ -235,6 +254,50 @@ if (card.includes(".wav") || card.includes("file://") || card.includes("Maxwell"
 if (buildSongWorkCard({ id: "JS-9999", t: "Leak", nx: "do it", key: "open mix.wav" }) !== "") {
   fail("work card must fail closed when a locator remains");
 }
+const memoCard = buildSongWorkCard(
+  { id: "JS-0128", t: "It's Alright", nx: "Jeff: confirm the 2 unclear chorus lines by ear (60s)" },
+  { n: 3, last: "2025-10-14", f: "take.wav" },
+);
+if (!memoCard.includes("Memos: 3 searchable · latest 2025-10-14")) {
+  fail("work card may include memo count and date");
+}
+if (memoCard.includes("take.wav")) fail("work card must omit intake filenames");
+
+const latestMemoForSong = new Function(
+  "return (" + extractFunction(script, "latestMemoForSong") + ");",
+)();
+const latest = latestMemoForSong("JS-0001", [
+  { s: "JS-0001", d: "2020-01-01", f: "old.m4a" },
+  { s: "JS-0001", d: "2024-12-01", f: "new.m4a" },
+  { s: "JS-0002", d: "2025-01-01", f: "other.m4a" },
+]);
+if (!latest || latest.f !== "new.m4a") fail("latest memo must be the newest searchable row");
+
+const workFields = {
+  q: { value: "old" }, proj: { value: "old" }, scored: { value: "old" },
+  scope: { value: "old" }, sort: { value: "id" }, evidence: { value: "old" },
+  work: { value: "", focus() { this.focused = true; } },
+};
+const workCalls = [];
+const openWork = new Function(
+  "sname", "q", "proj", "scored", "scope", "sort", "evidence", "work",
+  "showTab", "render", "writeVaultHash",
+  "let lastWorkKind = ''; return (" + extractFunction(script, "openWork") + ");",
+)(
+  names, workFields.q, workFields.proj, workFields.scored, workFields.scope,
+  workFields.sort, workFields.evidence, workFields.work,
+  (tab) => workCalls.push(tab), () => workCalls.push("render"),
+  (kind, id) => workCalls.push(String(kind) + ":" + String(id)),
+);
+openWork("write");
+if (workFields.work.value !== "write" || workFields.q.value !== "") {
+  fail("openWork must set the write filter without isolating a song");
+}
+if (workCalls.join(",") !== "S,render,work:write") {
+  fail("openWork must paint Songs and write the work hash");
+}
+openWork("not-a-kind");
+if (workFields.work.value !== "write") fail("openWork must reject unknown work kinds");
 
 const escapeNav = new Function(
   "paneM",

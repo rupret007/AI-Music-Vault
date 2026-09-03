@@ -31,6 +31,7 @@ import sys
 from catalog_surface import (
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
+    dashboard_displays_owner_audio_index,
     dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
 )
@@ -1979,10 +1980,16 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must not open Logic keys, WAVs, or audio — "
                 "those stay owner-only on Jeff's Mac"
             )
+        if dashboard_displays_owner_audio_index(dash):
+            errors.append(
+                "dashboard must not display Logic/WAV/best_source locators — "
+                "sit-down uses the sanitized next action and memo evidence"
+            )
         if not dashboard_exposes_song_work(dash):
             errors.append(
-                "dashboard must expose write/produce work from existing "
-                "next actions — filter, lane jump, and a sanitized work card"
+                "dashboard must expose write/produce/listen sit-down from "
+                "existing next actions — work session, sanitized next, "
+                "and memo evidence instead of owner-audio paths"
             )
 
     audio_hits = extras.get("audio_files")
