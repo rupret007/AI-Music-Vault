@@ -18,6 +18,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_displays_owner_audio_index,
     dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
+    dashboard_resumes_song_work_privately,
     embedded_dashboard_payloads,
     latest_memo_for_song,
     memo_evidence_by_song,
@@ -219,6 +220,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("function handleVaultKey(", dashboard)
         self.assertFalse(dashboard_opens_owner_audio(dashboard))
         self.assertTrue(dashboard_exposes_song_work(dashboard))
+        self.assertTrue(dashboard_resumes_song_work_privately(dashboard))
         self.assertFalse(dashboard_displays_owner_audio_index(dashboard))
         self.assertIn('id="work"', dashboard)
         self.assertIn('id="workSession"', dashboard)

@@ -89,6 +89,8 @@ h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 16px}
 .work-start{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:700}
 .work-start span{color:var(--ink3);font-weight:500;margin-left:4px}
 .work-start:hover,.work-start:focus-visible{border-color:var(--pot);outline:2px solid var(--pot);outline-offset:2px}
+.resume-work{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.resume-work .work-start{flex:1;text-align:left}
 .lanes{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
 .lanes h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);margin-bottom:8px}
 .lane{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed var(--line)}
@@ -142,7 +144,7 @@ input{flex:1;min-width:160px}
 .work-copy,.sit-down{margin-top:8px}
 .sit-memo{margin-top:4px}
 .lane-work{margin-left:4px}
-@media(max-width:640px){.work-start{flex:1}.controls>input{flex-basis:100%}.advanced-filters{margin-left:auto}.memo-scope{align-items:flex-start;flex-direction:column}.advanced-menu{right:0}}
+@media(max-width:640px){.work-start{flex:1}.resume-work{align-items:stretch}.controls>input{flex-basis:100%}.advanced-filters{margin-left:auto}.memo-scope{align-items:flex-start;flex-direction:column}.advanced-menu{right:0}}
 </style></head><body>
 <h1>🎸 Jeff Story Song Vault</h1>
 <div class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</div>
@@ -151,6 +153,10 @@ input{flex:1;min-width:160px}
  <h2 id="workNowTitle">Start a work session</h2>
  <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue.</p>
  <div class="work-starts" id="workStarts"></div>
+ <div class="resume-work" id="resumeWork" hidden>
+  <button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button>
+  <button type="button" class="subtle-btn" id="forgetWorkSession">Forget</button>
+ </div>
 </section>
 <div class="lanes">
  <h2>The three lanes (+ on deck)</h2>
@@ -201,6 +207,7 @@ const TX_TOTAL = __TX_TOTAL__;
 const TX_MATCHED_TOTAL = __TX_MATCHED_TOTAL__;
 const TX_SEARCHABLE_TOTAL = __TX_SEARCHABLE_TOTAL__;
 const TX_SEARCHABLE_MATCHED = __TX_SEARCHABLE_MATCHED__;
+const WORK_SESSION_KEY='vault:last-work:v1';
 const q=document.getElementById('q'),proj=document.getElementById('proj'),
  sort=document.getElementById('sort'),scored=document.getElementById('scored'),
  scope=document.getElementById('scope'),evidence=document.getElementById('evidence'),
@@ -209,6 +216,8 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  songResults=document.getElementById('songResults'),clearSongFilters=document.getElementById('clearSongFilters'),
  workSession=document.getElementById('workSession'),workSessionText=document.getElementById('workSessionText'),
  workPrev=document.getElementById('workPrev'),workNext=document.getElementById('workNext'),
+ resumeWork=document.getElementById('resumeWork'),resumeWorkButton=document.getElementById('resumeWorkButton'),
+ resumeWorkText=document.getElementById('resumeWorkText'),forgetWorkSession=document.getElementById('forgetWorkSession'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
  mq=document.getElementById('mq'),mlist=document.getElementById('mlist'),
@@ -275,6 +284,69 @@ function songWorkKind(nx){
  if(low.startsWith('listen')||low.includes('listen:')||low.includes('listen first')||low.includes('listen + verdict'))return 'listen';
  if(low.startsWith('decide')||low.startsWith('hold for')||low.includes('candidate for next-ep'))return 'decide';
  return 'unknown';
+}
+function parseStoredWorkSession(raw,names,rows){
+ try{
+  const value=typeof raw==='string'?JSON.parse(raw):raw;
+  if(!value||typeof value!=='object'||Array.isArray(value)||value.v!==1)return null;
+  if(Object.keys(value).sort().join('|')!=='id|kind|v')return null;
+  const kind=String(value.kind||''),id=String(value.id||'');
+  if(kind!=='write'&&kind!=='produce'&&kind!=='listen'&&kind!=='rest'&&kind!=='inventory'&&kind!=='decide')return null;
+  if(!id||!names||!names[id]||!Array.isArray(rows))return null;
+  const song=rows.find(row=>row&&row.id===id);
+  if(!song||songWorkKind(song.nx)!==kind)return null;
+  return {v:1,kind,id};
+ }catch(err){return null;}
+}
+function readStoredWorkSession(storage,names,rows){
+ if(!storage||typeof storage.getItem!=='function')return null;
+ try{
+  const raw=storage.getItem(WORK_SESSION_KEY);
+  if(!raw)return null;
+  const parsed=parseStoredWorkSession(raw,names,rows);
+  if(!parsed&&typeof storage.removeItem==='function')storage.removeItem(WORK_SESSION_KEY);
+  return parsed;
+ }catch(err){return null;}
+}
+function storeWorkSession(storage,kind,id,names,rows){
+ const parsed=parseStoredWorkSession({v:1,kind:String(kind||''),id:String(id||'')},names,rows);
+ if(!parsed||!storage||typeof storage.setItem!=='function')return false;
+ try{
+  storage.setItem(WORK_SESSION_KEY,JSON.stringify(parsed));
+  return true;
+ }catch(err){return false;}
+}
+function clearStoredWorkSession(storage){
+ if(!storage||typeof storage.removeItem!=='function')return false;
+ try{storage.removeItem(WORK_SESSION_KEY);return true;}catch(err){return false;}
+}
+function vaultStorage(){
+ try{return typeof window!=='undefined'?window.localStorage:null;}catch(err){return null;}
+}
+function updateResumeWork(){
+ if(typeof resumeWork==='undefined'||!resumeWork)return null;
+ const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
+ resumeWork.hidden=!saved;
+ if(saved&&resumeWorkText){
+  const label=saved.kind[0].toUpperCase()+saved.kind.slice(1);
+  resumeWorkText.textContent=`${label} · ${sname[saved.id]}`;
+ }
+ return saved;
+}
+function rememberWorkSession(kind,id){
+ const saved=storeWorkSession(vaultStorage(),kind,id,sname,DATA);
+ updateResumeWork();
+ return saved;
+}
+function resumeLastWorkSession(){
+ const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
+ if(!saved){clearStoredWorkSession(vaultStorage());updateResumeWork();return false;}
+ return openWork(saved.kind,saved.id);
+}
+function forgetLastWorkSession(){
+ const cleared=clearStoredWorkSession(vaultStorage());
+ updateResumeWork();
+ return cleared;
 }
 function stripPrivateLocators(text){
  let s=String(text||'');
@@ -431,11 +503,18 @@ function applyVaultHash(){
  else if(hit.kind==='work')openWork(hit.id);
  else openSong(hit.id);
 }
-function openWork(kind){
+function openWork(kind,songId){
  const k=String(kind||'');
  if(k!=='write'&&k!=='produce'&&k!=='listen'&&k!=='rest'&&k!=='inventory'&&k!=='decide')return;
  if(typeof lastWorkKind!=='undefined')lastWorkKind=k;
- if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';
+ if(typeof activeWorkSongId!=='undefined'){
+  activeWorkSongId='';
+  const requested=String(songId||'');
+  if(requested&&typeof DATA!=='undefined'){
+   const candidate=DATA.find(row=>row&&row.id===requested);
+   if(candidate&&songWorkKind(candidate.nx)===k)activeWorkSongId=requested;
+  }
+ }
  q.value='';proj.value='';scored.value='';scope.value='';
  if(typeof sort!=='undefined'&&sort)sort.value='mom';
  if(typeof evidence!=='undefined'&&evidence)evidence.value='';
@@ -443,6 +522,7 @@ function openWork(kind){
  showTab('S');render();
  if(typeof writeVaultHash==='function')writeVaultHash('work',k);
  if(typeof activeWorkSongId!=='undefined'&&activeWorkSongId)focusWorkSong(activeWorkSongId);
+ return typeof activeWorkSongId!=='undefined'&&!!activeWorkSongId;
 }
 function updateWorkSessionState(){
  if(typeof workSession==='undefined'||!workSession)return;
@@ -470,6 +550,8 @@ function focusWorkSong(id,moveFocus){
  });
  toggleSong(head,true);
  if(typeof activeWorkSongId!=='undefined')activeWorkSongId=String(id||'');
+ const kind=typeof work!=='undefined'&&work?String(work.value||''):'';
+ if(kind&&typeof rememberWorkSession==='function')rememberWorkSession(kind,activeWorkSongId);
  updateWorkSessionState();
  if(moveFocus!==false)requestAnimationFrame(()=>{head.focus();head.scrollIntoView({block:'center'});});
  return true;
@@ -592,6 +674,8 @@ workStarts.addEventListener('click',e=>{
  const hit=e.target.closest('[data-open-work]');
  if(hit)openWork(hit.dataset.openWork);
 });
+if(resumeWorkButton)resumeWorkButton.addEventListener('click',resumeLastWorkSession);
+if(forgetWorkSession)forgetWorkSession.addEventListener('click',forgetLastWorkSession);
 if(workPrev)workPrev.addEventListener('click',()=>stepWork(-1));
 if(workNext)workNext.addEventListener('click',()=>stepWork(1));
 tabS.addEventListener('click',()=>{
@@ -600,6 +684,7 @@ tabS.addEventListener('click',()=>{
 });
 tabM.addEventListener('click',()=>{showTab('M');mrender();});
 render();
+updateResumeWork();
 // ---- memo transcript search ----
 function memoMatches(m,term,songId){
  if(songId&&m.s!==songId)return false;

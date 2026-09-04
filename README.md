@@ -51,8 +51,12 @@ without owner-audio or street locators. Expanded sit-down uses the sanitized
 next action and latest memo intake name — it does not reprint Logic / WAV /
 best_source paths. The primary work buttons open the highest-momentum matching
 song immediately, name its position in a bounded queue, and keep secondary
-catalog filters collapsed until they are needed. These are local navigation
-links over the existing index;
+catalog filters collapsed until they are needed. After a song is opened, the
+dashboard can resume that exact local session after a refresh. The browser
+stores only a schema version, work kind, and catalog ID; **Forget** clears it,
+and invalid, stale, or mismatched records are discarded. No title, note,
+transcript, next action, filename, or audio locator is stored. These are local
+navigation links over the existing index;
 they do not open, upload, or modify audio. Logic projects, keys, and WAVs
 stay owner-only.
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
