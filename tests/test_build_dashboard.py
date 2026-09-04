@@ -17,14 +17,19 @@ from catalog_surface import (  # noqa: E402
     build_memo_search_index,
     dashboard_displays_owner_audio_index,
     dashboard_exposes_song_work,
+    dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
     dashboard_resumes_song_work_privately,
     embedded_dashboard_payloads,
     latest_memo_for_song,
     memo_evidence_by_song,
+    memo_lyric_norm_by_song,
     next_step_is_incomplete,
+    normalize_search_text,
     parse_vault_hash,
     safe_song_next_step,
+    song_aliases,
+    song_search_hit,
     song_work_card,
     song_work_kind,
     sort_memo_evidence_rows,
@@ -223,6 +228,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertFalse(dashboard_opens_owner_audio(dashboard))
         self.assertTrue(dashboard_exposes_song_work(dashboard))
         self.assertTrue(dashboard_resumes_song_work_privately(dashboard))
+        self.assertTrue(dashboard_finds_remembered_song_names(dashboard))
         self.assertFalse(dashboard_displays_owner_audio_index(dashboard))
         self.assertIn('id="work"', dashboard)
         self.assertIn('id="workSession"', dashboard)
@@ -435,7 +441,18 @@ class DashboardSongWorkTests(unittest.TestCase):
         )
         self.assertIn("It's Alright (JS-0128)", safe)
         self.assertIn("Work: write", safe)
+        self.assertNotIn("Also known as:", safe)
         self.assertIn("Open questions: noisy and Something Dirty?", safe)
+        aka_card = song_work_card(
+            {
+                "canonical_title": "Candi Lane",
+                "song_id": "ST-0019",
+                "alt_titles": ["Candy Lane (2017)", "Candi Lane"],
+                "next_action": "Listen to latest and rate: finish / rest.",
+            }
+        )
+        self.assertIn("Also known as: Candy Lane (2017)", aka_card)
+        self.assertNotIn("Also known as: Candi Lane", aka_card)
         self.assertNotIn("sources", safe.lower())
         leaked = song_work_card(
             {
@@ -480,6 +497,129 @@ class DashboardSongWorkTests(unittest.TestCase):
             hashlib.sha256(payloads["TX"].encode()).hexdigest(),
             EMBEDDED_TX_SHA256,
         )
+
+
+class DashboardSongFindTests(unittest.TestCase):
+    def test_normalize_search_folds_apostrophes_and_punctuation(self):
+        self.assertEqual(
+            normalize_search_text("Don't Put Your Life Away"),
+            normalize_search_text("dont put your life away"),
+        )
+        self.assertEqual(normalize_search_text("Manic?  No way!"), "manic no way")
+        self.assertEqual(normalize_search_text("  Candy   Lane  "), "candy lane")
+
+    def test_song_aliases_use_existing_titles_only(self):
+        self.assertEqual(
+            song_aliases(
+                {
+                    "canonical_title": "Candi Lane",
+                    "alt_titles": ["Candy Lane (2017)", "Candi Lane", "", "Candy Lane (2017)"],
+                }
+            ),
+            ["Candy Lane (2017)"],
+        )
+        self.assertEqual(song_aliases({"t": "Manic", "aka": ["Manic!", "Manic?  No way!"]}), ["Manic?  No way!"])
+        self.assertEqual(song_aliases({"canonical_title": "Resist"}), [])
+        self.assertEqual(song_aliases(None), [])
+
+    def test_name_and_alias_queries_outrank_field_and_memo_hits(self):
+        candi = {
+            "song_id": "ST-0019",
+            "canonical_title": "Candi Lane",
+            "alt_titles": ["Candy Lane (2017)"],
+            "theme": "garden anniversary",
+        }
+        garden = {
+            "song_id": "JS-9998",
+            "canonical_title": "Other Song",
+            "theme": "candy lane is in the notes",
+        }
+        memo_only = {
+            "song_id": "JS-9999",
+            "canonical_title": "Unrelated",
+        }
+        memos = {
+            "JS-9999": normalize_search_text("we drove down candy lane tonight"),
+        }
+        self.assertEqual(song_search_hit(candi, "candy lane")["via"], "name")
+        self.assertEqual(song_search_hit(candi, "candy lane")["rank"], 0)
+        self.assertEqual(song_search_hit(garden, "candy lane")["via"], "field")
+        self.assertEqual(song_search_hit(garden, "candy lane")["rank"], 3)
+        self.assertEqual(
+            song_search_hit(memo_only, "candy lane", memos)["via"],
+            "memo",
+        )
+        self.assertEqual(song_search_hit(memo_only, "candy lane", memos)["rank"], 4)
+        self.assertFalse(song_search_hit(memo_only, "ca", memos)["hit"])
+        self.assertFalse(song_search_hit(memo_only, "missing", memos)["hit"])
+
+    def test_short_memo_query_does_not_scan_titles_or_filenames(self):
+        memos = memo_lyric_norm_by_song(
+            [
+                {
+                    "s": "JS-0001",
+                    "n": "1922 Maxwell Dr 99",
+                    "f": "maxwell.m4a",
+                    "x": "hey there darling don't put your life away",
+                }
+            ]
+        )
+        self.assertIn("dont put your life", memos["JS-0001"])
+        self.assertNotIn("maxwell", memos["JS-0001"])
+        hit = song_search_hit(
+            {"id": "JS-0001", "t": "Don't Put Your Life Away (working title)"},
+            "dont put your life",
+            memos,
+        )
+        self.assertEqual(hit["via"], "name")
+
+    def test_live_catalog_aliases_surface_the_remembered_song_first(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        cases = {
+            "candy lane": "ST-0019",
+            "manic no way": "ST-0004",
+            "graveyard scwifty": "ST-0013",
+            "new found love": "ST-0031",
+            "resist lyrics": "JS-0064",
+            "only 18": "ST-0008",
+            "chicken fried": "JS-0105",
+            "dont put your life": "JS-0132",
+            "to be fucking honest": "ST-0003",
+        }
+        for term, song_id in cases.items():
+            ranked = []
+            for song in catalog["songs"]:
+                hit = song_search_hit(song, term)
+                if hit["hit"]:
+                    ranked.append((hit["rank"], song["song_id"], song))
+            ranked.sort(key=lambda item: (item[0], item[1]))
+            self.assertTrue(ranked, term)
+            self.assertEqual(ranked[0][1], song_id, term)
+
+    def test_committed_dashboard_projects_existing_aliases_only(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        expected = {
+            song["song_id"]: song_aliases(song)
+            for song in catalog["songs"]
+            if song_aliases(song)
+        }
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        payloads = embedded_dashboard_payloads(dashboard)
+        rows = json.loads(payloads["DATA"])
+        projected = {row["id"]: row.get("aka") for row in rows if row.get("aka")}
+        self.assertEqual(projected, expected)
+        self.assertIn("Candy Lane (2017)", projected["ST-0019"])
+        self.assertNotIn("Speak Now", json.dumps(projected))
 
 
 if __name__ == "__main__":

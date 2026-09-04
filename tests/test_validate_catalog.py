@@ -17,6 +17,7 @@ from catalog_surface import (  # noqa: E402
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
     dashboard_exposes_song_work,
+    dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
     dashboard_resumes_song_work_privately,
     readme_documents_session_click_test,
@@ -274,7 +275,11 @@ def extras_ok(cat=None):
             'id="resumeWorkNext" id="copyResumeNext" '
             'function copyResumeWorkNext( function updateResumeWork( '
             'Forgot this browser record. Could not clear this browser record. '
-            'JSON.stringify(parsed)'
+            'JSON.stringify(parsed) '
+            'function normalizeSearch( function songAliases( '
+            'function songSearchHit( function markNormalized( '
+            'function focusFoundSong( function handleSongSearchKey( '
+            'closest name first titles, aliases, hooks memo lyric aka '
         ),
         "audio_files": [],
     }
@@ -1089,6 +1094,18 @@ class ValidateCatalogTests(unittest.TestCase):
         errors = validate(fixture(), extra)
         self.assertTrue(any("resume one validated local work session" in e for e in errors), errors)
         self.assertFalse(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
+
+    def test_dashboard_without_remembered_name_search_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function songSearchHit(", ""
+        ).replace("closest name first", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("find songs by existing aliases" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
 
     def test_dashboard_owner_audio_index_fails_closed(self):
         extra = extras_ok()
@@ -2507,6 +2524,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog resume next-step leftover — 2026-09-04 "
             "(Cloud Agent Extra High, no audio)"
         )
+        product_name_search = (
+            "Catalog remembered-name search — 2026-09-04 "
+            "(Cloud Agent Extra High, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2522,7 +2543,9 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(product_session_start, headings)
         self.assertIn(product_session_resume, headings)
         self.assertIn(product_session_click, headings)
-        self.assertEqual(headings[-1], product_resume_next)
+        self.assertIn(product_resume_next, headings)
+        self.assertIn(product_name_search, headings)
+        self.assertEqual(headings[-1], product_name_search)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
@@ -2562,6 +2585,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn('id="workSession"', extra["dashboard_html"])
         self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
         self.assertTrue(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
+        self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
         self.assertTrue(readme_documents_session_click_test(extra["readme"]))
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])

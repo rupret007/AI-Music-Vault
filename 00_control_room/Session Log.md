@@ -518,3 +518,19 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Next continuation point
 Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Click-test the private session from the README steps, including Escape → Resume **Do this now** / **Copy next step**; use this latest Session Log section for the authoritative project handoff. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Catalog remembered-name search — 2026-09-04 (Cloud Agent Extra High, no audio)
+### Done
+1. Started from exact private main `11efa5a7` after leftover-squash #34. Write / Produce / Listen already opened one song, but Songs search still used a raw substring over canonical titles and then sorted by momentum. Existing `alt_titles` on the spine never reached the page, so remembered names missed, and a typed title could lose to an unrelated higher-momentum row.
+2. The same private Songs box now projects those already-on-spine aliases, folds apostrophes and punctuation, ranks closest name / alias / id first, highlights the match, and Enter opens that row. A query of 3+ letters may also surface a song from searchable matched memo text. Memo titles and filenames stay out of that index. Escape clears a name search. Work-card copy may include Also known as when the catalog already has aliases.
+3. Validator and focused navigation tests lock the find path. Embedded DATA changes only by projecting existing aliases; TX stays locked. No invented titles, IDs, keys, or unmatched rows.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Use the Songs search box to type the name Jeff actually remembers — alias, folded punctuation, or a long-enough memo lyric — then Enter the first row; use this latest Session Log section for the authoritative project handoff. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.

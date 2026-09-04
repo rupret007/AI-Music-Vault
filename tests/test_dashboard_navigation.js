@@ -41,6 +41,16 @@ for (const marker of [
   "function parseVaultHash(",
   "function sortMemoHits(",
   "function handleVaultKey(",
+  "function normalizeSearch(",
+  "function songAliases(",
+  "function songSearchHit(",
+  "function markNormalized(",
+  "function sortSongRows(",
+  "function focusFoundSong(",
+  "function handleSongSearchKey(",
+  "closest name first",
+  "titles, aliases, hooks",
+  "scrollIntoView({block:'center'})",
   "function copyMemoFile(",
   "function copyVaultText(",
   "function songWorkKind(",
@@ -693,6 +703,152 @@ if (!escapeNav.handleVaultKey({ key: "Escape" }) || escapeNav.active() !== "") {
 }
 if (escapeNav.painted() !== "memos" || escapeNav.hashed() !== ":") {
   fail("escape must repaint Memo Search and drop the hash");
+}
+
+const stripForSearch = new Function(
+  "return (" + extractFunction(script, "stripPrivateLocators") + ");",
+)();
+const normalizeSearch = new Function(
+  "return (" + extractFunction(script, "normalizeSearch") + ");",
+)();
+if (normalizeSearch("Don't Put Your Life Away") !== normalizeSearch("dont put your life away")) {
+  fail("song search must fold apostrophes");
+}
+if (normalizeSearch("Manic?  No way!") !== "manic no way") {
+  fail("song search must fold punctuation on remembered names");
+}
+const songAliases = new Function(
+  "normalizeSearch",
+  "return (" + extractFunction(script, "songAliases") + ");",
+)(normalizeSearch);
+if (songAliases({ t: "Candi Lane", aka: ["Candy Lane (2017)", "Candi Lane"] }).join("|") !== "Candy Lane (2017)") {
+  fail("aliases must stay existing alt titles and drop the canonical duplicate");
+}
+const songSearchHit = new Function(
+  "normalizeSearch",
+  "songAliases",
+  "stripPrivateLocators",
+  "memoLyricNorm",
+  "return (" + extractFunction(script, "songSearchHit") + ");",
+)(
+  normalizeSearch,
+  songAliases,
+  stripForSearch,
+  (id) => ({ "JS-9999": normalizeSearch("we drove down candy lane tonight") }[id] || ""),
+);
+const aliasHit = songSearchHit(
+  { id: "ST-0019", t: "Candi Lane", aka: ["Candy Lane (2017)"], th: "" },
+  "candy lane",
+);
+if (!aliasHit.hit || aliasHit.via !== "name" || aliasHit.rank !== 0) {
+  fail("an existing alias must be an exact name match");
+}
+const fieldHit = songSearchHit(
+  { id: "JS-9998", t: "Other Song", th: "candy lane is in the notes" },
+  "candy lane",
+);
+if (!fieldHit.hit || fieldHit.via !== "field" || fieldHit.rank !== 3) {
+  fail("theme text must stay behind a real name match");
+}
+const memoHit = songSearchHit(
+  { id: "JS-9999", t: "Unrelated" },
+  "candy lane",
+);
+if (!memoHit.hit || memoHit.via !== "memo" || memoHit.rank !== 4) {
+  fail("a long enough query may find a song from memo lyric text only");
+}
+if (songSearchHit({ id: "JS-9999", t: "Unrelated" }, "ca").hit) {
+  fail("short queries must not scan memo lyrics");
+}
+const sortSongRows = new Function(
+  "songSearchHit",
+  "return (" + extractFunction(script, "sortSongRows") + ");",
+)(songSearchHit);
+const ranked = sortSongRows(
+  [
+    { id: "JS-9998", t: "Other Song", th: "candy lane is in the notes", mom: 90 },
+    { id: "ST-0019", t: "Candi Lane", aka: ["Candy Lane (2017)"], th: "", mom: 10 },
+    { id: "JS-9999", t: "Unrelated", th: "", mom: 80 },
+  ],
+  "candy lane",
+  "mom",
+);
+if (ranked[0].row.id !== "ST-0019" || ranked[0].hit.via !== "name") {
+  fail("closest remembered name must beat a higher-momentum field hit");
+}
+if (ranked[1].row.id !== "JS-9998" || ranked[2].row.id !== "JS-9999") {
+  fail("field hits must outrank memo-lyric-only hits");
+}
+const markNormalized = new Function(
+  "esc",
+  "normalizeSearch",
+  "return (" + extractFunction(script, "markNormalized") + ");",
+)(esc, normalizeSearch);
+if (markNormalized("Don't Put Your Life Away", "dont put") !== "<mark>Don&#39;t Put</mark> Your Life Away") {
+  fail("title highlight must survive apostrophe folding");
+}
+if (markNormalized("Candi Lane", "candy lane") === "Candi Lane".replace("Candi", "<mark>Candi</mark>")) {
+  fail("a title that is not the typed alias must stay unhighlighted");
+}
+if (markNormalized("Candy Lane (2017)", "candy lane") !== "<mark>Candy Lane</mark> (2017)") {
+  fail("the matching alias must highlight");
+}
+
+const searchFocus = { id: "", focused: 0 };
+const searchKey = new Function(
+  "q",
+  "visibleSongIds",
+  "work",
+  "focusWorkSong",
+  "focusFoundSong",
+  "return (" + extractFunction(script, "handleSongSearchKey") + ");",
+)(
+  { value: "candy lane" },
+  ["ST-0019", "JS-9998"],
+  { value: "" },
+  () => { searchFocus.id = "work"; return true; },
+  (id) => { searchFocus.id = id; searchFocus.focused += 1; return true; },
+);
+if (!searchKey({ key: "Enter", preventDefault() {} }) || searchFocus.id !== "ST-0019") {
+  fail("Enter in Songs search must open the closest name match");
+}
+if (searchKey({ key: "Tab" }) || searchFocus.focused !== 1) {
+  fail("non-Enter keys must leave the search results alone");
+}
+
+const searchEscape = new Function(
+  "paneM",
+  "paneS",
+  "mq",
+  "q",
+  "sname",
+  "proj",
+  "sort",
+  "scored",
+  "scope",
+  "evidence",
+  "let hashed = ''; let painted = '';" +
+    "function writeVaultHash(kind, id) { hashed = String(kind || '') + ':' + String(id || ''); }" +
+    "function render() { painted = 'songs'; }" +
+    "const handleVaultKey = " + extractFunction(script, "handleVaultKey") + ";" +
+    "return { handleVaultKey, hashed: () => hashed, painted: () => painted, q };",
+)(
+  { hidden: true },
+  { hidden: false },
+  { value: "", focus() {} },
+  { value: "candy lane", focus() {} },
+  names,
+  { value: "" },
+  { value: "mom" },
+  { value: "" },
+  { value: "" },
+  { value: "" },
+);
+if (!searchEscape.handleVaultKey({ key: "Escape" }) || searchEscape.q.value !== "") {
+  fail("escape must clear a remembered-name search");
+}
+if (searchEscape.painted() !== "songs" || searchEscape.hashed() !== ":") {
+  fail("escape must repaint Songs after clearing a name search");
 }
 
 console.log("dashboard song/memo navigation smoke ok");
