@@ -23,6 +23,7 @@ from catalog_surface import (  # noqa: E402
     latest_memo_for_song,
     memo_evidence_by_song,
     parse_vault_hash,
+    safe_song_next_step,
     song_work_card,
     song_work_kind,
     sort_memo_evidence_rows,
@@ -234,6 +235,12 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("function buildSongWorkCard(", dashboard)
         self.assertIn("function openWork(", dashboard)
         self.assertIn("function updateWorkSessionState(", dashboard)
+        self.assertIn("function safeWorkNextStep(", dashboard)
+        self.assertIn("function copyCurrentWorkNext(", dashboard)
+        self.assertIn("function reviewCurrentWorkEvidence(", dashboard)
+        self.assertIn('id="workSessionNext"', dashboard)
+        self.assertIn('id="copyWorkNext"', dashboard)
+        self.assertIn('id="openWorkEvidence"', dashboard)
         self.assertIn("function latestMemoForSong(", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
         self.assertNotIn("<h4>Known assets</h4>", dashboard)
@@ -347,6 +354,24 @@ class DashboardSongWorkTests(unittest.TestCase):
         self.assertNotIn(".logicx", card)
         self.assertNotIn("file://", card)
         self.assertFalse(work_card_leaks_private_locators(card))
+
+    def test_session_next_step_is_actionable_and_fails_closed(self):
+        self.assertEqual(
+            safe_song_next_step(
+                {
+                    "next_action": "Listen to latest (private-mix.wav) and rate: finish / rest."
+                }
+            ),
+            "Listen to latest and rate: finish / rest.",
+        )
+        self.assertEqual(safe_song_next_step({"nx": ""}), "")
+        self.assertEqual(safe_song_next_step(None), "")
+        self.assertEqual(
+            safe_song_next_step(
+                {"nx": "Open mix.wav", "next_action": "file:///tmp/mix.wav"}
+            ),
+            "",
+        )
 
     def test_latest_memo_is_newest_searchable_row(self):
         latest = latest_memo_for_song(

@@ -146,7 +146,10 @@ input{flex:1;min-width:160px}
 .work-copy,.sit-down{margin-top:8px}
 .sit-memo{margin-top:4px}
 .lane-work{margin-left:4px}
-@media(max-width:640px){.work-start{flex:1}.resume-work{align-items:stretch}.controls>input{flex-basis:100%}.advanced-filters{margin-left:auto}.memo-scope{align-items:flex-start;flex-direction:column}.advanced-menu{right:0}}
+.work-session-copy{font-weight:700;color:var(--ink);margin-top:4px;max-width:650px}
+.work-session-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.work-session-actions .primary-action{border-color:var(--pot);color:var(--ink)}
+@media(max-width:640px){.work-start{flex:1}.resume-work{align-items:stretch}.controls>input{flex-basis:100%}.advanced-filters{margin-left:auto}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{right:0}}
 </style></head><body>
 <h1>🎸 Jeff Story Song Vault</h1>
 <div class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</div>
@@ -191,7 +194,7 @@ input{flex:1;min-width:160px}
  </div></details>
 </div>
 <div class="resultbar"><span id="songResults" aria-live="polite"></span><button type="button" class="subtle-btn" id="clearSongFilters">Clear filters</button></div>
-<div class="memo-scope" id="workSession" hidden><div><span id="workSessionText"></span><div class="memo-next">Sit-down from the catalog next action. Copy the intake name to write, produce, or listen on your Mac. This page does not open audio.</div></div><span><button type="button" class="subtle-btn" id="workPrev" data-work-step="-1">Previous</button> <button type="button" class="subtle-btn" id="workNext" data-work-step="1">Next</button></span></div>
+<div class="memo-scope" id="workSession" hidden><div><span id="workSessionText"></span><div class="work-session-copy" id="workSessionNext" hidden></div><div class="memo-next" id="workSessionEvidence"></div></div><span class="work-session-actions"><button type="button" class="subtle-btn primary-action" id="copyWorkNext" hidden>Copy next step</button> <button type="button" class="subtle-btn" id="openWorkEvidence" hidden>Review memo evidence</button> <button type="button" class="subtle-btn" id="workPrev" data-work-step="-1">Previous</button> <button type="button" class="subtle-btn" id="workNext" data-work-step="1">Next</button></span></div>
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
@@ -219,6 +222,8 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  list=document.getElementById('list'),
  songResults=document.getElementById('songResults'),clearSongFilters=document.getElementById('clearSongFilters'),
  workSession=document.getElementById('workSession'),workSessionText=document.getElementById('workSessionText'),
+ workSessionNext=document.getElementById('workSessionNext'),workSessionEvidence=document.getElementById('workSessionEvidence'),
+ copyWorkNext=document.getElementById('copyWorkNext'),openWorkEvidence=document.getElementById('openWorkEvidence'),
  workPrev=document.getElementById('workPrev'),workNext=document.getElementById('workNext'),
  resumeWork=document.getElementById('resumeWork'),resumeWorkButton=document.getElementById('resumeWorkButton'),
  resumeWorkText=document.getElementById('resumeWorkText'),forgetWorkSession=document.getElementById('forgetWorkSession'),
@@ -398,6 +403,12 @@ function workCardLeaks(text){
  if(/\.(wav|aiff|aif|logicx|m4a|mp3|flac|band)\b/.test(low))return true;
  return low.includes('maxwell dr')||low.includes('crescent dr')||low.includes('eagle mountain dr');
 }
+function safeWorkNextStep(song){
+ if(!song)return '';
+ const next=stripPrivateLocators(flattenWorkField(song.nx));
+ const incomplete=['open','play','listen','listen to latest','listen: play'].includes(next.toLowerCase().replace(/[ .:]+$/,''));
+ return next&&!incomplete&&!workCardLeaks(next)?next:'';
+}
 function latestMemoForSong(songId,rows){
  const id=String(songId||'');
  const src=rows||(typeof TX!=='undefined'?TX:[]);
@@ -417,7 +428,7 @@ function buildSongWorkCard(song,evidence){
  const lines=[];
  if(title||id)lines.push(title?(id?title+' ('+id+')':title):id);
  lines.push('Work: '+kind);
- const nx=stripPrivateLocators(flattenWorkField(song.nx));
+ const nx=safeWorkNextStep(song);
  if(nx)lines.push('Next: '+nx);
  const hk=stripPrivateLocators(flattenWorkField(song.hk));
  if(hk)lines.push('Hook: '+hk);
@@ -577,6 +588,32 @@ function updateWorkSessionState(){
     ?`${label} · ${idx+1} of ${ids.length} · ${sname[ids[idx]]}`
     :`${label} · ${ids.length} song${ids.length===1?'':'s'}`;
  }
+ const song=idx>=0&&typeof DATA!=='undefined'?DATA.find(row=>row&&row.id===ids[idx]):null;
+ const next=safeWorkNextStep(song);
+ const ev=song&&typeof memoEvidenceBySong!=='undefined'?memoEvidenceBySong[song.id]:null;
+ if(workSessionNext){
+  workSessionNext.hidden=!next;
+  workSessionNext.textContent=next?`Do this now: ${next}`:'';
+ }
+ if(copyWorkNext){
+  copyWorkNext.hidden=!next;
+  copyWorkNext.disabled=!next;
+  copyWorkNext.dataset.songId=next&&song?String(song.id||''):'';
+  copyWorkNext.setAttribute('aria-label',next&&song?`Copy next step for ${sname[song.id]||song.id}`:'No safe next step to copy');
+ }
+ if(workSessionEvidence){
+  workSessionEvidence.textContent=!song
+   ?'Choose a song to see its verified catalog action.'
+   :ev&&ev.n
+    ?`${ev.n} searchable memo${ev.n===1?'':'s'}${ev.last?' · latest '+ev.last:''}. Review the evidence before working on your Mac.`
+    :next?'No searchable memo evidence for this song. The next step comes from the catalog.':'No safe catalog next step or searchable memo evidence.';
+ }
+ if(openWorkEvidence){
+  openWorkEvidence.hidden=!(song&&ev&&ev.n);
+  openWorkEvidence.disabled=!(song&&ev&&ev.n);
+  openWorkEvidence.dataset.songId=song&&ev&&ev.n?String(song.id||''):'';
+  openWorkEvidence.setAttribute('aria-label',song&&ev&&ev.n?`Review memo evidence for ${sname[song.id]||song.id}`:'No memo evidence to review');
+ }
  if(workPrev)workPrev.disabled=idx<=0;
  if(workNext)workNext.disabled=!ids.length||(idx>=0&&idx>=ids.length-1);
 }
@@ -678,6 +715,17 @@ function copySongWork(songId,btn){
  const song=DATA.find(d=>d.id===String(songId||''));
  return copyVaultText(buildSongWorkCard(song),btn,'Copy work card');
 }
+function copyCurrentWorkNext(btn){
+ const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
+ const song=DATA.find(d=>d.id===id);
+ return copyVaultText(safeWorkNextStep(song),btn,'Copy next step');
+}
+function reviewCurrentWorkEvidence(btn){
+ const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
+ if(!id||!memoCountBySong[id])return false;
+ openSongMemos(id);
+ return true;
+}
 list.addEventListener('click',e=>{
  const copyFile=e.target.closest('[data-copy-file]');
  if(copyFile){copyMemoFile(copyFile.dataset.copyFile,copyFile);return;}
@@ -717,6 +765,8 @@ if(resumeWorkButton)resumeWorkButton.addEventListener('click',resumeLastWorkSess
 if(forgetWorkSession)forgetWorkSession.addEventListener('click',forgetLastWorkSession);
 if(workPrev)workPrev.addEventListener('click',()=>stepWork(-1));
 if(workNext)workNext.addEventListener('click',()=>stepWork(1));
+if(copyWorkNext)copyWorkNext.addEventListener('click',()=>copyCurrentWorkNext(copyWorkNext));
+if(openWorkEvidence)openWorkEvidence.addEventListener('click',()=>reviewCurrentWorkEvidence(openWorkEvidence));
 tabS.addEventListener('click',()=>{
  showTab('S');
  if(typeof lastWorkKind!=='undefined'&&lastWorkKind&&work&&!work.value&&!q.value)openWork(lastWorkKind);

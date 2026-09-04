@@ -482,6 +482,29 @@ def work_card_leaks_private_locators(text) -> bool:
     return any(name in low for name in _PRIVATE_STREET_NAMES)
 
 
+def safe_song_next_step(row) -> str:
+    """Return one copy-safe catalog next step or fail closed.
+
+    The private dashboard may make the existing next action easier to use, but
+    it must not turn an audio filename or owner location into clipboard text.
+    Empty and non-dict rows intentionally produce no action.
+    """
+    if not isinstance(row, dict):
+        return ""
+    next_action = flatten_work_field(row.get("nx") or row.get("next_action"))
+    cleaned = strip_private_locators(next_action)
+    incomplete = cleaned.lower().rstrip(" .:") in {
+        "open",
+        "play",
+        "listen",
+        "listen to latest",
+        "listen: play",
+    }
+    if not cleaned or incomplete or work_card_leaks_private_locators(cleaned):
+        return ""
+    return cleaned
+
+
 def song_work_card(row, evidence=None) -> str:
     """Copyable write/produce/listen card from already-visible catalog fields.
 
@@ -518,7 +541,7 @@ def song_work_card(row, evidence=None) -> str:
     if heading:
         lines.append(heading)
     lines.append(f"Work: {kind}")
-    nxt = strip_private_locators(next_action)
+    nxt = safe_song_next_step(row)
     if nxt:
         lines.append(f"Next: {nxt}")
     if hook:
@@ -598,6 +621,12 @@ def dashboard_exposes_song_work(html: str) -> bool:
         and 'id="advancedFilters"' in chrome
         and "function openWork(" in chrome
         and "function updateWorkSessionState(" in chrome
+        and "function safeWorkNextStep(" in chrome
+        and "function copyCurrentWorkNext(" in chrome
+        and "function reviewCurrentWorkEvidence(" in chrome
+        and 'id="workSessionNext"' in chrome
+        and 'id="copyWorkNext"' in chrome
+        and 'id="openWorkEvidence"' in chrome
         and "function latestMemoForSong(" in chrome
         and "data-open-work=" in chrome
         and "Start a work session" in chrome

@@ -46,6 +46,9 @@ for (const marker of [
   "function songWorkKind(",
   "function buildSongWorkCard(",
   "function copySongWork(",
+  "function safeWorkNextStep(",
+  "function copyCurrentWorkNext(",
+  "function reviewCurrentWorkEvidence(",
   "function openWork(",
   "function updateWorkSessionState(",
   "function parseStoredWorkSession(",
@@ -64,6 +67,9 @@ for (const marker of [
   "id=\"evidence\"",
   "id=\"work\"",
   "id=\"workSession\"",
+  "id=\"workSessionNext\"",
+  "id=\"copyWorkNext\"",
+  "id=\"openWorkEvidence\"",
   "id=\"workStarts\"",
   "id=\"resumeWork\"",
   "id=\"resumeWorkButton\"",
@@ -328,18 +334,42 @@ if (stripPrivateLocators("Listen to latest (mix.wav) and rate") !== "Listen to l
 if (stripPrivateLocators("LISTEN: play Maxwell Dr 99 (latest take). Verdict.") !== "LISTEN: play. Verdict.") {
   fail("work preview must strip known street fragments");
 }
+const workCardLeaks = new Function(
+  "return (" + extractFunction(script, "workCardLeaks") + ");",
+)();
+const safeWorkNextStep = new Function(
+  "flattenWorkField",
+  "stripPrivateLocators",
+  "workCardLeaks",
+  "return (" + extractFunction(script, "safeWorkNextStep") + ");",
+)(
+  new Function("return (" + extractFunction(script, "flattenWorkField") + ");")(),
+  stripPrivateLocators,
+  workCardLeaks,
+);
+if (safeWorkNextStep({ nx: "Listen to latest (mix.wav) and rate: finish / rest." }) !== "Listen to latest and rate: finish / rest.") {
+  fail("session next step must reuse sanitized catalog action text");
+}
+if (safeWorkNextStep(null) !== "" || safeWorkNextStep({ nx: "" }) !== "") {
+  fail("session next step must fail closed without a usable catalog action");
+}
+if (safeWorkNextStep({ nx: "Open mix.wav" }) !== "") {
+  fail("session next step must fail closed when sanitizing leaves only an incomplete verb");
+}
 
 const buildSongWorkCard = new Function(
   "flattenWorkField",
   "songWorkKind",
   "stripPrivateLocators",
   "workCardLeaks",
+  "safeWorkNextStep",
   "return (" + extractFunction(script, "buildSongWorkCard") + ");",
 )(
   new Function("return (" + extractFunction(script, "flattenWorkField") + ");")(),
   songWorkKind,
   stripPrivateLocators,
-  new Function("return (" + extractFunction(script, "workCardLeaks") + ");")(),
+  workCardLeaks,
+  safeWorkNextStep,
 );
 const card = buildSongWorkCard({
   id: "JS-0128",
@@ -449,15 +479,27 @@ workNavigation.openWork("not-a-kind");
 if (workFields.work.value !== "write") fail("openWork must reject unknown work kinds");
 
 const sessionUi = {
-  panel: { hidden: true }, text: { textContent: "" }, prev: {}, next: {},
+  panel: { hidden: true }, text: { textContent: "" },
+  action: { hidden: true, textContent: "" }, evidence: { textContent: "" },
+  copy: { hidden: true, disabled: true, dataset: {}, setAttribute(name, value) { this[name] = value; } },
+  review: { hidden: true, disabled: true, dataset: {}, setAttribute(name, value) { this[name] = value; } },
+  prev: {}, next: {},
 };
 const updateWorkSessionState = new Function(
-  "workSession", "work", "workSessionText", "workPrev", "workNext",
-  "visibleSongIds", "activeWorkSongId", "sname",
+  "workSession", "work", "workSessionText", "workSessionNext", "workSessionEvidence",
+  "copyWorkNext", "openWorkEvidence", "workPrev", "workNext",
+  "visibleSongIds", "activeWorkSongId", "sname", "DATA", "safeWorkNextStep", "memoEvidenceBySong",
   "return (" + extractFunction(script, "updateWorkSessionState") + ");",
 )(
-  sessionUi.panel, { value: "write" }, sessionUi.text, sessionUi.prev, sessionUi.next,
+  sessionUi.panel, { value: "write" }, sessionUi.text, sessionUi.action, sessionUi.evidence,
+  sessionUi.copy, sessionUi.review, sessionUi.prev, sessionUi.next,
   ["JS-0001", "JS-0002"], "JS-0002", names,
+  [
+    { id: "JS-0001", nx: "Write the verse" },
+    { id: "JS-0002", nx: "Confirm the chorus" },
+  ],
+  safeWorkNextStep,
+  { "JS-0002": { n: 2, last: "2026-09-01" } },
 );
 updateWorkSessionState();
 if (sessionUi.panel.hidden || sessionUi.text.textContent !== "Write · 2 of 2 · Second Song") {
@@ -465,6 +507,44 @@ if (sessionUi.panel.hidden || sessionUi.text.textContent !== "Write · 2 of 2 ·
 }
 if (sessionUi.prev.disabled || !sessionUi.next.disabled) {
   fail("work session navigation must stop honestly at the queue boundary");
+}
+if (sessionUi.action.hidden || sessionUi.action.textContent !== "Do this now: Confirm the chorus") {
+  fail("work session must surface the exact safe next step without hunting in the row");
+}
+if (sessionUi.copy.hidden || sessionUi.copy.disabled || sessionUi.copy.dataset.songId !== "JS-0002") {
+  fail("safe next step must enable the exact-song copy action");
+}
+if (sessionUi.review.hidden || sessionUi.review.disabled || !sessionUi.evidence.textContent.includes("2 searchable memos")) {
+  fail("matched evidence must enable review and name its honest receipt count");
+}
+
+const copiedNext = [];
+const copyCurrentWorkNext = new Function(
+  "DATA", "safeWorkNextStep", "copyVaultText",
+  "return (" + extractFunction(script, "copyCurrentWorkNext") + ");",
+)(
+  [{ id: "JS-0002", nx: "Listen to latest (mix.wav) and rate it" }],
+  safeWorkNextStep,
+  (value, button, label) => { copiedNext.push({ value, button, label }); return !!value; },
+);
+const copyButton = { dataset: { songId: "JS-0002" } };
+if (!copyCurrentWorkNext(copyButton) || copiedNext[0].value !== "Listen to latest and rate it" || copiedNext[0].label !== "Copy next step") {
+  fail("copy next step must copy only the sanitized current-song action");
+}
+if (copyCurrentWorkNext({ dataset: { songId: "missing" } })) {
+  fail("copy next step must fail closed for a missing song");
+}
+
+const reviewedEvidence = [];
+const reviewCurrentWorkEvidence = new Function(
+  "memoCountBySong", "openSongMemos",
+  "return (" + extractFunction(script, "reviewCurrentWorkEvidence") + ");",
+)({ "JS-0002": 2 }, (id) => reviewedEvidence.push(id));
+if (!reviewCurrentWorkEvidence({ dataset: { songId: "JS-0002" } }) || reviewedEvidence.join(",") !== "JS-0002") {
+  fail("review evidence must open the exact scoped memo set");
+}
+if (reviewCurrentWorkEvidence({ dataset: { songId: "JS-0001" } })) {
+  fail("review evidence must fail closed when no matched memo exists");
 }
 
 const workStepper = new Function(
