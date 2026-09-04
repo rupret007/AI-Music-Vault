@@ -22,6 +22,7 @@ from catalog_surface import (  # noqa: E402
     embedded_dashboard_payloads,
     latest_memo_for_song,
     memo_evidence_by_song,
+    next_step_is_incomplete,
     parse_vault_hash,
     safe_song_next_step,
     song_work_card,
@@ -238,9 +239,15 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("function safeWorkNextStep(", dashboard)
         self.assertIn("function copyCurrentWorkNext(", dashboard)
         self.assertIn("function reviewCurrentWorkEvidence(", dashboard)
+        self.assertIn("function allowedExactWorkSongId(", dashboard)
+        self.assertIn("function copyExactSongNextStep(", dashboard)
+        self.assertIn("function copyResumeWorkNext(", dashboard)
+        self.assertIn("safeWorkNextStep(d)", dashboard)
         self.assertIn('id="workSessionNext"', dashboard)
         self.assertIn('id="copyWorkNext"', dashboard)
         self.assertIn('id="openWorkEvidence"', dashboard)
+        self.assertIn('id="resumeWorkNext"', dashboard)
+        self.assertIn('id="copyResumeNext"', dashboard)
         self.assertIn("function latestMemoForSong(", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
         self.assertNotIn("<h4>Known assets</h4>", dashboard)
@@ -372,6 +379,22 @@ class DashboardSongWorkTests(unittest.TestCase):
             ),
             "",
         )
+        self.assertTrue(next_step_is_incomplete("LISTEN:."))
+        self.assertEqual(
+            safe_song_next_step({"nx": "LISTEN: Crescent Dr 21."}),
+            "",
+        )
+        leftover = song_work_card(
+            {
+                "id": "JS-0133",
+                "t": "Leftover Listen",
+                "nx": "LISTEN: Maxwell Dr 104 (later take).",
+            }
+        )
+        self.assertIn("Work: listen", leftover)
+        self.assertNotIn("Next:", leftover)
+        self.assertNotIn("Maxwell", leftover)
+        self.assertNotIn("LISTEN:.", leftover)
 
     def test_latest_memo_is_newest_searchable_row(self):
         latest = latest_memo_for_song(

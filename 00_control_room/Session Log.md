@@ -502,3 +502,19 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Next continuation point
 Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Click-test the private session from the README steps; use this latest Session Log section for the authoritative project handoff. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Catalog resume next-step leftover — 2026-09-04 (Cloud Agent Extra High, no audio)
+### Done
+1. Started from exact private main `ff9e18da` after leftover-squash #33. The open Write / Produce / Listen strip already showed **Do this now** and **Copy next step**, but Escape hid that action, and sit-down / memo scope still printed leftover listen verbs after sanitizing (`LISTEN:.`).
+2. Resume now derives the same fail-closed next step from the catalog for the exact stored song. **Copy next step** on Resume and in the session strip binds to that catalog ID and current/saved work kind. Sit-down and memo scope reuse `safeWorkNextStep`. An empty or leftover-verb action produces no copy control.
+3. Browser storage stays schema version + work kind + catalog ID only. README / Producer README click-tests now include the Escape → Resume next-step path. No title, note, transcript, next action, filename, or audio locator is stored.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, DATA/TX payloads, or app feed changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Click-test the private session from the README steps, including Escape → Resume **Do this now** / **Copy next step**; use this latest Session Log section for the authoritative project handoff. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.

@@ -47,8 +47,13 @@ for (const marker of [
   "function buildSongWorkCard(",
   "function copySongWork(",
   "function safeWorkNextStep(",
+  "function nextStepIsIncomplete(",
   "function copyCurrentWorkNext(",
   "function reviewCurrentWorkEvidence(",
+  "function allowedExactWorkSongId(",
+  "function copyExactSongNextStep(",
+  "function copyResumeWorkNext(",
+  "safeWorkNextStep(d)",
   "function openWork(",
   "function updateWorkSessionState(",
   "function parseStoredWorkSession(",
@@ -70,6 +75,8 @@ for (const marker of [
   "id=\"workSessionNext\"",
   "id=\"copyWorkNext\"",
   "id=\"openWorkEvidence\"",
+  "id=\"resumeWorkNext\"",
+  "id=\"copyResumeNext\"",
   "id=\"workStarts\"",
   "id=\"resumeWork\"",
   "id=\"resumeWorkButton\"",
@@ -337,15 +344,20 @@ if (stripPrivateLocators("LISTEN: play Maxwell Dr 99 (latest take). Verdict.") !
 const workCardLeaks = new Function(
   "return (" + extractFunction(script, "workCardLeaks") + ");",
 )();
+const nextStepIsIncomplete = new Function(
+  "return (" + extractFunction(script, "nextStepIsIncomplete") + ");",
+)();
 const safeWorkNextStep = new Function(
   "flattenWorkField",
   "stripPrivateLocators",
   "workCardLeaks",
+  "nextStepIsIncomplete",
   "return (" + extractFunction(script, "safeWorkNextStep") + ");",
 )(
   new Function("return (" + extractFunction(script, "flattenWorkField") + ");")(),
   stripPrivateLocators,
   workCardLeaks,
+  nextStepIsIncomplete,
 );
 if (safeWorkNextStep({ nx: "Listen to latest (mix.wav) and rate: finish / rest." }) !== "Listen to latest and rate: finish / rest.") {
   fail("session next step must reuse sanitized catalog action text");
@@ -355,6 +367,9 @@ if (safeWorkNextStep(null) !== "" || safeWorkNextStep({ nx: "" }) !== "") {
 }
 if (safeWorkNextStep({ nx: "Open mix.wav" }) !== "") {
   fail("session next step must fail closed when sanitizing leaves only an incomplete verb");
+}
+if (safeWorkNextStep({ nx: "LISTEN: Crescent Dr 21." }) !== "") {
+  fail("session next step must fail closed when a leftover listen verb is all that remains");
 }
 
 const buildSongWorkCard = new Function(
@@ -519,32 +534,116 @@ if (sessionUi.review.hidden || sessionUi.review.disabled || !sessionUi.evidence.
 }
 
 const copiedNext = [];
-const copyCurrentWorkNext = new Function(
-  "DATA", "safeWorkNextStep", "copyVaultText",
-  "return (" + extractFunction(script, "copyCurrentWorkNext") + ");",
+const copyExactSongNextStep = new Function(
+  "DATA", "safeWorkNextStep", "copyVaultText", "allowedExactWorkSongId", "songWorkKind", "work",
+  "return (" + extractFunction(script, "copyExactSongNextStep") + ");",
 )(
   [{ id: "JS-0002", nx: "Listen to latest (mix.wav) and rate it" }],
   safeWorkNextStep,
   (value, button, label) => { copiedNext.push({ value, button, label }); return !!value; },
+  (id) => id === "JS-0002" ? id : "",
+  songWorkKind,
+  { value: "listen" },
 );
 const copyButton = { dataset: { songId: "JS-0002" } };
-if (!copyCurrentWorkNext(copyButton) || copiedNext[0].value !== "Listen to latest and rate it" || copiedNext[0].label !== "Copy next step") {
+if (!copyExactSongNextStep(copyButton.dataset.songId, copyButton) || copiedNext[0].value !== "Listen to latest and rate it" || copiedNext[0].label !== "Copy next step") {
   fail("copy next step must copy only the sanitized current-song action");
 }
-if (copyCurrentWorkNext({ dataset: { songId: "missing" } })) {
+if (copyExactSongNextStep("missing", { dataset: { songId: "missing" } })) {
   fail("copy next step must fail closed for a missing song");
+}
+const wrongKindCopy = new Function(
+  "DATA", "safeWorkNextStep", "copyVaultText", "allowedExactWorkSongId", "songWorkKind", "work",
+  "return (" + extractFunction(script, "copyExactSongNextStep") + ");",
+)(
+  [{ id: "JS-0002", nx: "Listen to latest (mix.wav) and rate it" }],
+  safeWorkNextStep,
+  () => true,
+  (id) => id,
+  songWorkKind,
+  { value: "write" },
+);
+if (wrongKindCopy("JS-0002", copyButton)) {
+  fail("copy next step must fail closed when the stored kind no longer matches");
 }
 
 const reviewedEvidence = [];
 const reviewCurrentWorkEvidence = new Function(
-  "memoCountBySong", "openSongMemos",
+  "allowedExactWorkSongId", "memoCountBySong", "openSongMemos",
   "return (" + extractFunction(script, "reviewCurrentWorkEvidence") + ");",
-)({ "JS-0002": 2 }, (id) => reviewedEvidence.push(id));
+)((id) => id === "JS-0002" ? id : "", { "JS-0002": 2 }, (id) => reviewedEvidence.push(id));
 if (!reviewCurrentWorkEvidence({ dataset: { songId: "JS-0002" } }) || reviewedEvidence.join(",") !== "JS-0002") {
   fail("review evidence must open the exact scoped memo set");
 }
 if (reviewCurrentWorkEvidence({ dataset: { songId: "JS-0001" } })) {
-  fail("review evidence must fail closed when no matched memo exists");
+  fail("review evidence must fail closed when the song is not the exact current session");
+}
+
+const resumeUi = {
+  panel: { hidden: true },
+  hint: { hidden: true },
+  text: { textContent: "" },
+  button: { setAttribute(name, value) { this[name] = value; } },
+  action: { hidden: true, textContent: "" },
+  copy: { hidden: true, disabled: true, dataset: {}, setAttribute(name, value) { this[name] = value; } },
+};
+const updateResumeWork = new Function(
+  "resumeWork", "resumeWorkHint", "resumeWorkText", "resumeWorkButton",
+  "resumeWorkNext", "copyResumeNext", "sname", "DATA",
+  "readStoredWorkSession", "vaultStorage", "safeWorkNextStep",
+  "return (" + extractFunction(script, "updateResumeWork") + ");",
+)(
+  resumeUi.panel, resumeUi.hint, resumeUi.text, resumeUi.button,
+  resumeUi.action, resumeUi.copy, names,
+  [
+    { id: "JS-0002", nx: "Confirm the chorus" },
+    { id: "JS-0133", nx: "LISTEN: Crescent Dr 21." },
+  ],
+  () => ({ v: 1, kind: "write", id: "JS-0002" }),
+  () => ({}),
+  safeWorkNextStep,
+);
+const resumed = updateResumeWork();
+if (!resumed || resumeUi.panel.hidden || resumeUi.text.textContent !== "Write · Second Song") {
+  fail("resume must still name the exact stored song");
+}
+if (resumeUi.action.hidden || resumeUi.action.textContent !== "Do this now: Confirm the chorus") {
+  fail("resume must put the exact safe next step in front of Jeff without reopening first");
+}
+if (resumeUi.copy.hidden || resumeUi.copy.disabled || resumeUi.copy.dataset.songId !== "JS-0002") {
+  fail("resume must enable copy only for the exact stored song");
+}
+
+const closedUi = {
+  panel: { hidden: true },
+  hint: { hidden: true },
+  text: { textContent: "" },
+  button: { setAttribute() {} },
+  action: { hidden: true, textContent: "stale" },
+  copy: { hidden: false, disabled: false, dataset: { songId: "JS-0133" }, setAttribute() {} },
+};
+const closedResume = new Function(
+  "resumeWork", "resumeWorkHint", "resumeWorkText", "resumeWorkButton",
+  "resumeWorkNext", "copyResumeNext", "sname", "DATA",
+  "readStoredWorkSession", "vaultStorage", "safeWorkNextStep",
+  "return (" + extractFunction(script, "updateResumeWork") + ");",
+)(
+  closedUi.panel, closedUi.hint, closedUi.text, closedUi.button,
+  closedUi.action, closedUi.copy, { "JS-0133": "Leftover Listen" },
+  [{ id: "JS-0133", nx: "LISTEN: Maxwell Dr 104 (later take)." }],
+  () => ({ v: 1, kind: "listen", id: "JS-0133" }),
+  () => ({}),
+  safeWorkNextStep,
+);
+const closed = closedResume();
+if (!closed || closed.id !== "JS-0133" || closedUi.panel.hidden) {
+  fail("fail-closed resume must still keep the exact stored song");
+}
+if (!closedUi.action.hidden || closedUi.action.textContent !== "" || closedUi.action.textContent.includes("LISTEN")) {
+  fail("fail-closed resume must not show a leftover listen verb as the next step");
+}
+if (!closedUi.copy.hidden || !closedUi.copy.disabled || closedUi.copy.dataset.songId) {
+  fail("fail-closed resume must hide Copy next step when sanitizing leaves no useful action");
 }
 
 const workStepper = new Function(

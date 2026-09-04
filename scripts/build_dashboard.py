@@ -89,8 +89,10 @@ h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 16px}
 .work-start{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:700}
 .work-start span{color:var(--ink3);font-weight:500;margin-left:4px}
 .work-start:hover,.work-start:focus-visible{border-color:var(--pot);outline:2px solid var(--pot);outline-offset:2px}
-.resume-work{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.resume-work{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
 .resume-work .work-start{flex:1;text-align:left}
+.resume-next{flex:1 1 100%;font-weight:700;color:var(--ink);max-width:650px}
+.resume-work .primary-action{border-color:var(--pot);color:var(--ink)}
 .resume-hint,.resume-status{color:var(--ink3);font-size:12px;margin:8px 0 0}
 .resume-status{color:var(--ink2);min-height:1.2em}
 .lanes{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
@@ -156,11 +158,13 @@ input{flex:1;min-width:160px}
 <div class="stats" id="stats"></div>
 <section class="work-now" aria-labelledby="workNowTitle">
  <h2 id="workNowTitle">Start a work session</h2>
- <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume reopens it. Forget clears the local record.</p>
+ <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized next step in front of you. Forget clears the local record.</p>
  <div class="work-starts" id="workStarts"></div>
  <div class="resume-work" id="resumeWork" hidden>
   <button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button>
   <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
+  <div class="resume-next" id="resumeWorkNext" hidden></div>
+  <button type="button" class="subtle-btn primary-action" id="copyResumeNext" hidden>Copy next step</button>
  </div>
  <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. The Session Log stays the handoff.</p>
  <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
@@ -228,6 +232,7 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  resumeWork=document.getElementById('resumeWork'),resumeWorkButton=document.getElementById('resumeWorkButton'),
  resumeWorkText=document.getElementById('resumeWorkText'),forgetWorkSession=document.getElementById('forgetWorkSession'),
  resumeWorkHint=document.getElementById('resumeWorkHint'),resumeWorkStatus=document.getElementById('resumeWorkStatus'),
+ resumeWorkNext=document.getElementById('resumeWorkNext'),copyResumeNext=document.getElementById('copyResumeNext'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
  mq=document.getElementById('mq'),mlist=document.getElementById('mlist'),
@@ -352,11 +357,23 @@ function updateResumeWork(){
  const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
  resumeWork.hidden=!saved;
  if(typeof resumeWorkHint!=='undefined'&&resumeWorkHint)resumeWorkHint.hidden=!saved;
+ const song=saved&&typeof DATA!=='undefined'?DATA.find(row=>row&&row.id===saved.id):null;
+ const next=typeof safeWorkNextStep==='function'?safeWorkNextStep(song):'';
  if(saved&&resumeWorkText){
   const label=saved.kind[0].toUpperCase()+saved.kind.slice(1);
   const title=sname[saved.id]||'';
   resumeWorkText.textContent=`${label} · ${title}`;
   if(resumeWorkButton)resumeWorkButton.setAttribute('aria-label',`Resume ${label} session for ${title}`);
+ }
+ if(resumeWorkNext){
+  resumeWorkNext.hidden=!next;
+  resumeWorkNext.textContent=next?`Do this now: ${next}`:'';
+ }
+ if(copyResumeNext){
+  copyResumeNext.hidden=!next;
+  copyResumeNext.disabled=!next;
+  copyResumeNext.dataset.songId=next&&song?String(song.id||''):'';
+  copyResumeNext.setAttribute('aria-label',next&&song?`Copy next step for ${sname[song.id]||song.id}`:'No safe next step to copy');
  }
  return saved;
 }
@@ -403,11 +420,13 @@ function workCardLeaks(text){
  if(/\.(wav|aiff|aif|logicx|m4a|mp3|flac|band)\b/.test(low))return true;
  return low.includes('maxwell dr')||low.includes('crescent dr')||low.includes('eagle mountain dr');
 }
+function nextStepIsIncomplete(text){
+ return ['open','play','listen','listen to latest','listen: play'].includes(String(text||'').toLowerCase().replace(/[ .:]+$/,''));
+}
 function safeWorkNextStep(song){
  if(!song)return '';
  const next=stripPrivateLocators(flattenWorkField(song.nx));
- const incomplete=['open','play','listen','listen to latest','listen: play'].includes(next.toLowerCase().replace(/[ .:]+$/,''));
- return next&&!incomplete&&!workCardLeaks(next)?next:'';
+ return next&&!nextStepIsIncomplete(next)&&!workCardLeaks(next)?next:'';
 }
 function latestMemoForSong(songId,rows){
  const id=String(songId||'');
@@ -487,7 +506,8 @@ function render(){
  if(typeof visibleSongIds!=='undefined')visibleSongIds=rows.map(d=>d.id);
  list.innerHTML=rows.length?rows.map((d,i)=>{
   const wk=songWorkKind(d.nx);
-  const nxt=stripPrivateLocators(d.nx||'');
+  const rawNx=flattenWorkField(d.nx);
+  const nxt=safeWorkNextStep(d);
   const nxtShort=nxt.length>90?nxt.slice(0,87)+'…':nxt;
   const latest=latestMemoForSong(d.id);
   const hook=stripPrivateLocators(flattenWorkField(d.hk));
@@ -499,7 +519,7 @@ function render(){
   <span><span class="rtitle">${esc(d.t)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
  </div><div class="detail" hidden>
-  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:''}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latest.f)}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latest.f)}">Copy intake name</button><div class="memo-next">Copy the intake name; write, produce, or listen on your Mac. This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen on your Mac. This page does not open audio.</div>`}</div>
+  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latest.f)}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latest.f)}">Copy intake name</button><div class="memo-next">Copy the intake name; write, produce, or listen on your Mac. This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen on your Mac. This page does not open audio.</div>`}</div>
   ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
   ${hook?`<h4>Hook</h4>${esc(hook)}`:''}
   <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${d.mom?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
@@ -715,13 +735,34 @@ function copySongWork(songId,btn){
  const song=DATA.find(d=>d.id===String(songId||''));
  return copyVaultText(buildSongWorkCard(song),btn,'Copy work card');
 }
-function copyCurrentWorkNext(btn){
- const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
- const song=DATA.find(d=>d.id===id);
+function allowedExactWorkSongId(songId){
+ const id=String(songId||'');
+ if(!id)return '';
+ if(typeof activeWorkSongId!=='undefined'&&String(activeWorkSongId||'')===id)return id;
+ const saved=typeof readStoredWorkSession==='function'?readStoredWorkSession(vaultStorage(),typeof sname!=='undefined'?sname:null,typeof DATA!=='undefined'?DATA:null):null;
+ return saved&&String(saved.id||'')===id?id:'';
+}
+function copyExactSongNextStep(songId,btn){
+ const id=allowedExactWorkSongId(songId);
+ if(!id||typeof DATA==='undefined')return false;
+ const song=DATA.find(d=>d&&d.id===id);
+ if(!song)return false;
+ const kind=(typeof work!=='undefined'&&work&&work.value)?String(work.value||''):'';
+ const saved=(!kind&&typeof readStoredWorkSession==='function')?readStoredWorkSession(vaultStorage(),typeof sname!=='undefined'?sname:null,DATA):null;
+ const expected=kind||(saved&&saved.kind)||'';
+ if(!expected||songWorkKind(song.nx)!==expected)return false;
  return copyVaultText(safeWorkNextStep(song),btn,'Copy next step');
 }
-function reviewCurrentWorkEvidence(btn){
+function copyCurrentWorkNext(btn){
  const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
+ return copyExactSongNextStep(id,btn);
+}
+function copyResumeWorkNext(btn){
+ const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
+ return copyExactSongNextStep(id,btn);
+}
+function reviewCurrentWorkEvidence(btn){
+ const id=allowedExactWorkSongId(btn&&btn.dataset?btn.dataset.songId:'');
  if(!id||!memoCountBySong[id])return false;
  openSongMemos(id);
  return true;
@@ -766,6 +807,7 @@ if(forgetWorkSession)forgetWorkSession.addEventListener('click',forgetLastWorkSe
 if(workPrev)workPrev.addEventListener('click',()=>stepWork(-1));
 if(workNext)workNext.addEventListener('click',()=>stepWork(1));
 if(copyWorkNext)copyWorkNext.addEventListener('click',()=>copyCurrentWorkNext(copyWorkNext));
+if(copyResumeNext)copyResumeNext.addEventListener('click',()=>copyResumeWorkNext(copyResumeNext));
 if(openWorkEvidence)openWorkEvidence.addEventListener('click',()=>reviewCurrentWorkEvidence(openWorkEvidence));
 tabS.addEventListener('click',()=>{
  showTab('S');
@@ -814,7 +856,7 @@ function mrender(){
  memoScopeText.textContent=activeMemoSong?`${ev?ev.n:0} searchable memo${ev&&ev.n===1?'':'s'} for ${sname[activeMemoSong]}${span}`:'';
  const song=activeMemoSong&&DATA.find(d=>d.id===activeMemoSong);
  if(memoScopeNext){
-  const nxt=song?stripPrivateLocators(flattenWorkField(song.nx)):'';
+  const nxt=song?safeWorkNextStep(song):'';
   memoScopeNext.hidden=!nxt;
   memoScopeNext.textContent=nxt?`Next action: ${nxt}`:'';
  }

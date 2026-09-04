@@ -257,7 +257,9 @@ def extras_ok(cat=None):
             'id="workStarts" id="advancedFilters" '
             'function openWork( function updateWorkSessionState( '
             'function safeWorkNextStep( function copyCurrentWorkNext( '
-            'function reviewCurrentWorkEvidence( id="workSessionNext" '
+            'function reviewCurrentWorkEvidence( function allowedExactWorkSongId( '
+            'function copyExactSongNextStep( safeWorkNextStep(d) '
+            'id="workSessionNext" '
             'id="copyWorkNext" id="openWorkEvidence" '
             'function latestMemoForSong( data-open-work= '
             'Start a work session More filters Sit-down '
@@ -269,6 +271,8 @@ def extras_ok(cat=None):
             "function applyWorkHash( function forgetWorkSessionResult( "
             "function announceWorkSession( writeVaultHash('','') "
             'id="resumeWorkHint" id="resumeWorkStatus" aria-live="polite" '
+            'id="resumeWorkNext" id="copyResumeNext" '
+            'function copyResumeWorkNext( function updateResumeWork( '
             'Forgot this browser record. Could not clear this browser record. '
             'JSON.stringify(parsed)'
         ),
@@ -2168,6 +2172,7 @@ class ValidateCatalogTests(unittest.TestCase):
             "128 YES / 20 NO / 2 NEEDS-CONSENT. "
             "40 setlist-ready keyed originals; 20-row Vault default-live slice. "
             "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
+            "Copy next step. Do this now. "
             "Stores only a schema version, work kind, and catalog ID.\n"
         )
         extras["apps_md"] = (
@@ -2498,6 +2503,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog one-song session click-test — 2026-09-04 "
             "(Cloud Agent Extra High, no audio)"
         )
+        product_resume_next = (
+            "Catalog resume next-step leftover — 2026-09-04 "
+            "(Cloud Agent Extra High, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2512,7 +2521,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(leftover_sitdown, headings)
         self.assertIn(product_session_start, headings)
         self.assertIn(product_session_resume, headings)
-        self.assertEqual(headings[-1], product_session_click)
+        self.assertIn(product_session_click, headings)
+        self.assertEqual(headings[-1], product_resume_next)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
