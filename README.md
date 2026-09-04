@@ -53,10 +53,12 @@ best_source paths. The primary work buttons open the highest-momentum matching
 song immediately, name its position in a bounded queue, and keep secondary
 catalog filters collapsed until they are needed. The session header puts the
 sanitized catalog next step in front of Jeff with **Copy next step** and, when
-searchable matched memos exist, **Review memo evidence**. Missing evidence is
-labeled plainly; an empty or unsafe next step produces no copy action. After a
-song is opened, the dashboard can resume that exact local session after a
-refresh. The browser
+searchable matched memos exist, **Review memo evidence**. After Escape, the
+Resume strip keeps that same **Do this now** line and copy action for the exact
+stored song. Sit-down and memo scope reuse the same fail-closed step — they do
+not reprint leftover listen verbs. Missing evidence is labeled plainly; an empty
+or unsafe next step produces no copy action. After a song is opened, the
+dashboard can resume that exact local session after a refresh. The browser
 stores only a schema version, work kind, and catalog ID; **Forget** clears it,
 and invalid, stale, or mismatched records are discarded. No title, note,
 transcript, next action, filename, or audio locator is stored. These are local
@@ -70,13 +72,14 @@ Open `Jeff Story Song Vault Dashboard.html` locally. Do not upload it.
 
 1. Click Write, Produce, or Listen. Note the song name and `N of M` position.
 2. Click Next once if you want a non-first song. Note the new name and position.
-3. Read **Do this now**, then click **Copy next step**. The clipboard text must match the visible sanitized action and contain no audio filename or location.
+3. Read **Do this now** on the session strip, then click **Copy next step**. The clipboard text must match the visible sanitized action and contain no audio filename or location. Sit-down **Next** must match that same text, or say there is no safe catalog next step.
 4. If **Review memo evidence** appears, click it. It opens the existing scoped memo search; it never opens audio. If no matched memo exists, the session says so instead of inventing evidence.
-5. Refresh. The same kind and song should reopen. **Resume** still names that song.
-6. Press Escape (or Clear filters), then click **Resume**. The same song returns.
-7. Click **Forget**. Resume disappears and the status says the browser record was forgotten. Forget also drops the leftover work hash so a later refresh cannot mint a new record. A blocked browser store soft-fails instead of crashing.
-8. Refresh again. Resume stays gone.
-9. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
+5. Refresh. The same kind and song should reopen. **Resume** still names that song and repeats the same **Do this now** line.
+6. Press Escape (or Clear filters). The Resume strip still names that song and keeps **Copy next step** when the action is safe. Click **Copy next step** there if it is visible, then click **Resume**. The same song returns.
+7. If **Do this now** is absent, **Copy next step** stays hidden. That is fail-closed, not a missing song.
+8. Click **Forget**. Resume disappears and the status says the browser record was forgotten. Forget also drops the leftover work hash so a later refresh cannot mint a new record. A blocked browser store soft-fails instead of crashing.
+9. Refresh again. Resume stays gone.
+10. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
 
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public

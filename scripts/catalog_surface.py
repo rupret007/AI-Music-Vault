@@ -482,25 +482,38 @@ def work_card_leaks_private_locators(text) -> bool:
     return any(name in low for name in _PRIVATE_STREET_NAMES)
 
 
-def safe_song_next_step(row) -> str:
-    """Return one copy-safe catalog next step or fail closed.
-
-    The private dashboard may make the existing next action easier to use, but
-    it must not turn an audio filename or owner location into clipboard text.
-    Empty and non-dict rows intentionally produce no action.
-    """
-    if not isinstance(row, dict):
-        return ""
-    next_action = flatten_work_field(row.get("nx") or row.get("next_action"))
-    cleaned = strip_private_locators(next_action)
-    incomplete = cleaned.lower().rstrip(" .:") in {
+INCOMPLETE_NEXT_STEPS = frozenset(
+    {
         "open",
         "play",
         "listen",
         "listen to latest",
         "listen: play",
     }
-    if not cleaned or incomplete or work_card_leaks_private_locators(cleaned):
+)
+
+
+def next_step_is_incomplete(text) -> bool:
+    """True when sanitizing left only a leftover verb, not a usable action."""
+    return str(text or "").lower().rstrip(" .:") in INCOMPLETE_NEXT_STEPS
+
+
+def safe_song_next_step(row) -> str:
+    """Return one copy-safe catalog next step or fail closed.
+
+    Resume, sit-down, memo scope, and Copy next step must share this path.
+    An audio filename or owner location must never become clipboard text.
+    Empty, non-dict, and leftover-verb rows intentionally produce no action.
+    """
+    if not isinstance(row, dict):
+        return ""
+    next_action = flatten_work_field(row.get("nx") or row.get("next_action"))
+    cleaned = strip_private_locators(next_action)
+    if (
+        not cleaned
+        or next_step_is_incomplete(cleaned)
+        or work_card_leaks_private_locators(cleaned)
+    ):
         return ""
     return cleaned
 
@@ -624,6 +637,9 @@ def dashboard_exposes_song_work(html: str) -> bool:
         and "function safeWorkNextStep(" in chrome
         and "function copyCurrentWorkNext(" in chrome
         and "function reviewCurrentWorkEvidence(" in chrome
+        and "function allowedExactWorkSongId(" in chrome
+        and "function copyExactSongNextStep(" in chrome
+        and "safeWorkNextStep(d)" in chrome
         and 'id="workSessionNext"' in chrome
         and 'id="copyWorkNext"' in chrome
         and 'id="openWorkEvidence"' in chrome
@@ -659,6 +675,10 @@ def dashboard_resumes_song_work_privately(html: str) -> bool:
         "JSON.stringify(parsed)",
         "Forgot this browser record.",
         "Could not clear this browser record.",
+        'id="resumeWorkNext"',
+        'id="copyResumeNext"',
+        "function copyResumeWorkNext(",
+        "function updateResumeWork(",
     )
     return all(marker in chrome for marker in required)
 
@@ -673,4 +693,6 @@ def readme_documents_session_click_test(text: str) -> bool:
         and "forget" in body
         and "work kind" in body
         and "catalog id" in body
+        and "copy next step" in body
+        and "do this now" in body
     )
