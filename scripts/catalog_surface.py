@@ -613,13 +613,34 @@ def dashboard_resumes_song_work_privately(html: str) -> bool:
         'id="resumeWork"',
         'id="resumeWorkButton"',
         'id="forgetWorkSession"',
+        'id="resumeWorkHint"',
+        'id="resumeWorkStatus"',
+        'aria-live="polite"',
         "const WORK_SESSION_KEY='vault:last-work:v1'",
         "function parseStoredWorkSession(",
         "function readStoredWorkSession(",
         "function storeWorkSession(",
         "function clearStoredWorkSession(",
         "function resumeLastWorkSession(",
+        "function applyWorkHash(",
+        "function forgetWorkSessionResult(",
+        "function announceWorkSession(",
         "Object.keys(value).sort().join('|')!=='id|kind|v'",
         "JSON.stringify(parsed)",
+        "Forgot this browser record.",
+        "Could not clear this browser record.",
     )
     return all(marker in chrome for marker in required)
+
+
+def readme_documents_session_click_test(text: str) -> bool:
+    """Jeff-facing README must match the real private-session click path."""
+    body = (text or "").lower()
+    return (
+        "click write, produce, or listen" in body
+        and "refresh" in body
+        and "resume" in body
+        and "forget" in body
+        and "work kind" in body
+        and "catalog id" in body
+    )

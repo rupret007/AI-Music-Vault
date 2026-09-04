@@ -19,6 +19,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
     dashboard_resumes_song_work_privately,
+    readme_documents_session_click_test,
     catalog_workspace_uses_vault_framing,
     overlay_feed_scopes,
     played_badge_label,
@@ -262,6 +263,10 @@ def extras_ok(cat=None):
             'function parseStoredWorkSession( function readStoredWorkSession( '
             'function storeWorkSession( function clearStoredWorkSession( '
             "function resumeLastWorkSession( Object.keys(value).sort().join('|')!==\'id|kind|v\' "
+            "function applyWorkHash( function forgetWorkSessionResult( "
+            "function announceWorkSession( "
+            'id="resumeWorkHint" id="resumeWorkStatus" aria-live="polite" '
+            'Forgot this browser record. Could not clear this browser record. '
             'JSON.stringify(parsed)'
         ),
         "audio_files": [],
@@ -2139,13 +2144,28 @@ class ValidateCatalogTests(unittest.TestCase):
             public_doc_has_other_catalog_titles(extras["apps_md"], fixture())
         )
 
+    def test_readme_without_session_click_test_fails(self):
+        extras = extras_ok()
+        extras["readme"] = (
+            "Vault is the catalog brain. 150 entities. "
+            "Flagship, Quick win, Experimental, On deck, The Opus.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("private session click-test" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(readme_documents_session_click_test(extras["readme"]))
+
     def test_public_docs_roles_counts_only_pass(self):
         extras = extras_ok()
         extras["readme"] = (
             "Vault is the catalog brain. 150 entities. "
             "Flagship, Quick win, Experimental, On deck, The Opus. "
             "128 YES / 20 NO / 2 NEEDS-CONSENT. "
-            "40 setlist-ready keyed originals; 20-row Vault default-live slice.\n"
+            "40 setlist-ready keyed originals; 20-row Vault default-live slice. "
+            "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
+            "Stores only a schema version, work kind, and catalog ID.\n"
         )
         extras["apps_md"] = (
             "Local python3 scripts/validate_catalog.py fails closed "
@@ -2471,6 +2491,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog one-song session resume — 2026-09-03 "
             "(Codex Extra High, no audio)"
         )
+        product_session_click = (
+            "Catalog one-song session click-test — 2026-09-04 "
+            "(Cloud Agent Extra High, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2484,7 +2508,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(leftover_work, headings)
         self.assertIn(leftover_sitdown, headings)
         self.assertIn(product_session_start, headings)
-        self.assertEqual(headings[-1], product_session_resume)
+        self.assertIn(product_session_resume, headings)
+        self.assertEqual(headings[-1], product_session_click)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
@@ -2524,6 +2549,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn('id="workSession"', extra["dashboard_html"])
         self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
         self.assertTrue(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
+        self.assertTrue(readme_documents_session_click_test(extra["readme"]))
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
         self.assertFalse(catalog_ok_report_leaks_published_ids())

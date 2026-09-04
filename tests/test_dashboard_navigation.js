@@ -53,6 +53,12 @@ for (const marker of [
   "function storeWorkSession(",
   "function clearStoredWorkSession(",
   "function resumeLastWorkSession(",
+  "function applyWorkHash(",
+  "function forgetWorkSessionResult(",
+  "function announceWorkSession(",
+  "id=\"resumeWorkHint\"",
+  "id=\"resumeWorkStatus\"",
+  "aria-live=\"polite\"",
   "function latestMemoForSong(",
   "function stepWork(",
   "id=\"evidence\"",
@@ -404,6 +410,37 @@ workCalls.length = 0;
 workNavigation.openWork("write", "JS-0001");
 if (workNavigation.active() !== "JS-0001" || workCalls.join(",") !== "S,render,work:write,focus:JS-0001") {
   fail("resume must reopen the exact validated song inside its matching work queue");
+}
+const hashCalls = [];
+const applyWorkHash = new Function(
+  "openWork",
+  "return (" + extractFunction(script, "applyWorkHash") + ");",
+)((kind, id) => { hashCalls.push(String(kind) + ":" + String(id || "")); return !!id; });
+if (!applyWorkHash("write", { v: 1, kind: "write", id: "JS-0002" }) || hashCalls.join(",") !== "write:JS-0002") {
+  fail("matching work hash must resume the exact stored song, not the first queue match");
+}
+hashCalls.length = 0;
+if (applyWorkHash("write", { v: 1, kind: "produce", id: "JS-0002" }) || hashCalls.join(",") !== "write:") {
+  fail("mismatched stored kind must start the hash kind instead of keeping the old song");
+}
+hashCalls.length = 0;
+if (applyWorkHash("write", null) || hashCalls.join(",") !== "write:") {
+  fail("missing stored session must start the hash kind");
+}
+const forgetWorkSessionResult = new Function(
+  "return (" + extractFunction(script, "forgetWorkSessionResult") + ");",
+)();
+const forgot = forgetWorkSessionResult(true, null);
+if (!forgot.ok || forgot.message !== "Forgot this browser record.") {
+  fail("Forget must announce a cleared browser record");
+}
+const blocked = forgetWorkSessionResult(false, { v: 1, kind: "write", id: "JS-0001" });
+if (blocked.ok || blocked.message !== "Could not clear this browser record.") {
+  fail("Forget must soft-fail when the browser record remains");
+}
+const unread = forgetWorkSessionResult(false, null);
+if (unread.ok || unread.message !== "") {
+  fail("Forget must soft-fail quietly when storage is unreadable");
 }
 workNavigation.openWork("not-a-kind");
 if (workFields.work.value !== "write") fail("openWork must reject unknown work kinds");
