@@ -50,6 +50,7 @@ for (const marker of [
   "function handleSongSearchKey(",
   "closest name first",
   "titles, aliases, hooks",
+  "scrollIntoView({block:'center'})",
   "function copyMemoFile(",
   "function copyVaultText(",
   "function songWorkKind(",

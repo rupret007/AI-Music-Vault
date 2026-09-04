@@ -636,6 +636,10 @@ function render(){
   activeWorkSongId='';
  }
  updateWorkSessionState();
+ if(term&&rows.length&&!wv){
+  const first=list.querySelector('[data-song-id]');
+  if(first)requestAnimationFrame(()=>first.scrollIntoView({block:'center'}));
+ }
 }
 function focusFoundSong(id){
  const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
