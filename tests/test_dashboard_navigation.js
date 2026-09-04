@@ -442,6 +442,9 @@ const unread = forgetWorkSessionResult(false, null);
 if (unread.ok || unread.message !== "") {
   fail("Forget must soft-fail quietly when storage is unreadable");
 }
+if (!extractFunction(script, "forgetLastWorkSession").includes("writeVaultHash(")) {
+  fail("Forget must drop the work hash so a refresh does not mint a new record");
+}
 workNavigation.openWork("not-a-kind");
 if (workFields.work.value !== "write") fail("openWork must reject unknown work kinds");
 

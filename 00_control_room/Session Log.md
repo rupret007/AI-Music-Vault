@@ -490,7 +490,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 ## Catalog one-song session click-test — 2026-09-04 (Cloud Agent Extra High, no audio)
 ### Done
 1. Started from exact private main `e11509de` after leftover-squash #31. Resume already stored only schema version + work kind + catalog ID, but a `#work=` refresh opened the first queue song and overwrote the saved record, so the advertised exact-session path was not click-testable.
-2. The same private dashboard now reapplies a matching `#work=` hash to the validated stored song, not the first match. **Resume** still reopens that song after Escape / Clear filters. **Forget** announces success or soft-fails when the browser store cannot clear. Stale, mismatched, extra-field, and unknown records stay fail-closed and are removed.
+2. The same private dashboard now reapplies a matching `#work=` hash to the validated stored song, not the first match. **Resume** still reopens that song after Escape / Clear filters. **Forget** announces success, drops the leftover `#work=` hash so a later refresh cannot mint a new record, and soft-fails when the browser store cannot clear. Stale, mismatched, extra-field, and unknown records stay fail-closed and are removed.
 3. README and Producer README now match the real tester clicks: Click Write, Produce, or Listen → note song and position → Next optional → Refresh → Resume → Forget → Refresh again. No title, note, transcript, next action, filename, or audio locator is stored.
 
 ### Honesty ledger

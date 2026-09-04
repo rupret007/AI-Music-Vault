@@ -264,7 +264,7 @@ def extras_ok(cat=None):
             'function storeWorkSession( function clearStoredWorkSession( '
             "function resumeLastWorkSession( Object.keys(value).sort().join('|')!==\'id|kind|v\' "
             "function applyWorkHash( function forgetWorkSessionResult( "
-            "function announceWorkSession( "
+            "function announceWorkSession( writeVaultHash('','') "
             'id="resumeWorkHint" id="resumeWorkStatus" aria-live="polite" '
             'Forgot this browser record. Could not clear this browser record. '
             'JSON.stringify(parsed)'

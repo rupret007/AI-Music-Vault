@@ -68,7 +68,7 @@ Open `Jeff Story Song Vault Dashboard.html` locally. Do not upload it.
 2. Click Next once if you want a non-first song. Note the new name and position.
 3. Refresh. The same kind and song should reopen. **Resume** still names that song.
 4. Press Escape (or Clear filters), then click **Resume**. The same song returns.
-5. Click **Forget**. Resume disappears and the status says the browser record was forgotten. A blocked browser store soft-fails instead of crashing.
+5. Click **Forget**. Resume disappears and the status says the browser record was forgotten. Forget also drops the leftover work hash so a later refresh cannot mint a new record. A blocked browser store soft-fails instead of crashing.
 6. Refresh again. Resume stays gone.
 7. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
 

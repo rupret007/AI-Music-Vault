@@ -376,6 +376,10 @@ function forgetLastWorkSession(){
  const cleared=clearStoredWorkSession(storage);
  const remaining=readStoredWorkSession(storage,sname,DATA);
  const result=forgetWorkSessionResult(cleared,remaining);
+ if(result.ok){
+  if(typeof lastWorkKind!=='undefined')lastWorkKind='';
+  if(typeof writeVaultHash==='function')writeVaultHash('','');
+ }
  updateResumeWork();
  announceWorkSession(result.message);
  return result.ok;

@@ -625,6 +625,7 @@ def dashboard_resumes_song_work_privately(html: str) -> bool:
         "function applyWorkHash(",
         "function forgetWorkSessionResult(",
         "function announceWorkSession(",
+        "writeVaultHash('','')",
         "Object.keys(value).sort().join('|')!=='id|kind|v'",
         "JSON.stringify(parsed)",
         "Forgot this browser record.",
