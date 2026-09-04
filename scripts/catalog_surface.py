@@ -398,14 +398,17 @@ _PRIVATE_STREET_NAMES = (
     "eagle mountain dr",
 )
 
-# Locked hashes of the embedded DATA / TX JSON blobs on main 2ff49baa.
-# Prefer unchanged. A real product test may document a fixture-only change.
+# TX stays locked unless transcripts change. DATA may change when the
+# private surface projects already-on-spine aliases for song find.
 EMBEDDED_DATA_SHA256 = (
-    "1b057c495207674cf7ae5392dc275791dd563b5fe6307a5c6be7259690cc20f4"
+    "2e5c6d2dc8555ec76f8a15f88eb3c78b2e9db5ef0e158ba9e4d8f4b0eda40ee8"
 )
 EMBEDDED_TX_SHA256 = (
     "4d809dc53540f8c5acfe63ffcee94844634405c2a0583b2accddc9178807b467"
 )
+MEMO_LYRIC_QUERY_MIN = 3
+_APOS_RE = re.compile(r"['’`]")
+_NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
 
 
 def song_work_kind(next_action) -> str:
@@ -461,6 +464,135 @@ def flatten_work_field(value) -> str:
     if isinstance(value, (list, tuple)):
         return "; ".join(str(item).strip() for item in value if str(item).strip())
     return str(value).strip()
+
+
+def normalize_search_text(text) -> str:
+    """Fold case, apostrophes, and punctuation so Jeff can type the name he remembers."""
+    folded = _APOS_RE.sub("", str(text or "").casefold())
+    return " ".join(_NON_ALNUM_RE.sub(" ", folded).split())
+
+
+def song_aliases(row) -> list[str]:
+    """Existing alt_titles only. Do not invent names or mint IDs."""
+    if not isinstance(row, dict):
+        return []
+    canonical = str(row.get("canonical_title") or row.get("t") or "").strip()
+    raw = row.get("alt_titles")
+    if raw is None:
+        raw = row.get("aka") or []
+    if not isinstance(raw, (list, tuple)):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    canon_norm = normalize_search_text(canonical)
+    for item in raw:
+        name = str(item or "").strip()
+        if not name:
+            continue
+        key = normalize_search_text(name)
+        if not key or key in seen:
+            continue
+        if canon_norm and key == canon_norm:
+            continue
+        seen.add(key)
+        out.append(name)
+    return out
+
+
+def memo_lyric_norm_by_song(index_rows) -> dict[str, str]:
+    """Index searchable matched memo *text* only — never titles or filenames."""
+    parts: dict[str, list[str]] = {}
+    for row in index_rows or []:
+        if not isinstance(row, dict):
+            continue
+        song_id = str(row.get("s") or row.get("song_id") or "").strip()
+        text = str(row.get("x") or "")
+        if not song_id or not text:
+            continue
+        parts.setdefault(song_id, []).append(text)
+    return {
+        song_id: normalize_search_text(" ".join(chunks))
+        for song_id, chunks in parts.items()
+    }
+
+
+def _song_search_names(row) -> list[str]:
+    names: list[str] = []
+    song_id = str(row.get("id") or row.get("song_id") or "").strip()
+    title = str(row.get("t") or row.get("canonical_title") or "").strip()
+    if song_id:
+        names.append(normalize_search_text(song_id))
+    if title:
+        names.append(normalize_search_text(title))
+    for alias in song_aliases(row):
+        names.append(normalize_search_text(alias))
+    return [name for name in names if name]
+
+
+def _song_search_field_hay(row) -> str:
+    audio = flatten_work_field(row.get("au") or row.get("audio_status"))
+    if "—" in audio:
+        audio = audio.split("—", 1)[0].strip()
+    writers = row.get("wr")
+    if writers is None:
+        writers = row.get("writers")
+    return normalize_search_text(
+        " ".join(
+            [
+                flatten_work_field(row.get("th") or row.get("theme")),
+                flatten_work_field(row.get("hk") or row.get("hook")),
+                flatten_work_field(row.get("c") or row.get("classification")),
+                flatten_work_field(row.get("st") or row.get("stage")),
+                flatten_work_field(writers),
+                strip_private_locators(
+                    flatten_work_field(row.get("nx") or row.get("next_action"))
+                ),
+                flatten_work_field(row.get("oq") or row.get("open_questions")),
+                flatten_work_field(row.get("gate") or row.get("ai_upload_ok")),
+                flatten_work_field(row.get("scope_label")),
+                flatten_work_field(row.get("ly") or row.get("lyric_status")),
+                audio,
+                flatten_work_field(row.get("key")),
+            ]
+        )
+    )
+
+
+def song_search_hit(row, term, memo_norm_by_song=None) -> dict:
+    """Rank a catalog row for the Songs search box.
+
+    Name / alias / id beat theme and next-action text. A long enough query
+    may also hit searchable matched memo lyrics. Memo titles stay out.
+    """
+    if not isinstance(row, dict):
+        return {"hit": False, "rank": 99, "via": ""}
+    norm = normalize_search_text(term)
+    if not norm:
+        return {"hit": True, "rank": 99, "via": ""}
+    names = _song_search_names(row)
+    query_tokens = [part for part in norm.split() if part]
+
+    def name_tokens(name: str) -> list[str]:
+        return [part for part in name.split() if part]
+
+    if any(name == norm for name in names):
+        return {"hit": True, "rank": 0, "via": "name"}
+    if query_tokens and any(
+        name_tokens(name)[: len(query_tokens)] == query_tokens for name in names
+    ):
+        return {"hit": True, "rank": 0, "via": "name"}
+    if any(name.startswith(norm) for name in names):
+        return {"hit": True, "rank": 1, "via": "name"}
+    if any(norm in name for name in names):
+        return {"hit": True, "rank": 2, "via": "name"}
+    if norm in _song_search_field_hay(row):
+        return {"hit": True, "rank": 3, "via": "field"}
+    song_id = str(row.get("id") or row.get("song_id") or "").strip()
+    memo_map = memo_norm_by_song if isinstance(memo_norm_by_song, dict) else {}
+    memo = memo_map.get(song_id, "")
+    if len(norm) >= MEMO_LYRIC_QUERY_MIN and memo and norm in memo:
+        return {"hit": True, "rank": 4, "via": "memo"}
+    return {"hit": False, "rank": 99, "via": ""}
 
 
 def strip_private_locators(text) -> str:
@@ -553,6 +685,9 @@ def song_work_card(row, evidence=None) -> str:
         heading = f"{title} ({song_id})" if title else song_id
     if heading:
         lines.append(heading)
+    aliases = song_aliases(row)
+    if aliases:
+        lines.append("Also known as: " + "; ".join(aliases))
     lines.append(f"Work: {kind}")
     nxt = safe_song_next_step(row)
     if nxt:
@@ -679,6 +814,24 @@ def dashboard_resumes_song_work_privately(html: str) -> bool:
         'id="copyResumeNext"',
         "function copyResumeWorkNext(",
         "function updateResumeWork(",
+    )
+    return all(marker in chrome for marker in required)
+
+
+def dashboard_finds_remembered_song_names(html: str) -> bool:
+    """Songs search must find existing aliases and rank the closest name first."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        "function normalizeSearch(",
+        "function songAliases(",
+        "function songSearchHit(",
+        "function markNormalized(",
+        "function focusFoundSong(",
+        "function handleSongSearchKey(",
+        "closest name first",
+        "titles, aliases, hooks",
+        "memo lyric",
+        "aka ",
     )
     return all(marker in chrome for marker in required)
 

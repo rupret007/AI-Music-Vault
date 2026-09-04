@@ -43,7 +43,10 @@ still contain unreleased, personal, collaborator, or location information.
 The private dashboard links catalog songs that have searchable matched voice
 memos to that evidence, and each matched memo back to its song. Songs with
 searchable matches can be scanned, filtered, and sorted by latest memo date;
-the scoped set is newest-first and can copy the local intake filename. The
+the scoped set is newest-first and can copy the local intake filename. Songs
+search finds existing aliases, folds punctuation, ranks the closest name
+first, and Enter opens that row; a long enough query can also surface a song
+from a searchable matched memo lyric. The
 same song brain can filter write / produce / listen work from the existing
 next action, open a resumable work session, sit down on a lane song, and copy
 a sanitized work card (hook, next action, open questions, memo count/date)
@@ -80,6 +83,7 @@ Open `Jeff Story Song Vault Dashboard.html` locally. Do not upload it.
 8. Click **Forget**. Resume disappears and the status says the browser record was forgotten. Forget also drops the leftover work hash so a later refresh cannot mint a new record. A blocked browser store soft-fails instead of crashing.
 9. Refresh again. Resume stays gone.
 10. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
+11. On Songs, type a remembered alias or a title without apostrophes. The closest name is first. Press Enter to open that row. Escape clears the search. A long enough query may also list a song from a searchable matched memo lyric — that is a lead, not a listen.
 
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public

@@ -33,6 +33,7 @@ from catalog_surface import (
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
     dashboard_exposes_song_work,
+    dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
     dashboard_resumes_song_work_privately,
     readme_documents_session_click_test,
@@ -2004,6 +2005,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must resume one validated local work session using "
                 "only version, work kind, and catalog id — never catalog text "
                 "or owner-audio locators"
+            )
+        if not dashboard_finds_remembered_song_names(dash):
+            errors.append(
+                "dashboard must find songs by existing aliases, fold "
+                "punctuation, rank the closest name first, and allow Enter "
+                "to open that row"
             )
 
     audio_hits = extras.get("audio_files")

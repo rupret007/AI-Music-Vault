@@ -25,6 +25,7 @@
 *Catalog one-song session start 2026-09-03: Write / Produce / Listen are explicit primary actions, each session opens its highest-momentum matching song immediately, shows bounded queue position, and leaves secondary filters collapsed. Catalog rows, scores, priorities, and audio are unchanged. Still these three songs. Still no new priorities.*
 *Catalog one-song session click-test 2026-09-04: refresh resumes the exact validated song instead of the first queue match; Forget soft-fails; README matches the real tester clicks. Still these three songs. Still no new priorities.*
 *Catalog resume next-step leftover 2026-09-04: after Escape, Resume shows the same sanitized next step for the exact stored song; Copy next step fails closed; sit-down does not reprint leftover listen verbs. Still these three songs. Still no new priorities.*
+*Catalog remembered-name search 2026-09-04: Songs search finds existing aliases, folds punctuation, ranks the closest name first, and can surface a song from a searchable matched memo lyric. Still these three songs. Still no new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE

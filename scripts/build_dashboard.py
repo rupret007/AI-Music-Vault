@@ -16,6 +16,7 @@ from catalog_surface import (  # noqa: E402
     build_memo_search_index,
     overlay_feed_scopes,
     played_badge_label,
+    song_aliases,
     song_work_kind,
     surface_stage_label,
 )
@@ -30,7 +31,7 @@ cat = json.load(open(CAT_PATH))
 app_api = json.load(open(API_PATH)) if os.path.exists(API_PATH) else {}
 slim = []
 for s in cat['songs']:
-    slim.append(dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
+    row = dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
         c=s['classification'], st=surface_stage_label(s.get('stage','')), key=s.get('key',''), bpm=s.get('bpm',''),
         pot=s.get('potential'), rdy=s.get('readiness'), mom=s.get('momentum'),
         la=s.get('last_activity',''), conf=s.get('confidence',''),
@@ -39,7 +40,11 @@ for s in cat['songs']:
         src=s.get('sources',[]), sc=s.get('soundcloud',[]), oq=s.get('open_questions',''),
         wr=', '.join(s.get('writers',[])),
         live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
-        gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved','')))
+        gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''))
+    aliases = song_aliases(s)
+    if aliases:
+        row['aka'] = aliases
+    slim.append(row)
 overlay_feed_scopes(slim, app_api)
 
 
@@ -134,7 +139,7 @@ input{flex:1;min-width:160px}
 .empty{color:var(--ink3);text-align:center;padding:30px}
 .mrow{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;padding:10px 14px}
 .mrow b{font-size:13px} .mmeta{color:var(--ink3);font-size:11px;margin-bottom:4px}
-.msnip{color:var(--ink2);font-size:12.5px} .msnip mark{background:var(--pot);color:#fff;border-radius:3px;padding:0 2px}
+.msnip{color:var(--ink2);font-size:12.5px} .msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff;border-radius:3px;padding:0 2px}
 .mhint{color:var(--ink3);font-size:12px;padding:16px;text-align:center}
 .resultbar,.memo-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink3);font-size:12px;margin:0 0 10px}
 .memo-scope{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink2)}
@@ -183,7 +188,7 @@ input{flex:1;min-width:160px}
 </div>
 <div id="paneS" role="tabpanel" aria-labelledby="tabS">
 <div class="controls">
- <input id="q" placeholder="Search songs, themes, hooks… (try: garden, Kimberly, ska)">
+ <input id="q" placeholder="Search titles, aliases, hooks… (try: candy lane, only 18, garden)" autocomplete="off" aria-label="Search songs by title, alias, hook, or memo lyric">
  <select id="sort">
   <option value="mom">Sort: Momentum (what's alive)</option>
   <option value="pot">Sort: Potential</option><option value="rdy">Sort: Readiness</option>
@@ -446,6 +451,8 @@ function buildSongWorkCard(song,evidence){
  const title=flattenWorkField(song.t), id=flattenWorkField(song.id);
  const lines=[];
  if(title||id)lines.push(title?(id?title+' ('+id+')':title):id);
+ const aliases=typeof songAliases==='function'?songAliases(song):[];
+ if(aliases.length)lines.push('Also known as: '+aliases.join('; '));
  lines.push('Work: '+kind);
  const nx=safeWorkNextStep(song);
  if(nx)lines.push('Next: '+nx);
@@ -468,6 +475,100 @@ function buildSongWorkCard(song,evidence){
  const card=lines.filter(Boolean).join('\n');
  return workCardLeaks(card)?'':card;
 }
+function normalizeSearch(text){
+ return String(text||'').toLowerCase().replace(/['’`]/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+}
+function songAliases(row){
+ const raw=row&&row.aka;
+ if(!Array.isArray(raw))return [];
+ const title=normalizeSearch(row.t||'');
+ const out=[], seen={};
+ raw.forEach(item=>{
+  const name=String(item||'').trim();
+  const key=normalizeSearch(name);
+  if(!name||!key||seen[key]||(title&&key===title))return;
+  seen[key]=true;out.push(name);
+ });
+ return out;
+}
+const memoLyricNormBySong={};
+function memoLyricNorm(songId){
+ const id=String(songId||'');
+ if(id&&Object.prototype.hasOwnProperty.call(memoLyricNormBySong,id))return memoLyricNormBySong[id];
+ const parts=[];
+ (typeof TX!=='undefined'?TX:[]).forEach(m=>{
+  if(m&&String(m.s||'')===id&&m.x)parts.push(String(m.x));
+ });
+ const norm=normalizeSearch(parts.join(' '));
+ if(id)memoLyricNormBySong[id]=norm;
+ return norm;
+}
+function songSearchHit(row,term){
+ if(!row)return {hit:false,rank:99,via:''};
+ const norm=normalizeSearch(term);
+ if(!norm)return {hit:true,rank:99,via:''};
+ const names=[];
+ if(row.id)names.push(normalizeSearch(row.id));
+ if(row.t)names.push(normalizeSearch(row.t));
+ songAliases(row).forEach(alias=>names.push(normalizeSearch(alias)));
+ const kept=names.filter(Boolean);
+ const qtok=norm.split(' ').filter(Boolean);
+ if(kept.some(name=>name===norm))return {hit:true,rank:0,via:'name'};
+ if(qtok.length&&kept.some(name=>{
+  const toks=name.split(' ').filter(Boolean);
+  return toks.length>=qtok.length&&toks.slice(0,qtok.length).join(' ')===qtok.join(' ');
+ }))return {hit:true,rank:0,via:'name'};
+ if(kept.some(name=>name.startsWith(norm)))return {hit:true,rank:1,via:'name'};
+ if(kept.some(name=>name.includes(norm)))return {hit:true,rank:2,via:'name'};
+ const audio=String(row.au||'').split('—')[0];
+ const field=normalizeSearch([row.th,row.hk,row.c,row.st,row.wr,stripPrivateLocators(row.nx||''),row.oq,row.gate,row.scope_label,row.ly,audio,row.key].join(' '));
+ if(field.includes(norm))return {hit:true,rank:3,via:'field'};
+ if(norm.length>=3&&memoLyricNorm(row.id).includes(norm))return {hit:true,rank:4,via:'memo'};
+ return {hit:false,rank:99,via:''};
+}
+function markNormalized(text,term){
+ const src=String(text||'');
+ const needle=normalizeSearch(term);
+ if(!needle)return esc(src);
+ const units=[];
+ let norm='';
+ let pendingSpace=false;
+ for(let i=0;i<src.length;i++){
+  const ch=src[i];
+  if(/['’`]/.test(ch))continue;
+  if(/[0-9A-Za-z]/.test(ch)){
+   if(pendingSpace&&norm){norm+=' ';units.push({start:i,end:i});}
+   pendingSpace=false;
+   norm+=ch.toLowerCase();
+   units.push({start:i,end:i+1});
+  }else pendingSpace=true;
+ }
+ const at=norm.indexOf(needle);
+ if(at<0||!units[at]||!units[at+needle.length-1])return esc(src);
+ const start=units[at].start;
+ const end=units[at+needle.length-1].end||units[at+needle.length-1].start;
+ return esc(src.slice(0,start))+'<mark>'+esc(src.slice(start,end))+'</mark>'+esc(src.slice(end));
+}
+function sortSongRows(rows,term,sortKey){
+ const decorated=rows.map(row=>({row,hit:term?songSearchHit(row,term):{hit:true,rank:99,via:''}}));
+ decorated.sort((a,b)=>{
+  if(term&&a.hit.rank!==b.hit.rank)return a.hit.rank-b.hit.rank;
+  const k=sortKey||'mom';
+  if(k==='memo'){
+   const ea=(typeof memoEvidenceBySong!=='undefined'&&memoEvidenceBySong[a.row.id])||{n:0,last:''};
+   const eb=(typeof memoEvidenceBySong!=='undefined'&&memoEvidenceBySong[b.row.id])||{n:0,last:''};
+   const da=String(ea.last||''), db=String(eb.last||'');
+   if(!da&&!db)return (eb.n-ea.n)||a.row.id.localeCompare(b.row.id);
+   if(!da)return 1;
+   if(!db)return -1;
+   return db.localeCompare(da)||(eb.n-ea.n)||a.row.id.localeCompare(b.row.id);
+  }
+  if(k==='t')return a.row.t.localeCompare(b.row.t)||a.row.id.localeCompare(b.row.id);
+  if(k==='id')return a.row.id.localeCompare(b.row.id);
+  return ((b.row[k]||0)-(a.row[k]||0))||a.row.id.localeCompare(b.row.id);
+ });
+ return decorated;
+}
 function bar(v,c){
  const n=Number(v);
  if(!Number.isFinite(n)||n<=0)return '<div class="barwrap"><span style="color:var(--ink3)">—</span></div>';
@@ -475,33 +576,28 @@ function bar(v,c){
  return `<div class="barwrap"><div class="bar"><i style="width:${safe}%;background:var(--${c})"></i></div><span>${esc(n)}</span></div>`;
 }
 function render(){
- const term=q.value.toLowerCase().trim(), pv=proj.value, sv=scored.value, scv=scope.value,
+ const rawTerm=q.value, term=String(rawTerm||'').trim(), pv=proj.value, sv=scored.value, scv=scope.value,
   evv=(typeof evidence!=='undefined'&&evidence)?evidence.value:'',
   wv=(typeof work!=='undefined'&&work)?work.value:'';
- let rows=DATA.filter(d=>{
-  if(pv&&d.p!==pv)return false;
-  if(scv&&d.scope!==scv)return false;
-  if(sv==='1'&&!d.pot)return false; if(sv==='0'&&d.pot)return false;
-  if(evv==='1'&&!memoEvidenceBySong[d.id])return false;
-  if(evv==='0'&&memoEvidenceBySong[d.id])return false;
-  if(wv&&songWorkKind(d.nx)!==wv)return false;
-  if(!term)return true;
-  return (d.t+' '+d.id+' '+d.th+' '+d.hk+' '+d.c+' '+d.st+' '+(d.wr||'')+' '+stripPrivateLocators(d.nx||'')+' '+(d.oq||'')+' '+(d.gate||'')+' '+(d.scope_label||'')).toLowerCase().includes(term);});
+ const filtered=[];
+ DATA.forEach(d=>{
+  if(pv&&d.p!==pv)return;
+  if(scv&&d.scope!==scv)return;
+  if(sv==='1'&&!d.pot)return; if(sv==='0'&&d.pot)return;
+  if(evv==='1'&&!memoEvidenceBySong[d.id])return;
+  if(evv==='0'&&memoEvidenceBySong[d.id])return;
+  if(wv&&songWorkKind(d.nx)!==wv)return;
+  const hit=term?songSearchHit(d,term):{hit:true,rank:99,via:''};
+  if(hit.hit)filtered.push(d);
+ });
  const k=sort.value;
- if(k==='memo'){
-  rows.sort((a,b)=>{
-   const ea=memoEvidenceBySong[a.id]||{n:0,last:''};
-   const eb=memoEvidenceBySong[b.id]||{n:0,last:''};
-   const da=String(ea.last||''), db=String(eb.last||'');
-   if(!da&&!db)return (eb.n-ea.n)||a.id.localeCompare(b.id);
-   if(!da)return 1;
-   if(!db)return -1;
-   return db.localeCompare(da) || (eb.n-ea.n) || a.id.localeCompare(b.id);
-  });
- }else{
-  rows.sort((a,b)=> k==='t'?a.t.localeCompare(b.t): k==='id'?a.id.localeCompare(b.id):((b[k]||0)-(a[k]||0)) || a.id.localeCompare(b.id));
- }
- songResults.textContent=`Showing ${rows.length} of ${DATA.length} songs`;
+ const decorated=sortSongRows(filtered,term,k);
+ const rows=decorated.map(item=>item.row);
+ const viaById={};
+ decorated.forEach(item=>{viaById[item.row.id]=item.hit.via;});
+ songResults.textContent=term
+  ?`Showing ${rows.length} of ${DATA.length} songs · closest name first`
+  :`Showing ${rows.length} of ${DATA.length} songs`;
  clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||k!=='mom');
  if(typeof visibleSongIds!=='undefined')visibleSongIds=rows.map(d=>d.id);
  list.innerHTML=rows.length?rows.map((d,i)=>{
@@ -513,10 +609,13 @@ function render(){
   const hook=stripPrivateLocators(flattenWorkField(d.hk));
   const theme=stripPrivateLocators(flattenWorkField(d.th));
   const questions=stripPrivateLocators(flattenWorkField(d.oq));
+  const aliases=songAliases(d);
+  const akaLabel=aliases.length?aliases.join(' · '):'';
+  const via=viaById[d.id]||'';
   return `
  <div class="row" data-song-id="${esc(d.id)}"><div class="rhead" role="button" tabindex="0" aria-expanded="false" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
-  <span><span class="rtitle">${esc(d.t)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
+  <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
  </div><div class="detail" hidden>
   <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latest.f)}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latest.f)}">Copy intake name</button><div class="memo-next">Copy the intake name; write, produce, or listen on your Mac. This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen on your Mac. This page does not open audio.</div>`}</div>
@@ -537,6 +636,28 @@ function render(){
   activeWorkSongId='';
  }
  updateWorkSessionState();
+}
+function focusFoundSong(id){
+ const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
+ const head=row&&row.querySelector('[data-toggle-song]');
+ if(!head)return false;
+ list.querySelectorAll('[data-toggle-song][aria-expanded="true"]').forEach(open=>{
+  if(open!==head)toggleSong(open,false);
+ });
+ toggleSong(head,true);
+ requestAnimationFrame(()=>{head.focus();head.scrollIntoView({block:'center'});});
+ return true;
+}
+function handleSongSearchKey(e){
+ if(!e||e.key!=='Enter')return false;
+ const term=q&&String(q.value||'').trim();
+ if(!term)return false;
+ const ids=typeof visibleSongIds!=='undefined'?visibleSongIds:[];
+ if(!ids.length)return false;
+ if(e.preventDefault)e.preventDefault();
+ const id=ids[0];
+ if(typeof work!=='undefined'&&work&&work.value&&typeof focusWorkSong==='function')return focusWorkSong(id);
+ return focusFoundSong(id);
 }
 function toggleSong(head,forceOpen){
  const detail=head&&head.nextElementSibling;
@@ -694,7 +815,9 @@ function handleVaultKey(e){
   return true;
  }
  const hasWork=typeof work!=='undefined'&&work&&work.value;
- if(typeof paneS!=='undefined'&&paneS&&!paneS.hidden&&(sname[q.value]||hasWork)){
+ const hasSearch=!!(q&&String(q.value||'').trim());
+ const hasFilters=!!((proj&&proj.value)||(scored&&scored.value)||(scope&&scope.value)||(typeof evidence!=='undefined'&&evidence&&evidence.value)||(sort&&sort.value&&sort.value!=='mom'));
+ if(typeof paneS!=='undefined'&&paneS&&!paneS.hidden&&(sname[q.value]||hasWork||hasSearch||hasFilters)){
   q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';
   if(typeof evidence!=='undefined'&&evidence)evidence.value='';
   if(typeof work!=='undefined'&&work)work.value='';
@@ -781,6 +904,7 @@ list.addEventListener('keydown',e=>{
  const head=e.target.closest('[data-toggle-song]');
  if(head&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleSong(head);}
 });
+if(q)q.addEventListener('keydown',handleSongSearchKey);
 [q,proj,sort,scored,scope,evidence,work].forEach(el=>{if(el)el.addEventListener('input',()=>{
  if(el===work){
   if(typeof lastWorkKind!=='undefined')lastWorkKind=work.value||'';
