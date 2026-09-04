@@ -23,6 +23,7 @@
 *Catalog song work card 2026-09-03: existing next actions classify into write/produce/listen so the private dashboard can filter, open a lane, and copy a sanitized work card. Still these three songs. Still no new priorities.*
 *Catalog write/produce/listen sit-down 2026-09-03: the same song brain now keeps a resumable work session, sits down on sanitized next action plus memo evidence, and does not reprint Logic/WAV paths. Still these three songs. Still no new priorities.*
 *Catalog one-song session start 2026-09-03: Write / Produce / Listen are explicit primary actions, each session opens its highest-momentum matching song immediately, shows bounded queue position, and leaves secondary filters collapsed. Catalog rows, scores, priorities, and audio are unchanged. Still these three songs. Still no new priorities.*
+*Catalog one-song session click-test 2026-09-04: refresh resumes the exact validated song instead of the first queue match; Forget soft-fails; README matches the real tester clicks. Still these three songs. Still no new priorities.*
 **Evidence level:** LYRIC CORPUS COMPLETE + **TRANSCRIPT CORPUS COMPLETE** — all 916 voice memos transcribed locally (Whisper base.en on Jeff's Mac; 1 corrupt file). 372 memos now matched to 88 songs (+46 this pass). 9 previously unknown songs recovered and cataloged (JS-0130…0138). Still NO aesthetic listening — transcription ≠ listening; treat all performance/melody judgments as pending.
 
 ## THE HEADLINE

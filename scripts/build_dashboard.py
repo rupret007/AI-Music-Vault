@@ -91,6 +91,8 @@ h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 16px}
 .work-start:hover,.work-start:focus-visible{border-color:var(--pot);outline:2px solid var(--pot);outline-offset:2px}
 .resume-work{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
 .resume-work .work-start{flex:1;text-align:left}
+.resume-hint,.resume-status{color:var(--ink3);font-size:12px;margin:8px 0 0}
+.resume-status{color:var(--ink2);min-height:1.2em}
 .lanes{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
 .lanes h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);margin-bottom:8px}
 .lane{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed var(--line)}
@@ -151,12 +153,14 @@ input{flex:1;min-width:160px}
 <div class="stats" id="stats"></div>
 <section class="work-now" aria-labelledby="workNowTitle">
  <h2 id="workNowTitle">Start a work session</h2>
- <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue.</p>
+ <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume reopens it. Forget clears the local record.</p>
  <div class="work-starts" id="workStarts"></div>
  <div class="resume-work" id="resumeWork" hidden>
   <button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button>
-  <button type="button" class="subtle-btn" id="forgetWorkSession">Forget</button>
+  <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
  </div>
+ <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. The Session Log stays the handoff.</p>
+ <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
 </section>
 <div class="lanes">
  <h2>The three lanes (+ on deck)</h2>
@@ -218,6 +222,7 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  workPrev=document.getElementById('workPrev'),workNext=document.getElementById('workNext'),
  resumeWork=document.getElementById('resumeWork'),resumeWorkButton=document.getElementById('resumeWorkButton'),
  resumeWorkText=document.getElementById('resumeWorkText'),forgetWorkSession=document.getElementById('forgetWorkSession'),
+ resumeWorkHint=document.getElementById('resumeWorkHint'),resumeWorkStatus=document.getElementById('resumeWorkStatus'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
  mq=document.getElementById('mq'),mlist=document.getElementById('mlist'),
@@ -323,13 +328,30 @@ function clearStoredWorkSession(storage){
 function vaultStorage(){
  try{return typeof window!=='undefined'?window.localStorage:null;}catch(err){return null;}
 }
+function announceWorkSession(message){
+ if(typeof resumeWorkStatus==='undefined'||!resumeWorkStatus)return;
+ resumeWorkStatus.textContent=String(message||'');
+}
+function applyWorkHash(kind,saved){
+ const k=String(kind||'');
+ const id=saved&&saved.kind===k?String(saved.id||''):'';
+ return openWork(k,id);
+}
+function forgetWorkSessionResult(cleared,remaining){
+ if(cleared&&!remaining)return {ok:true,message:'Forgot this browser record.'};
+ if(remaining)return {ok:false,message:'Could not clear this browser record.'};
+ return {ok:false,message:''};
+}
 function updateResumeWork(){
  if(typeof resumeWork==='undefined'||!resumeWork)return null;
  const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
  resumeWork.hidden=!saved;
+ if(typeof resumeWorkHint!=='undefined'&&resumeWorkHint)resumeWorkHint.hidden=!saved;
  if(saved&&resumeWorkText){
   const label=saved.kind[0].toUpperCase()+saved.kind.slice(1);
-  resumeWorkText.textContent=`${label} · ${sname[saved.id]}`;
+  const title=sname[saved.id]||'';
+  resumeWorkText.textContent=`${label} · ${title}`;
+  if(resumeWorkButton)resumeWorkButton.setAttribute('aria-label',`Resume ${label} session for ${title}`);
  }
  return saved;
 }
@@ -340,13 +362,27 @@ function rememberWorkSession(kind,id){
 }
 function resumeLastWorkSession(){
  const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
- if(!saved){clearStoredWorkSession(vaultStorage());updateResumeWork();return false;}
+ if(!saved){
+  clearStoredWorkSession(vaultStorage());
+  updateResumeWork();
+  announceWorkSession('No matching browser record to resume.');
+  return false;
+ }
+ announceWorkSession('');
  return openWork(saved.kind,saved.id);
 }
 function forgetLastWorkSession(){
- const cleared=clearStoredWorkSession(vaultStorage());
+ const storage=vaultStorage();
+ const cleared=clearStoredWorkSession(storage);
+ const remaining=readStoredWorkSession(storage,sname,DATA);
+ const result=forgetWorkSessionResult(cleared,remaining);
+ if(result.ok){
+  if(typeof lastWorkKind!=='undefined')lastWorkKind='';
+  if(typeof writeVaultHash==='function')writeVaultHash('','');
+ }
  updateResumeWork();
- return cleared;
+ announceWorkSession(result.message);
+ return result.ok;
 }
 function stripPrivateLocators(text){
  let s=String(text||'');
@@ -500,7 +536,10 @@ function applyVaultHash(){
  const hit=parseVaultHash(typeof location==='undefined'?'':location.hash,sname);
  if(!hit)return;
  if(hit.kind==='memos')openSongMemos(hit.id);
- else if(hit.kind==='work')openWork(hit.id);
+ else if(hit.kind==='work'){
+  const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
+  applyWorkHash(hit.id,saved);
+ }
  else openSong(hit.id);
 }
 function openWork(kind,songId){

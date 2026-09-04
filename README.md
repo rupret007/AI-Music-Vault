@@ -59,6 +59,19 @@ transcript, next action, filename, or audio locator is stored. These are local
 navigation links over the existing index;
 they do not open, upload, or modify audio. Logic projects, keys, and WAVs
 stay owner-only.
+
+### Click-test the private session
+
+Open `Jeff Story Song Vault Dashboard.html` locally. Do not upload it.
+
+1. Click Write, Produce, or Listen. Note the song name and `N of M` position.
+2. Click Next once if you want a non-first song. Note the new name and position.
+3. Refresh. The same kind and song should reopen. **Resume** still names that song.
+4. Press Escape (or Clear filters), then click **Resume**. The same song returns.
+5. Click **Forget**. Resume disappears and the status says the browser record was forgotten. Forget also drops the leftover work hash so a later refresh cannot mint a new record. A blocked browser store soft-fails instead of crashing.
+6. Refresh again. Resume stays gone.
+7. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
+
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public
 catalog dump. Nothing auto-posts.

@@ -35,6 +35,7 @@ from catalog_surface import (
     dashboard_exposes_song_work,
     dashboard_opens_owner_audio,
     dashboard_resumes_song_work_privately,
+    readme_documents_session_click_test,
 )
 from export_catalog_csv import (
     comparable_covers,
@@ -1955,6 +1956,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
     readme = extras.get("readme")
     if isinstance(readme, str) and readme.strip():
         errors.extend(public_facing_doc_errors("README.md", readme, cat))
+        if not readme_documents_session_click_test(readme):
+            errors.append(
+                "README.md must document the private session click-test: "
+                "Click Write, Produce, or Listen; Refresh; Resume; Forget; "
+                "stores only work kind and catalog ID"
+            )
 
     dash = extras.get("dashboard_html")
     if isinstance(dash, str) and dash.strip():
