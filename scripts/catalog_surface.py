@@ -399,13 +399,85 @@ _PRIVATE_STREET_NAMES = (
 )
 
 # TX stays locked unless transcripts change. DATA may change when the
-# private surface projects already-on-spine aliases for song find.
+# private surface projects already-on-spine aliases or a sanitized
+# Logic-ready cluster id. Do not invent keys or put paths in DATA.
 EMBEDDED_DATA_SHA256 = (
-    "2e5c6d2dc8555ec76f8a15f88eb3c78b2e9db5ef0e158ba9e4d8f4b0eda40ee8"
+    "bab02555bf831cf419864759a0d0c57a2911fe25ef237328514404568cb01e72"
 )
 EMBEDDED_TX_SHA256 = (
     "4d809dc53540f8c5acfe63ffcee94844634405c2a0583b2accddc9178807b467"
 )
+
+# Same clusters as the 2026-08-28 song-analysis walk. Productized as a
+# readout of existing spine + version-chain evidence — not a new score.
+LOGIC_READY_CLUSTERS = (
+    "closest_logic_dropin",
+    "logic_project_plus_key",
+    "logic_project_no_key",
+    "audio_plus_key_no_logic",
+    "audio_only",
+    "key_only",
+    "empty_logic_ready",
+)
+LOGIC_READY_LABELS = {
+    "closest_logic_dropin": "Closest Logic drop-in",
+    "logic_project_plus_key": "Logic project + key",
+    "logic_project_no_key": "Logic project · missing key",
+    "audio_plus_key_no_logic": "Keyed bounce · no Logic project",
+    "audio_only": "Bounce named · missing key",
+    "key_only": "Key only · no Logic project",
+    "empty_logic_ready": "Empty Logic-ready",
+}
+LOGIC_READY_PILLS = {
+    "closest_logic_dropin": "Logic drop-in",
+    "logic_project_plus_key": "Logic + key",
+    "logic_project_no_key": "Logic · no key",
+    "audio_plus_key_no_logic": "Keyed bounce",
+    "audio_only": "Bounce · no key",
+    "key_only": "Key only",
+    "empty_logic_ready": "Empty Logic-ready",
+}
+LOGIC_READY_NEXT = {
+    "closest_logic_dropin": (
+        "Open the existing Logic project on your Mac. "
+        "This page does not open audio."
+    ),
+    "logic_project_plus_key": (
+        "Open the existing Logic project on your Mac. "
+        "This page does not open audio."
+    ),
+    "logic_project_no_key": (
+        "Fill the missing key on your Mac. Do not invent one here."
+    ),
+    "audio_plus_key_no_logic": (
+        "Start or locate the Logic project on your Mac. "
+        "This page does not open audio."
+    ),
+    "audio_only": (
+        "Fill the missing key on your Mac after you hear the bounce. "
+        "Do not invent one here."
+    ),
+    "key_only": "Start the Logic project on your Mac from the known key.",
+    "empty_logic_ready": (
+        "No Logic-ready evidence on the catalog. Recover from Drive or "
+        "the Mac — do not invent a key."
+    ),
+}
+LOGIC_READY_RANK = {
+    "closest_logic_dropin": 0,
+    "logic_project_plus_key": 1,
+    "logic_project_no_key": 2,
+    "audio_plus_key_no_logic": 3,
+    "audio_only": 4,
+    "key_only": 5,
+    "empty_logic_ready": 6,
+}
+_LOGICX_RE = re.compile(r"\.logicx\b", re.IGNORECASE)
+_WAV_RE = re.compile(
+    r"\.(?:wav|aiff|aif)\b|\bwav\b|\baiff\b|\baif\b",
+    re.IGNORECASE,
+)
+_STEMS_RE = re.compile(r"\bstems\b", re.IGNORECASE)
 MEMO_LYRIC_QUERY_MIN = 3
 _APOS_RE = re.compile(r"['’`]")
 _NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
@@ -464,6 +536,128 @@ def flatten_work_field(value) -> str:
     if isinstance(value, (list, tuple)):
         return "; ".join(str(item).strip() for item in value if str(item).strip())
     return str(value).strip()
+
+
+def _logic_ready_field_text(row, *keys) -> list[str]:
+    parts: list[str] = []
+    if not isinstance(row, dict):
+        return parts
+    for key in keys:
+        value = row.get(key)
+        if isinstance(value, (list, tuple)):
+            parts.extend(str(item) for item in value if str(item).strip())
+        elif value:
+            parts.append(str(value))
+    return parts
+
+
+def logic_ready_evidence_text(row, chain=None) -> str:
+    """Join existing catalog + version-chain titles for Logic-ready readout.
+
+    Uses titles and kinds only. Folder paths and Drive ids stay out.
+    Notes that say 'system' or future MIDI horns are not stems or MIDI files.
+    """
+    parts = _logic_ready_field_text(
+        row,
+        "sources",
+        "src",
+        "notes",
+        "audio_status",
+        "au",
+        "best_source_resolved",
+        "bs",
+        "stage",
+        "st",
+    )
+    if isinstance(chain, dict):
+        for item in chain.get("files") or []:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or "").strip()
+            kind = str(item.get("kind") or "").strip()
+            if title:
+                parts.append(title)
+            if kind:
+                parts.append(kind)
+    return "\n".join(parts)
+
+
+def parseable_catalog_key(row) -> str:
+    """Existing key field only. Do not invent a key from notes or analysis."""
+    if not isinstance(row, dict):
+        return ""
+    return flatten_work_field(row.get("key"))
+
+
+def song_logic_ready_cluster(row, chain=None) -> str:
+    """Classify one row using the 2026-08-28 Logic-ready walk rules.
+
+    This is a readout, not a new score and not a lane change. A lone
+    mp3/m4a on sources is not enough — version-chain files, a wav word,
+    or real stems are. 'system' is not stems. MIDI horns are not MIDI files.
+    """
+    if not isinstance(row, dict):
+        return "empty_logic_ready"
+    text = logic_ready_evidence_text(row, chain)
+    low = text.lower()
+    has_key = bool(parseable_catalog_key(row))
+    has_logicx = bool(_LOGICX_RE.search(text) or "logic-project" in low)
+    has_wav = bool(_WAV_RE.search(text))
+    has_stems = bool(_STEMS_RE.search(text))
+    has_chain = bool(isinstance(chain, dict) and (chain.get("files") or []))
+    has_wav_stems = has_wav or has_stems
+    has_audio_or_chain = has_wav_stems or has_chain
+    if has_logicx and has_wav_stems and has_key:
+        return "closest_logic_dropin"
+    if has_logicx and has_key:
+        return "logic_project_plus_key"
+    if has_logicx:
+        return "logic_project_no_key"
+    if has_audio_or_chain and has_key:
+        return "audio_plus_key_no_logic"
+    if has_audio_or_chain:
+        return "audio_only"
+    if has_key:
+        return "key_only"
+    return "empty_logic_ready"
+
+
+def song_logic_ready_label(cluster) -> str:
+    return LOGIC_READY_LABELS.get(str(cluster or "").strip(), "")
+
+
+def song_logic_ready_pill(cluster) -> str:
+    return LOGIC_READY_PILLS.get(str(cluster or "").strip(), "")
+
+
+def song_logic_ready_next(cluster) -> str:
+    """Owner-only Mac step for a known cluster. Fail closed on locators."""
+    text = LOGIC_READY_NEXT.get(str(cluster or "").strip(), "")
+    if not text or work_card_leaks_private_locators(text):
+        return ""
+    return text
+
+
+def song_logic_ready_rank(cluster) -> int:
+    return int(LOGIC_READY_RANK.get(str(cluster or "").strip(), 99))
+
+
+def logic_ready_maps() -> dict:
+    """Browser maps for labels, pills, next steps, and sort rank."""
+    return {
+        "labels": dict(LOGIC_READY_LABELS),
+        "pills": dict(LOGIC_READY_PILLS),
+        "next": dict(LOGIC_READY_NEXT),
+        "rank": dict(LOGIC_READY_RANK),
+    }
+
+
+def logic_ready_next_leaks_private_locators() -> bool:
+    """Fail closed if a canned Logic-ready next step ships a locator."""
+    return any(
+        work_card_leaks_private_locators(text)
+        for text in LOGIC_READY_NEXT.values()
+    )
 
 
 def normalize_search_text(text) -> str:
@@ -553,6 +747,10 @@ def _song_search_field_hay(row) -> str:
                 flatten_work_field(row.get("ly") or row.get("lyric_status")),
                 audio,
                 flatten_work_field(row.get("key")),
+                song_logic_ready_label(
+                    flatten_work_field(row.get("lr"))
+                    or song_logic_ready_cluster(row)
+                ),
             ]
         )
     )
@@ -708,6 +906,13 @@ def song_work_card(row, evidence=None) -> str:
         lines.append(f"BPM: {bpm}")
     if gate:
         lines.append(f"Gate: {gate}")
+    cluster = flatten_work_field(row.get("lr")) or song_logic_ready_cluster(row)
+    label = song_logic_ready_label(cluster)
+    logic_next = song_logic_ready_next(cluster)
+    if label:
+        lines.append(f"Logic-ready: {label}")
+    if logic_next:
+        lines.append(f"Logic next: {logic_next}")
     if isinstance(ev, dict):
         try:
             memo_n = int(ev.get("n") or 0)
@@ -836,6 +1041,34 @@ def dashboard_finds_remembered_song_names(html: str) -> bool:
     return all(marker in chrome for marker in required)
 
 
+def dashboard_exposes_logic_ready(html: str) -> bool:
+    """First useful surface must name a sanitized Logic-ready next action."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        'id="logicReady"',
+        "Sort: Logic-ready",
+        "Any Logic-ready",
+        "function logicReadyNext(",
+        "function logicReadyLabel(",
+        "Copy Logic-ready next",
+        'id="workSessionLogic"',
+        'id="copyWorkLogic"',
+        'id="resumeWorkLogic"',
+        'id="copyResumeLogic"',
+        "sit-logic",
+        "function copyExactSongLogicNext(",
+        "function copyCurrentWorkLogic(",
+        "function copyResumeLogicNext(",
+        "function copySongLogicNext(",
+        "LOGIC_READY",
+        "Do not invent one here",
+        "This page does not open audio",
+    )
+    if not all(marker in chrome for marker in required):
+        return False
+    return not logic_ready_next_leaks_private_locators()
+
+
 def readme_documents_session_click_test(text: str) -> bool:
     """Jeff-facing README must match the real private-session click path."""
     body = (text or "").lower()
@@ -848,4 +1081,6 @@ def readme_documents_session_click_test(text: str) -> bool:
         and "catalog id" in body
         and "copy next step" in body
         and "do this now" in body
+        and "logic-ready next" in body
+        and "copy logic-ready next" in body
     )

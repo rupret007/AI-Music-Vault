@@ -16,6 +16,7 @@ from catalog_surface import (  # noqa: E402
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
@@ -280,6 +281,14 @@ def extras_ok(cat=None):
             'function songSearchHit( function markNormalized( '
             'function focusFoundSong( function handleSongSearchKey( '
             'closest name first titles, aliases, hooks memo lyric aka '
+            'id="logicReady" Sort: Logic-ready Any Logic-ready '
+            'function logicReadyNext( function logicReadyLabel( '
+            'Copy Logic-ready next '
+            'id="workSessionLogic" id="copyWorkLogic" '
+            'id="resumeWorkLogic" id="copyResumeLogic" sit-logic '
+            'function copyExactSongLogicNext( function copyCurrentWorkLogic( '
+            'function copyResumeLogicNext( function copySongLogicNext( '
+            'LOGIC_READY Do not invent one here This page does not open audio '
         ),
         "audio_files": [],
     }
@@ -1106,6 +1115,18 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+
+    def test_dashboard_without_logic_ready_next_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="logicReady"', ""
+        ).replace("Copy Logic-ready next", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("sanitized Logic-ready next action" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_exposes_logic_ready(extra["dashboard_html"]))
 
     def test_dashboard_owner_audio_index_fails_closed(self):
         extra = extras_ok()
@@ -2189,7 +2210,8 @@ class ValidateCatalogTests(unittest.TestCase):
             "128 YES / 20 NO / 2 NEEDS-CONSENT. "
             "40 setlist-ready keyed originals; 20-row Vault default-live slice. "
             "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
-            "Copy next step. Do this now. "
+            "Copy next step. Do this now. Logic-ready next. "
+            "Copy Logic-ready next. "
             "Stores only a schema version, work kind, and catalog ID.\n"
         )
         extras["apps_md"] = (
@@ -2528,6 +2550,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog remembered-name search — 2026-09-04 "
             "(Cloud Agent Extra High, no audio)"
         )
+        product_logic_ready = (
+            "Catalog Logic-ready next leftover — 2026-09-07 "
+            "(Cloud Agent Extra High, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2545,7 +2571,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(product_session_click, headings)
         self.assertIn(product_resume_next, headings)
         self.assertIn(product_name_search, headings)
-        self.assertEqual(headings[-1], product_name_search)
+        self.assertIn(product_logic_ready, headings)
+        self.assertEqual(headings[-1], product_logic_ready)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
@@ -2586,6 +2613,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
         self.assertTrue(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+        self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(readme_documents_session_click_test(extra["readme"]))
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])

@@ -32,6 +32,7 @@ from catalog_surface import (
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
@@ -2011,6 +2012,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must find songs by existing aliases, fold "
                 "punctuation, rank the closest name first, and allow Enter "
                 "to open that row"
+            )
+        if not dashboard_exposes_logic_ready(dash):
+            errors.append(
+                "dashboard must expose a sanitized Logic-ready next action "
+                "from existing catalog evidence — no invented keys, no "
+                "Logic/WAV paths"
             )
 
     audio_hits = extras.get("audio_files")

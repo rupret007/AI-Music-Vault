@@ -534,3 +534,19 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Next continuation point
 Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Use the Songs search box to type the name Jeff actually remembers — alias, folded punctuation, or a long-enough memo lyric — then Enter the first row; use this latest Session Log section for the authoritative project handoff. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Catalog Logic-ready next leftover — 2026-09-07 (Cloud Agent Extra High, no audio)
+### Done
+1. Started from exact private main `ea9ce591` after leftover-squash #35. Write / Produce / Listen already opened one song and showed a sanitized catalog next step, but Logic-ready honesty stayed in the control-room walk. Sit-down still did not say closest drop-in vs missing key vs empty.
+2. The same private Songs surface now projects the existing 2026-08-28 cluster from spine fields plus version-chain titles/kinds only. Sit-down, the session strip, and Resume show a sanitized **Logic-ready next**. More filters can narrow or sort by that cluster. Copy Logic-ready next fails closed. Browser storage stays schema version + work kind + catalog ID only.
+3. Validator and focused navigation tests lock the path. Embedded DATA changes only by projecting the cluster id; TX stays locked. No invented keys, titles, IDs, or Logic/WAV paths on the surface.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Use sit-down **Logic-ready next** to see the owner-only Mac step for the exact song; fill real keys and recover unmatched/UnRecorded lists from Drive on Jeff's Mac—never invent keys, titles, IDs, or paths. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Hosted validate may be a 0-step empty-runner. Do not change billing.

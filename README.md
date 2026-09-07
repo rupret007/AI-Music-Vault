@@ -56,11 +56,15 @@ best_source paths. The primary work buttons open the highest-momentum matching
 song immediately, name its position in a bounded queue, and keep secondary
 catalog filters collapsed until they are needed. The session header puts the
 sanitized catalog next step in front of Jeff with **Copy next step** and, when
-searchable matched memos exist, **Review memo evidence**. After Escape, the
-Resume strip keeps that same **Do this now** line and copy action for the exact
-stored song. Sit-down and memo scope reuse the same fail-closed step — they do
-not reprint leftover listen verbs. Missing evidence is labeled plainly; an empty
-or unsafe next step produces no copy action. After a song is opened, the
+searchable matched memos exist, **Review memo evidence**. Sit-down also names
+the existing Logic-ready cluster and a sanitized **Logic-ready next** for the
+Mac; **Copy Logic-ready next** stays hidden if that sentence is empty or unsafe.
+It never invents a key and never names a Logic project or bounce file. After
+Escape, the Resume strip keeps that same **Do this now** line and copy action
+for the exact stored song, plus the Logic-ready next when it is safe. Sit-down
+and memo scope reuse the same fail-closed catalog step — they do not reprint
+leftover listen verbs. Missing evidence is labeled plainly; an empty or unsafe
+next step produces no copy action. After a song is opened, the
 dashboard can resume that exact local session after a refresh. The browser
 stores only a schema version, work kind, and catalog ID; **Forget** clears it,
 and invalid, stale, or mismatched records are discarded. No title, note,
@@ -84,6 +88,8 @@ Open `Jeff Story Song Vault Dashboard.html` locally. Do not upload it.
 9. Refresh again. Resume stays gone.
 10. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
 11. On Songs, type a remembered alias or a title without apostrophes. The closest name is first. Press Enter to open that row. Escape clears the search. A long enough query may also list a song from a searchable matched memo lyric — that is a lead, not a listen.
+12. Read **Logic-ready next** on sit-down and on the session strip. It must name only a cluster and an owner-only Mac step. It must not name a Logic project, WAV, key path, or street. If **Copy Logic-ready next** is visible, the clipboard text matches that sentence.
+13. After Escape, Resume still shows **Logic-ready next** / **Copy Logic-ready next** when that sentence is safe. More filters can narrow or sort by Logic-ready. That is existing evidence, not a new score and not a key fill.
 
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public
