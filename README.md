@@ -4,7 +4,7 @@
 
 This is the working brain of the Jeff Story catalog: 150 song entities spanning 1999–2026 across Stalemate, Something Dirty, Trailer Swift, Rad Dad, and solo work — plus the tooling that found, matched, scored, and keeps track of all of it.
 
-> ⚠️ **Private repository.** Contains unreleased album material, personal lyrics, collaborators' compositions, and home-address strings inside voice-memo titles. Not for public distribution. Audio masters are deliberately **not** stored here — they live in the local vault and Google Drive.
+> ⚠️ **Public repository (for GitHub Actions).** This repo still contains unreleased album material, personal lyrics, collaborators' compositions, and home-address strings inside some historical voice-memo titles. Audio masters are deliberately **not** stored here — they live in the local vault and Google Drive.
 
 ---
 
@@ -38,8 +38,9 @@ python3 scripts/export_catalog_csv.py --check
 These checks read the committed catalog metadata, StoryBoard export, and local
 generated dashboard only.
 They do not open or upload audio, modify originals, or contact an AI service.
-Keep the repository and its test output private because catalog metadata can
-still contain unreleased, personal, collaborator, or location information.
+Treat local clones, screenshots, and test logs as sensitive because catalog
+metadata can still contain unreleased, personal, collaborator, or location
+information.
 The private dashboard links catalog songs that have searchable matched voice
 memos to that evidence, and each matched memo back to its song. Songs with
 searchable matches can be scanned, filtered, and sorted by latest memo date;
@@ -56,11 +57,21 @@ best_source paths. The primary work buttons open the highest-momentum matching
 song immediately, name its position in a bounded queue, and keep secondary
 catalog filters collapsed until they are needed. The session header puts the
 sanitized catalog next step in front of Jeff with **Copy next step** and, when
-searchable matched memos exist, **Review memo evidence**. After Escape, the
-Resume strip keeps that same **Do this now** line and copy action for the exact
-stored song. Sit-down and memo scope reuse the same fail-closed step — they do
-not reprint leftover listen verbs. Missing evidence is labeled plainly; an empty
-or unsafe next step produces no copy action. After a song is opened, the
+searchable matched memos exist, **Review memo evidence**. Sit-down also names
+the existing Logic-ready cluster, its real Logic-native **Assets on file**
+(Logic Pro project / WAV/AIFF / Stems / Recorded take / Key on file — words
+only, read from the same evidence as the cluster, never a filename), and a
+sanitized **Logic-ready next** for the Mac; **Copy Logic-ready next** stays
+hidden if that sentence is empty or unsafe. It never invents a key, a format
+Jeff didn't already log, or a Logic project / bounce filename. A song whose
+only evidence is a version-chain audio file reads as a plain "Recorded take"
+— it does not get called a WAV/AIFF unless that word is actually on file.
+After Escape, the Resume strip keeps that same **Do this now** line and copy
+action for the exact stored song, plus the Logic-ready next and its assets
+when they are safe. Sit-down
+and memo scope reuse the same fail-closed catalog step — they do not reprint
+leftover listen verbs. Missing evidence is labeled plainly; an empty or unsafe
+next step produces no copy action. After a song is opened, the
 dashboard can resume that exact local session after a refresh. The browser
 stores only a schema version, work kind, and catalog ID; **Forget** clears it,
 and invalid, stale, or mismatched records are discarded. No title, note,
@@ -84,6 +95,8 @@ Open `Jeff Story Song Vault Dashboard.html` locally. Do not upload it.
 9. Refresh again. Resume stays gone.
 10. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
 11. On Songs, type a remembered alias or a title without apostrophes. The closest name is first. Press Enter to open that row. Escape clears the search. A long enough query may also list a song from a searchable matched memo lyric — that is a lead, not a listen.
+12. Read **Logic-ready next** on sit-down and on the session strip. It must name only a cluster, its real **Assets on file** (a plain word list — Logic Pro project / WAV/AIFF / Stems / Recorded take / Key on file), and an owner-only Mac step in Logic Pro's own language. It must not name a Logic project filename, WAV filename, key path, or street. If **Copy Logic-ready next** is visible, the clipboard text matches that sentence.
+13. After Escape, Resume still shows **Logic-ready next**, its **Assets on file**, and **Copy Logic-ready next** when that sentence is safe. More filters can narrow or sort by Logic-ready. That is existing evidence, not a new score and not a key fill — a chain-only recorded take is never relabeled WAV/AIFF, and no cluster names MIDI unless it's the real Basic Pitch workbench tip for a song missing a Logic Pro project.
 
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public

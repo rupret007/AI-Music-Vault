@@ -17,8 +17,9 @@ Success output is roles and counts only — no published ids.
 
 Run:  python3 scripts/validate_catalog.py
 Exit: 0 if clean, 1 if any error (local validate fails closed).
-Hosted catalog-validate on this private repo may be a 0-step
-empty-runner — that red is not a catalog fail.
+Hosted catalog-validate may occasionally show infra-only red
+(including historical private-repo empty-runner behavior). Local
+validate is the catalog gate.
 """
 from __future__ import annotations
 
@@ -32,6 +33,7 @@ from catalog_surface import (
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
@@ -532,7 +534,7 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         errors.append(
             "app_api.json must be local JSON — StoryBoard #12 rejects a "
             "remote catalog locator (url / href / sourceUrl / catalogUrl / "
-            "fetch). This private catalog is not a public fetch."
+            "fetch). This local catalog feed is not a public fetch."
         )
     if vault_payload_looks_like_spine(api):
         errors.append(
@@ -744,7 +746,7 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         if sb.get("remote_catalog_urls") is not REMOTE_CATALOG_URLS:
             errors.append(
                 "storyboard.remote_catalog_urls must be false — this "
-                "private catalog is not a public fetch"
+                "local catalog feed is not a public fetch"
             )
         if sb.get("band_operations_import") != BAND_OPERATIONS_IMPORT:
             errors.append(
@@ -2011,6 +2013,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must find songs by existing aliases, fold "
                 "punctuation, rank the closest name first, and allow Enter "
                 "to open that row"
+            )
+        if not dashboard_exposes_logic_ready(dash):
+            errors.append(
+                "dashboard must expose a sanitized Logic-ready next action "
+                "from existing catalog evidence — no invented keys, no "
+                "Logic/WAV paths"
             )
 
     audio_hits = extras.get("audio_files")

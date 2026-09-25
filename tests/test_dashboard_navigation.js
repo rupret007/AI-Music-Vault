@@ -63,6 +63,20 @@ for (const marker of [
   "function allowedExactWorkSongId(",
   "function copyExactSongNextStep(",
   "function copyResumeWorkNext(",
+  "function logicReadyNext(",
+  "function logicReadyLabel(",
+  "function copyExactSongLogicNext(",
+  "function copyCurrentWorkLogic(",
+  "function copyResumeLogicNext(",
+  "function copySongLogicNext(",
+  "Copy Logic-ready next",
+  "id=\"logicReady\"",
+  "id=\"workSessionLogic\"",
+  "id=\"copyWorkLogic\"",
+  "id=\"resumeWorkLogic\"",
+  "id=\"copyResumeLogic\"",
+  "sit-logic",
+  "Sort: Logic-ready",
   "safeWorkNextStep(d)",
   "function openWork(",
   "function updateWorkSessionState(",
@@ -112,6 +126,17 @@ if (html.includes("onclick=")) fail("generated dashboard must use delegated even
 if (html.includes("<audio")) fail("generated dashboard must not open audio");
 if (html.includes("Latest source (auto-resolved)") || html.includes("<h4>Known assets</h4>")) {
   fail("generated dashboard must not display owner-audio locators");
+}
+if (!html.includes("const LOGIC_READY = ")) {
+  fail("generated dashboard must embed sanitized Logic-ready maps");
+}
+const logicReadyMaps = JSON.parse(html.split("const LOGIC_READY = ")[1].split(";\n")[0]);
+for (const cluster of Object.keys(logicReadyMaps.next || {})) {
+  const next = String(logicReadyMaps.next[cluster] || "");
+  if (!next) fail("Logic-ready next missing for " + cluster);
+  if (/\.(wav|aiff|aif|logicx|m4a|mp3|flac|band)\b/i.test(next) || /file:\/\//i.test(next)) {
+    fail("Logic-ready next leaked a locator for " + cluster);
+  }
 }
 
 const names = { "JS-0001": "First Song", "JS-0002": "Second Song" };
@@ -382,6 +407,18 @@ if (safeWorkNextStep({ nx: "LISTEN: Crescent Dr 21." }) !== "") {
   fail("session next step must fail closed when a leftover listen verb is all that remains");
 }
 
+const logicReadyNext = new Function(
+  "LOGIC_READY",
+  "workCardLeaks",
+  "return (" + extractFunction(script, "logicReadyNext") + ");",
+)(logicReadyMaps, workCardLeaks);
+if (!logicReadyNext("closest_logic_dropin").startsWith("Open the existing Logic Pro project on your Mac")) {
+  fail("closest Logic drop-in must name an owner-only Mac step");
+}
+if (logicReadyNext("missing") !== "") {
+  fail("unknown Logic-ready cluster must fail closed");
+}
+
 const buildSongWorkCard = new Function(
   "flattenWorkField",
   "songWorkKind",
@@ -422,6 +459,47 @@ if (!memoCard.includes("Memos: 3 searchable · latest 2025-10-14")) {
   fail("work card may include memo count and date");
 }
 if (memoCard.includes("take.wav")) fail("work card must omit intake filenames");
+const logicReadyFormats = new Function(
+  "return (" + extractFunction(script, "logicReadyFormats") + ");",
+)();
+const logicCard = new Function(
+  "flattenWorkField",
+  "songWorkKind",
+  "stripPrivateLocators",
+  "workCardLeaks",
+  "safeWorkNextStep",
+  "logicReadyLabel",
+  "logicReadyNext",
+  "logicReadyFormats",
+  "return (" + extractFunction(script, "buildSongWorkCard") + ");",
+)(
+  new Function("return (" + extractFunction(script, "flattenWorkField") + ");")(),
+  songWorkKind,
+  stripPrivateLocators,
+  workCardLeaks,
+  safeWorkNextStep,
+  new Function("LOGIC_READY", "return (" + extractFunction(script, "logicReadyLabel") + ");")(logicReadyMaps),
+  logicReadyNext,
+  logicReadyFormats,
+)({
+  id: "ST-0001",
+  t: "Flagship",
+  nx: "Track the remaining overdubs",
+  lr: "closest_logic_dropin",
+  lrf: ["Logic Pro project", "WAV/AIFF", "Key on file"],
+});
+if (
+  !logicCard.includes("Logic-ready: Closest Logic Pro drop-in") ||
+  !logicCard.includes("Logic next: Open the existing Logic Pro project on your Mac")
+) {
+  fail("work card must carry the sanitized Logic-ready next");
+}
+if (!logicCard.includes("Assets on file: Logic Pro project · WAV/AIFF · Key on file")) {
+  fail("work card must carry the Logic-native asset tags");
+}
+if (logicCard.includes(".logicx") || logicCard.includes(".wav")) {
+  fail("Logic-ready work card must not reprint project or bounce filenames");
+}
 
 const latestMemoForSong = new Function(
   "return (" + extractFunction(script, "latestMemoForSong") + ");",
@@ -575,6 +653,25 @@ const wrongKindCopy = new Function(
 );
 if (wrongKindCopy("JS-0002", copyButton)) {
   fail("copy next step must fail closed when the stored kind no longer matches");
+}
+
+const copiedLogic = [];
+const copyExactSongLogicNext = new Function(
+  "DATA", "logicReadyNext", "copyVaultText", "allowedExactWorkSongId", "songWorkKind", "work",
+  "return (" + extractFunction(script, "copyExactSongLogicNext") + ");",
+)(
+  [{ id: "JS-0002", nx: "Record lead guitar over choruses + solos", lr: "audio_only" }],
+  logicReadyNext,
+  (value, button, label) => { copiedLogic.push({ value, button, label }); return !!value; },
+  (id) => id === "JS-0002" ? id : "",
+  songWorkKind,
+  { value: "produce" },
+);
+if (!copyExactSongLogicNext("JS-0002", { dataset: { songId: "JS-0002" } }) || copiedLogic[0].value !== logicReadyNext("audio_only") || copiedLogic[0].label !== "Copy Logic-ready next") {
+  fail("copy Logic-ready next must copy only the canned owner-only sentence");
+}
+if (copyExactSongLogicNext("missing", { dataset: { songId: "missing" } })) {
+  fail("copy Logic-ready next must fail closed for a missing song");
 }
 
 const reviewedEvidence = [];
@@ -778,6 +875,26 @@ if (ranked[0].row.id !== "ST-0019" || ranked[0].hit.via !== "name") {
 }
 if (ranked[1].row.id !== "JS-9998" || ranked[2].row.id !== "JS-9999") {
   fail("field hits must outrank memo-lyric-only hits");
+}
+const logicReadyRank = new Function(
+  "LOGIC_READY",
+  "return (" + extractFunction(script, "logicReadyRank") + ");",
+)(logicReadyMaps);
+const logicSorted = new Function(
+  "songSearchHit",
+  "logicReadyRank",
+  "return (" + extractFunction(script, "sortSongRows") + ");",
+)(songSearchHit, logicReadyRank)(
+  [
+    { id: "JS-EMPTY", t: "Empty", lr: "empty_logic_ready", mom: 90 },
+    { id: "ST-DROP", t: "Drop-in", lr: "closest_logic_dropin", mom: 10 },
+    { id: "JS-KEY", t: "Keyed", lr: "key_only", mom: 80 },
+  ],
+  "",
+  "logic",
+);
+if (logicSorted[0].row.id !== "ST-DROP" || logicSorted[1].row.id !== "JS-KEY" || logicSorted[2].row.id !== "JS-EMPTY") {
+  fail("Logic-ready sort must put closest drop-in first without inventing keys");
 }
 const markNormalized = new Function(
   "esc",

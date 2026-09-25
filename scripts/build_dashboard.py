@@ -11,12 +11,17 @@ import json, os, sys
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from catalog_surface import (  # noqa: E402
+    LOGIC_READY_CLUSTERS,
+    LOGIC_READY_LABELS,
     ON_DECK_NOTE,
     SURFACE_SUBTITLE,
     build_memo_search_index,
+    logic_ready_maps,
     overlay_feed_scopes,
     played_badge_label,
     song_aliases,
+    song_logic_ready_cluster,
+    song_logic_ready_evidence_tags,
     song_work_kind,
     surface_stage_label,
 )
@@ -24,11 +29,13 @@ from catalog_surface import (  # noqa: E402
 CAT_PATH = os.path.join(HERE, "data", "master_catalog.json")
 API_PATH = os.path.join(HERE, "data", "app_api.json")
 TX_PATH = os.path.join(HERE, "data", "vm_transcribed.json")
+CHAIN_PATH = os.path.join(HERE, "data", "version_chains.json")
 VM_MATCHES_PATH = os.path.join(HERE, "01_source_manifests", "voicememo", "vm_matches.json")
 OUT_PATH = os.path.join(HERE, "Jeff Story Song Vault Dashboard.html")
 
 cat = json.load(open(CAT_PATH))
 app_api = json.load(open(API_PATH)) if os.path.exists(API_PATH) else {}
+chains = json.load(open(CHAIN_PATH)) if os.path.exists(CHAIN_PATH) else {}
 slim = []
 for s in cat['songs']:
     row = dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
@@ -40,7 +47,9 @@ for s in cat['songs']:
         src=s.get('sources',[]), sc=s.get('soundcloud',[]), oq=s.get('open_questions',''),
         wr=', '.join(s.get('writers',[])),
         live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
-        gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''))
+        gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''),
+        lr=song_logic_ready_cluster(s, chains.get(s['song_id'])),
+        lrf=song_logic_ready_evidence_tags(s, chains.get(s['song_id'])))
     aliases = song_aliases(s)
     if aliases:
         row['aka'] = aliases
@@ -56,6 +65,11 @@ def _lane_work_pill(song_id: str) -> str:
     return f'<span class="pill wk-{kind} lane-work">{kind}</span>'
 
 DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
+LOGIC_READY = json.dumps(logic_ready_maps(), ensure_ascii=False).replace('</', '<\\/')
+LOGIC_READY_FILTER = "".join(
+    f'<option value="{cluster}">{LOGIC_READY_LABELS[cluster]}</option>'
+    for cluster in LOGIC_READY_CLUSTERS
+)
 
 # Transcripts: compact index (title, date, duration, cleaned text capped at 1500
 # chars). Overlay song_id from vm_matches.json (372/88); the transcript file
@@ -154,6 +168,8 @@ input{flex:1;min-width:160px}
 .sit-memo{margin-top:4px}
 .lane-work{margin-left:4px}
 .work-session-copy{font-weight:700;color:var(--ink);margin-top:4px;max-width:650px}
+.sit-logic{margin-top:6px}
+.sit-logic-assets{margin-top:4px;color:var(--ink2);font-size:12.5px}
 .work-session-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .work-session-actions .primary-action{border-color:var(--pot);color:var(--ink)}
 @media(max-width:640px){.work-start{flex:1}.resume-work{align-items:stretch}.controls>input{flex-basis:100%}.advanced-filters{margin-left:auto}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{right:0}}
@@ -163,13 +179,16 @@ input{flex:1;min-width:160px}
 <div class="stats" id="stats"></div>
 <section class="work-now" aria-labelledby="workNowTitle">
  <h2 id="workNowTitle">Start a work session</h2>
- <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized next step in front of you. Forget clears the local record.</p>
+ <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
  <div class="work-starts" id="workStarts"></div>
  <div class="resume-work" id="resumeWork" hidden>
   <button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button>
   <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
   <div class="resume-next" id="resumeWorkNext" hidden></div>
   <button type="button" class="subtle-btn primary-action" id="copyResumeNext" hidden>Copy next step</button>
+  <div class="resume-next" id="resumeWorkLogic" hidden></div>
+  <div class="resume-next" id="resumeWorkAssets" hidden></div>
+  <button type="button" class="subtle-btn" id="copyResumeLogic" hidden>Copy Logic-ready next</button>
  </div>
  <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. The Session Log stays the handoff.</p>
  <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
@@ -193,17 +212,19 @@ input{flex:1;min-width:160px}
   <option value="mom">Sort: Momentum (what's alive)</option>
   <option value="pot">Sort: Potential</option><option value="rdy">Sort: Readiness</option>
   <option value="id">Sort: Catalog ID</option><option value="t">Sort: Title</option>
-  <option value="memo">Sort: Latest memo evidence</option></select>
+  <option value="memo">Sort: Latest memo evidence</option>
+  <option value="logic">Sort: Logic-ready (closest drop-in first)</option></select>
  <details class="advanced-filters" id="advancedFilters"><summary>More filters</summary><div class="advanced-menu">
   <select id="proj"><option value="">All projects</option></select>
   <select id="scored"><option value="">All songs</option><option value="1">Scored only</option><option value="0">Unscored / to explore</option></select>
   <select id="scope"><option value="">All StoryBoard scopes</option></select>
   <select id="evidence"><option value="">Any memo evidence</option><option value="1">Has searchable memos</option><option value="0">No searchable memos</option></select>
   <select id="work"><option value="">Any work</option><option value="write">Write</option><option value="produce">Produce</option><option value="listen">Listen</option><option value="rest">Rest</option><option value="inventory">Inventory</option><option value="decide">Decide</option></select>
+  <select id="logicReady"><option value="">Any Logic-ready</option>__LOGIC_READY_FILTER__</select>
  </div></details>
 </div>
 <div class="resultbar"><span id="songResults" aria-live="polite"></span><button type="button" class="subtle-btn" id="clearSongFilters">Clear filters</button></div>
-<div class="memo-scope" id="workSession" hidden><div><span id="workSessionText"></span><div class="work-session-copy" id="workSessionNext" hidden></div><div class="memo-next" id="workSessionEvidence"></div></div><span class="work-session-actions"><button type="button" class="subtle-btn primary-action" id="copyWorkNext" hidden>Copy next step</button> <button type="button" class="subtle-btn" id="openWorkEvidence" hidden>Review memo evidence</button> <button type="button" class="subtle-btn" id="workPrev" data-work-step="-1">Previous</button> <button type="button" class="subtle-btn" id="workNext" data-work-step="1">Next</button></span></div>
+<div class="memo-scope" id="workSession" hidden><div><span id="workSessionText"></span><div class="work-session-copy" id="workSessionNext" hidden></div><div class="memo-next" id="workSessionLogic" hidden></div><div class="memo-next" id="workSessionAssets" hidden></div><div class="memo-next" id="workSessionEvidence"></div></div><span class="work-session-actions"><button type="button" class="subtle-btn primary-action" id="copyWorkNext" hidden>Copy next step</button> <button type="button" class="subtle-btn" id="copyWorkLogic" hidden>Copy Logic-ready next</button> <button type="button" class="subtle-btn" id="openWorkEvidence" hidden>Review memo evidence</button> <button type="button" class="subtle-btn" id="workPrev" data-work-step="-1">Previous</button> <button type="button" class="subtle-btn" id="workNext" data-work-step="1">Next</button></span></div>
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
@@ -218,6 +239,7 @@ input{flex:1;min-width:160px}
 <div class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAVs stay on your Mac — this page does not open audio.</div>
 <script>
 const DATA = __DATA__;
+const LOGIC_READY = __LOGIC_READY__;
 const TX = __TX__;
 const TX_TOTAL = __TX_TOTAL__;
 const TX_MATCHED_TOTAL = __TX_MATCHED_TOTAL__;
@@ -227,17 +249,23 @@ const WORK_SESSION_KEY='vault:last-work:v1';
 const q=document.getElementById('q'),proj=document.getElementById('proj'),
  sort=document.getElementById('sort'),scored=document.getElementById('scored'),
  scope=document.getElementById('scope'),evidence=document.getElementById('evidence'),
- work=document.getElementById('work'),workStarts=document.getElementById('workStarts'),
+ work=document.getElementById('work'),logicReady=document.getElementById('logicReady'),
+ workStarts=document.getElementById('workStarts'),
  list=document.getElementById('list'),
  songResults=document.getElementById('songResults'),clearSongFilters=document.getElementById('clearSongFilters'),
  workSession=document.getElementById('workSession'),workSessionText=document.getElementById('workSessionText'),
- workSessionNext=document.getElementById('workSessionNext'),workSessionEvidence=document.getElementById('workSessionEvidence'),
- copyWorkNext=document.getElementById('copyWorkNext'),openWorkEvidence=document.getElementById('openWorkEvidence'),
+ workSessionNext=document.getElementById('workSessionNext'),workSessionLogic=document.getElementById('workSessionLogic'),
+ workSessionAssets=document.getElementById('workSessionAssets'),
+ workSessionEvidence=document.getElementById('workSessionEvidence'),
+ copyWorkNext=document.getElementById('copyWorkNext'),copyWorkLogic=document.getElementById('copyWorkLogic'),
+ openWorkEvidence=document.getElementById('openWorkEvidence'),
  workPrev=document.getElementById('workPrev'),workNext=document.getElementById('workNext'),
  resumeWork=document.getElementById('resumeWork'),resumeWorkButton=document.getElementById('resumeWorkButton'),
  resumeWorkText=document.getElementById('resumeWorkText'),forgetWorkSession=document.getElementById('forgetWorkSession'),
  resumeWorkHint=document.getElementById('resumeWorkHint'),resumeWorkStatus=document.getElementById('resumeWorkStatus'),
  resumeWorkNext=document.getElementById('resumeWorkNext'),copyResumeNext=document.getElementById('copyResumeNext'),
+ resumeWorkLogic=document.getElementById('resumeWorkLogic'),copyResumeLogic=document.getElementById('copyResumeLogic'),
+ resumeWorkAssets=document.getElementById('resumeWorkAssets'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
  mq=document.getElementById('mq'),mlist=document.getElementById('mlist'),
@@ -380,6 +408,22 @@ function updateResumeWork(){
   copyResumeNext.dataset.songId=next&&song?String(song.id||''):'';
   copyResumeNext.setAttribute('aria-label',next&&song?`Copy next step for ${sname[song.id]||song.id}`:'No safe next step to copy');
  }
+ const logic=typeof logicReadyNext==='function'?logicReadyNext(song&&song.lr):'';
+ if(typeof resumeWorkLogic!=='undefined'&&resumeWorkLogic){
+  resumeWorkLogic.hidden=!logic;
+  resumeWorkLogic.textContent=logic?`Logic-ready next: ${logic}`:'';
+ }
+ const resumeFormats=typeof logicReadyFormats==='function'?logicReadyFormats(song):[];
+ if(typeof resumeWorkAssets!=='undefined'&&resumeWorkAssets){
+  resumeWorkAssets.hidden=!resumeFormats.length;
+  resumeWorkAssets.textContent=resumeFormats.length?`Assets on file: ${resumeFormats.join(' · ')}`:'';
+ }
+ if(typeof copyResumeLogic!=='undefined'&&copyResumeLogic){
+  copyResumeLogic.hidden=!logic;
+  copyResumeLogic.disabled=!logic;
+  copyResumeLogic.dataset.songId=logic&&song?String(song.id||''):'';
+  copyResumeLogic.setAttribute('aria-label',logic&&song?`Copy Logic-ready next for ${sname[song.id]||song.id}`:'No Logic-ready next to copy');
+ }
  return saved;
 }
 function rememberWorkSession(kind,id){
@@ -433,6 +477,28 @@ function safeWorkNextStep(song){
  const next=stripPrivateLocators(flattenWorkField(song.nx));
  return next&&!nextStepIsIncomplete(next)&&!workCardLeaks(next)?next:'';
 }
+function logicReadyLabel(cluster){
+ const maps=typeof LOGIC_READY!=='undefined'?LOGIC_READY:{};
+ return String((maps.labels||{})[cluster]||'');
+}
+function logicReadyPill(cluster){
+ const maps=typeof LOGIC_READY!=='undefined'?LOGIC_READY:{};
+ return String((maps.pills||{})[cluster]||'');
+}
+function logicReadyNext(cluster){
+ const maps=typeof LOGIC_READY!=='undefined'?LOGIC_READY:{};
+ const next=String((maps.next||{})[cluster]||'');
+ return next&&!workCardLeaks(next)?next:'';
+}
+function logicReadyFormats(song){
+ const tags=song&&Array.isArray(song.lrf)?song.lrf:[];
+ return tags.map(t=>String(t||'').trim()).filter(Boolean);
+}
+function logicReadyRank(cluster){
+ const maps=typeof LOGIC_READY!=='undefined'?LOGIC_READY:{};
+ const n=Number((maps.rank||{})[cluster]);
+ return Number.isFinite(n)?n:99;
+}
 function latestMemoForSong(songId,rows){
  const id=String(songId||'');
  const src=rows||(typeof TX!=='undefined'?TX:[]);
@@ -470,6 +536,12 @@ function buildSongWorkCard(song,evidence){
  if(song.bpm)lines.push('BPM: '+String(song.bpm));
  const gate=flattenWorkField(String(song.gate||'').split('—')[0]);
  if(gate)lines.push('Gate: '+gate);
+ const lrLabel=typeof logicReadyLabel==='function'?logicReadyLabel(song.lr):'';
+ const lrNext=typeof logicReadyNext==='function'?logicReadyNext(song.lr):'';
+ const lrFormats=typeof logicReadyFormats==='function'?logicReadyFormats(song):[];
+ if(lrLabel)lines.push('Logic-ready: '+lrLabel);
+ if(lrFormats.length)lines.push('Assets on file: '+lrFormats.join(' · '));
+ if(lrNext)lines.push('Logic next: '+lrNext);
  const ev=evidence||(song&&typeof memoEvidenceBySong!=='undefined'&&memoEvidenceBySong[song.id])||null;
  if(ev&&ev.n)lines.push('Memos: '+ev.n+' searchable'+(ev.last?' · latest '+ev.last:''));
  const card=lines.filter(Boolean).join('\n');
@@ -521,7 +593,7 @@ function songSearchHit(row,term){
  if(kept.some(name=>name.startsWith(norm)))return {hit:true,rank:1,via:'name'};
  if(kept.some(name=>name.includes(norm)))return {hit:true,rank:2,via:'name'};
  const audio=String(row.au||'').split('—')[0];
- const field=normalizeSearch([row.th,row.hk,row.c,row.st,row.wr,stripPrivateLocators(row.nx||''),row.oq,row.gate,row.scope_label,row.ly,audio,row.key].join(' '));
+ const field=normalizeSearch([row.th,row.hk,row.c,row.st,row.wr,stripPrivateLocators(row.nx||''),row.oq,row.gate,row.scope_label,row.ly,audio,row.key,typeof logicReadyLabel==='function'?logicReadyLabel(row.lr):''].join(' '));
  if(field.includes(norm))return {hit:true,rank:3,via:'field'};
  if(norm.length>=3&&memoLyricNorm(row.id).includes(norm))return {hit:true,rank:4,via:'memo'};
  return {hit:false,rank:99,via:''};
@@ -563,6 +635,11 @@ function sortSongRows(rows,term,sortKey){
    if(!db)return -1;
    return db.localeCompare(da)||(eb.n-ea.n)||a.row.id.localeCompare(b.row.id);
   }
+  if(k==='logic'){
+   const ra=typeof logicReadyRank==='function'?logicReadyRank(a.row.lr):99;
+   const rb=typeof logicReadyRank==='function'?logicReadyRank(b.row.lr):99;
+   return (ra-rb)||((b.row.mom||0)-(a.row.mom||0))||a.row.id.localeCompare(b.row.id);
+  }
   if(k==='t')return a.row.t.localeCompare(b.row.t)||a.row.id.localeCompare(b.row.id);
   if(k==='id')return a.row.id.localeCompare(b.row.id);
   return ((b.row[k]||0)-(a.row[k]||0))||a.row.id.localeCompare(b.row.id);
@@ -578,7 +655,8 @@ function bar(v,c){
 function render(){
  const rawTerm=q.value, term=String(rawTerm||'').trim(), pv=proj.value, sv=scored.value, scv=scope.value,
   evv=(typeof evidence!=='undefined'&&evidence)?evidence.value:'',
-  wv=(typeof work!=='undefined'&&work)?work.value:'';
+  wv=(typeof work!=='undefined'&&work)?work.value:'',
+  lrv=(typeof logicReady!=='undefined'&&logicReady)?logicReady.value:'';
  const filtered=[];
  DATA.forEach(d=>{
   if(pv&&d.p!==pv)return;
@@ -587,6 +665,7 @@ function render(){
   if(evv==='1'&&!memoEvidenceBySong[d.id])return;
   if(evv==='0'&&memoEvidenceBySong[d.id])return;
   if(wv&&songWorkKind(d.nx)!==wv)return;
+  if(lrv&&d.lr!==lrv)return;
   const hit=term?songSearchHit(d,term):{hit:true,rank:99,via:''};
   if(hit.hit)filtered.push(d);
  });
@@ -598,7 +677,7 @@ function render(){
  songResults.textContent=term
   ?`Showing ${rows.length} of ${DATA.length} songs · closest name first`
   :`Showing ${rows.length} of ${DATA.length} songs`;
- clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||k!=='mom');
+ clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||lrv||k!=='mom');
  if(typeof visibleSongIds!=='undefined')visibleSongIds=rows.map(d=>d.id);
  list.innerHTML=rows.length?rows.map((d,i)=>{
   const wk=songWorkKind(d.nx);
@@ -612,13 +691,16 @@ function render(){
   const aliases=songAliases(d);
   const akaLabel=aliases.length?aliases.join(' · '):'';
   const via=viaById[d.id]||'';
+  const lrPill=typeof logicReadyPill==='function'?logicReadyPill(d.lr):'';
+  const lrNext=typeof logicReadyNext==='function'?logicReadyNext(d.lr):'';
+  const lrFormats=typeof logicReadyFormats==='function'?logicReadyFormats(d):[];
   return `
  <div class="row" data-song-id="${esc(d.id)}"><div class="rhead" role="button" tabindex="0" aria-expanded="false" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
-  <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
+  <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?` <span class="pill">${esc(lrPill)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
  </div><div class="detail" hidden>
-  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latest.f)}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latest.f)}">Copy intake name</button><div class="memo-next">Copy the intake name; write, produce, or listen on your Mac. This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen on your Mac. This page does not open audio.</div>`}</div>
+  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${lrFormats.length?`<div class="sit-logic-assets">Assets on file: ${lrFormats.map(t=>esc(t)).join(' · ')}</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)} <button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button></div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latest.f)}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latest.f)}">Copy intake name</button><div class="memo-next">Copy the intake name; write, produce, or listen on your Mac. This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen on your Mac. This page does not open audio.</div>`}</div>
   ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
   ${hook?`<h4>Hook</h4>${esc(hook)}`:''}
   <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${d.mom?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
@@ -713,6 +795,7 @@ function openWork(kind,songId){
  q.value='';proj.value='';scored.value='';scope.value='';
  if(typeof sort!=='undefined'&&sort)sort.value='mom';
  if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+ if(typeof logicReady!=='undefined'&&logicReady)logicReady.value='';
  if(typeof work!=='undefined'&&work)work.value=k;
  showTab('S');render();
  if(typeof writeVaultHash==='function')writeVaultHash('work',k);
@@ -735,16 +818,32 @@ function updateWorkSessionState(){
  }
  const song=idx>=0&&typeof DATA!=='undefined'?DATA.find(row=>row&&row.id===ids[idx]):null;
  const next=safeWorkNextStep(song);
+ const logic=typeof logicReadyNext==='function'?logicReadyNext(song&&song.lr):'';
  const ev=song&&typeof memoEvidenceBySong!=='undefined'?memoEvidenceBySong[song.id]:null;
  if(workSessionNext){
   workSessionNext.hidden=!next;
   workSessionNext.textContent=next?`Do this now: ${next}`:'';
+ }
+ if(typeof workSessionLogic!=='undefined'&&workSessionLogic){
+  workSessionLogic.hidden=!logic;
+  workSessionLogic.textContent=logic?`Logic-ready next: ${logic}`:'';
+ }
+ const sessionFormats=typeof logicReadyFormats==='function'?logicReadyFormats(song):[];
+ if(typeof workSessionAssets!=='undefined'&&workSessionAssets){
+  workSessionAssets.hidden=!sessionFormats.length;
+  workSessionAssets.textContent=sessionFormats.length?`Assets on file: ${sessionFormats.join(' · ')}`:'';
  }
  if(copyWorkNext){
   copyWorkNext.hidden=!next;
   copyWorkNext.disabled=!next;
   copyWorkNext.dataset.songId=next&&song?String(song.id||''):'';
   copyWorkNext.setAttribute('aria-label',next&&song?`Copy next step for ${sname[song.id]||song.id}`:'No safe next step to copy');
+ }
+ if(typeof copyWorkLogic!=='undefined'&&copyWorkLogic){
+  copyWorkLogic.hidden=!logic;
+  copyWorkLogic.disabled=!logic;
+  copyWorkLogic.dataset.songId=logic&&song?String(song.id||''):'';
+  copyWorkLogic.setAttribute('aria-label',logic&&song?`Copy Logic-ready next for ${sname[song.id]||song.id}`:'No Logic-ready next to copy');
  }
  if(workSessionEvidence){
   workSessionEvidence.textContent=!song
@@ -791,6 +890,7 @@ function openSong(songId){
  if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';
  q.value=id;proj.value='';scored.value='';scope.value='';sort.value='id';
  if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+ if(typeof logicReady!=='undefined'&&logicReady)logicReady.value='';
  if(typeof work!=='undefined'&&work)work.value='';
  showTab('S');render();
  const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
@@ -820,10 +920,11 @@ function handleVaultKey(e){
  }
  const hasWork=typeof work!=='undefined'&&work&&work.value;
  const hasSearch=!!(q&&String(q.value||'').trim());
- const hasFilters=!!((proj&&proj.value)||(scored&&scored.value)||(scope&&scope.value)||(typeof evidence!=='undefined'&&evidence&&evidence.value)||(sort&&sort.value&&sort.value!=='mom'));
+ const hasFilters=!!((proj&&proj.value)||(scored&&scored.value)||(scope&&scope.value)||(typeof evidence!=='undefined'&&evidence&&evidence.value)||(typeof logicReady!=='undefined'&&logicReady&&logicReady.value)||(sort&&sort.value&&sort.value!=='mom'));
  if(typeof paneS!=='undefined'&&paneS&&!paneS.hidden&&(sname[q.value]||hasWork||hasSearch||hasFilters)){
   q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';
   if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+  if(typeof logicReady!=='undefined'&&logicReady)logicReady.value='';
   if(typeof work!=='undefined'&&work)work.value='';
   if(typeof lastWorkKind!=='undefined')lastWorkKind='';
   if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';
@@ -888,6 +989,29 @@ function copyResumeWorkNext(btn){
  const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
  return copyExactSongNextStep(id,btn);
 }
+function copyExactSongLogicNext(songId,btn){
+ const id=allowedExactWorkSongId(songId);
+ if(!id||typeof DATA==='undefined')return false;
+ const song=DATA.find(d=>d&&d.id===id);
+ if(!song)return false;
+ const kind=(typeof work!=='undefined'&&work&&work.value)?String(work.value||''):'';
+ const saved=(!kind&&typeof readStoredWorkSession==='function')?readStoredWorkSession(vaultStorage(),typeof sname!=='undefined'?sname:null,DATA):null;
+ const expected=kind||(saved&&saved.kind)||'';
+ if(!expected||songWorkKind(song.nx)!==expected)return false;
+ return copyVaultText(logicReadyNext(song.lr),btn,'Copy Logic-ready next');
+}
+function copyCurrentWorkLogic(btn){
+ const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
+ return copyExactSongLogicNext(id,btn);
+}
+function copyResumeLogicNext(btn){
+ const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
+ return copyExactSongLogicNext(id,btn);
+}
+function copySongLogicNext(songId,btn){
+ const song=typeof DATA!=='undefined'?DATA.find(d=>d&&d.id===String(songId||'')):null;
+ return copyVaultText(logicReadyNext(song&&song.lr),btn,'Copy Logic-ready next');
+}
 function reviewCurrentWorkEvidence(btn){
  const id=allowedExactWorkSongId(btn&&btn.dataset?btn.dataset.songId:'');
  if(!id||!memoCountBySong[id])return false;
@@ -897,6 +1021,8 @@ function reviewCurrentWorkEvidence(btn){
 list.addEventListener('click',e=>{
  const copyFile=e.target.closest('[data-copy-file]');
  if(copyFile){copyMemoFile(copyFile.dataset.copyFile,copyFile);return;}
+ const copyLogic=e.target.closest('[data-copy-logic]');
+ if(copyLogic){copySongLogicNext(copyLogic.dataset.copyLogic,copyLogic);return;}
  const copy=e.target.closest('[data-copy-work]');
  if(copy){copySongWork(copy.dataset.copyWork,copy);return;}
  const memos=e.target.closest('[data-open-memos]');
@@ -904,12 +1030,12 @@ list.addEventListener('click',e=>{
  const head=e.target.closest('[data-toggle-song]');if(head)toggleSong(head);
 });
 list.addEventListener('keydown',e=>{
- if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]')||e.target.closest('[data-copy-file]'))return;
+ if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]')||e.target.closest('[data-copy-logic]')||e.target.closest('[data-copy-file]'))return;
  const head=e.target.closest('[data-toggle-song]');
  if(head&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleSong(head);}
 });
 if(q)q.addEventListener('keydown',handleSongSearchKey);
-[q,proj,sort,scored,scope,evidence,work].forEach(el=>{if(el)el.addEventListener('input',()=>{
+[q,proj,sort,scored,scope,evidence,work,logicReady].forEach(el=>{if(el)el.addEventListener('input',()=>{
  if(el===work){
   if(typeof lastWorkKind!=='undefined')lastWorkKind=work.value||'';
   if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';
@@ -921,7 +1047,7 @@ if(q)q.addEventListener('keydown',handleSongSearchKey);
   if(work.value&&typeof activeWorkSongId!=='undefined'&&activeWorkSongId)focusWorkSong(activeWorkSongId);
  }
 });});
-clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(work)work.value='';if(typeof lastWorkKind!=='undefined')lastWorkKind='';if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
+clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(logicReady)logicReady.value='';if(work)work.value='';if(typeof lastWorkKind!=='undefined')lastWorkKind='';if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
 document.querySelector('.lanes').addEventListener('click',e=>{
  const song=e.target.closest('[data-open-song]');
  if(song)openSong(song.dataset.openSong);
@@ -935,7 +1061,9 @@ if(forgetWorkSession)forgetWorkSession.addEventListener('click',forgetLastWorkSe
 if(workPrev)workPrev.addEventListener('click',()=>stepWork(-1));
 if(workNext)workNext.addEventListener('click',()=>stepWork(1));
 if(copyWorkNext)copyWorkNext.addEventListener('click',()=>copyCurrentWorkNext(copyWorkNext));
+if(copyWorkLogic)copyWorkLogic.addEventListener('click',()=>copyCurrentWorkLogic(copyWorkLogic));
 if(copyResumeNext)copyResumeNext.addEventListener('click',()=>copyResumeWorkNext(copyResumeNext));
+if(copyResumeLogic)copyResumeLogic.addEventListener('click',()=>copyResumeLogicNext(copyResumeLogic));
 if(openWorkEvidence)openWorkEvidence.addEventListener('click',()=>reviewCurrentWorkEvidence(openWorkEvidence));
 tabS.addEventListener('click',()=>{
  showTab('S');
@@ -1038,6 +1166,8 @@ if(typeof window!=='undefined'){window.addEventListener('hashchange',applyVaultH
 </script></body></html>'''
 
 page = (page.replace('__DATA__', DATA)
+    .replace('__LOGIC_READY__', LOGIC_READY)
+    .replace('__LOGIC_READY_FILTER__', LOGIC_READY_FILTER)
     .replace('__TX__', TX)
     .replace('__TX_TOTAL__', str(TX_TOTAL))
     .replace('__TX_MATCHED_TOTAL__', str(TX_MATCHED_TOTAL))
