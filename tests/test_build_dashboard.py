@@ -305,6 +305,13 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("Sit-down handoff stays in Session Log: copy next step + intake name before leaving.", dashboard)
         self.assertIn("then log the sit-down handoff in Session Log.", dashboard)
         self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
+        self.assertIn(
+            "Transcripts are machine-made (Whisper, run locally on your Mac) — "
+            "they mishear sung words constantly, so treat hits as leads, not gospel. "
+            "Copy the intake name only (sanitized); write, produce, or listen in Logic "
+            "(export honesty, WAVs/AIFF/MIDI preference, no Ableton-first).",
+            dashboard,
+        )
         self.assertIn("Copy the intake name only (sanitized)", dashboard)
         self.assertIn("No copy-safe intake name on this memo row yet;", dashboard)
         self.assertIn("no copy-safe intake name yet", dashboard)
