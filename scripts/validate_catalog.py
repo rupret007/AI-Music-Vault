@@ -1961,7 +1961,8 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "README.md must document the private session click-test: "
                 "Click Write, Produce, or Listen; Refresh; Resume; Forget; "
-                "stores only work kind and catalog ID"
+                "stores only work kind and catalog ID; "
+                "Logic export honesty (WAVs/AIFF/MIDI preference)"
             )
 
     dash = extras.get("dashboard_html")

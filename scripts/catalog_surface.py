@@ -880,4 +880,7 @@ def readme_documents_session_click_test(text: str) -> bool:
         and "catalog id" in body
         and "copy next step" in body
         and "do this now" in body
+        and "logic" in body
+        and "export honesty" in body
+        and "wavs/aiff/midi" in body
     )

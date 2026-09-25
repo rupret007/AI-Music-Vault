@@ -2190,7 +2190,8 @@ class ValidateCatalogTests(unittest.TestCase):
             "40 setlist-ready keyed originals; 20-row Vault default-live slice. "
             "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
             "Copy next step. Do this now. "
-            "Stores only a schema version, work kind, and catalog ID.\n"
+            "Stores only a schema version, work kind, and catalog ID. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference).\n"
         )
         extras["apps_md"] = (
             "Local python3 scripts/validate_catalog.py fails closed "
@@ -2532,6 +2533,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Logic export honesty extended — 2026-09-25 "
             "(Cloud Agent, no audio)"
         )
+        product_readme_export = (
+            "README click-test export honesty — 2026-09-25 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2550,7 +2555,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(product_resume_next, headings)
         self.assertIn(product_name_search, headings)
         self.assertIn(product_logic_export, headings)
-        self.assertEqual(headings[-1], product_logic_export)
+        self.assertIn(product_readme_export, headings)
+        self.assertEqual(headings[-1], product_readme_export)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
