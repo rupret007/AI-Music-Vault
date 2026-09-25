@@ -57,11 +57,17 @@ song immediately, name its position in a bounded queue, and keep secondary
 catalog filters collapsed until they are needed. The session header puts the
 sanitized catalog next step in front of Jeff with **Copy next step** and, when
 searchable matched memos exist, **Review memo evidence**. Sit-down also names
-the existing Logic-ready cluster and a sanitized **Logic-ready next** for the
-Mac; **Copy Logic-ready next** stays hidden if that sentence is empty or unsafe.
-It never invents a key and never names a Logic project or bounce file. After
-Escape, the Resume strip keeps that same **Do this now** line and copy action
-for the exact stored song, plus the Logic-ready next when it is safe. Sit-down
+the existing Logic-ready cluster, its real Logic-native **Assets on file**
+(Logic Pro project / WAV/AIFF / Stems / Recorded take / Key on file — words
+only, read from the same evidence as the cluster, never a filename), and a
+sanitized **Logic-ready next** for the Mac; **Copy Logic-ready next** stays
+hidden if that sentence is empty or unsafe. It never invents a key, a format
+Jeff didn't already log, or a Logic project / bounce filename. A song whose
+only evidence is a version-chain audio file reads as a plain "Recorded take"
+— it does not get called a WAV/AIFF unless that word is actually on file.
+After Escape, the Resume strip keeps that same **Do this now** line and copy
+action for the exact stored song, plus the Logic-ready next and its assets
+when they are safe. Sit-down
 and memo scope reuse the same fail-closed catalog step — they do not reprint
 leftover listen verbs. Missing evidence is labeled plainly; an empty or unsafe
 next step produces no copy action. After a song is opened, the
@@ -88,8 +94,8 @@ Open `Jeff Story Song Vault Dashboard.html` locally. Do not upload it.
 9. Refresh again. Resume stays gone.
 10. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
 11. On Songs, type a remembered alias or a title without apostrophes. The closest name is first. Press Enter to open that row. Escape clears the search. A long enough query may also list a song from a searchable matched memo lyric — that is a lead, not a listen.
-12. Read **Logic-ready next** on sit-down and on the session strip. It must name only a cluster and an owner-only Mac step. It must not name a Logic project, WAV, key path, or street. If **Copy Logic-ready next** is visible, the clipboard text matches that sentence.
-13. After Escape, Resume still shows **Logic-ready next** / **Copy Logic-ready next** when that sentence is safe. More filters can narrow or sort by Logic-ready. That is existing evidence, not a new score and not a key fill.
+12. Read **Logic-ready next** on sit-down and on the session strip. It must name only a cluster, its real **Assets on file** (a plain word list — Logic Pro project / WAV/AIFF / Stems / Recorded take / Key on file), and an owner-only Mac step in Logic Pro's own language. It must not name a Logic project filename, WAV filename, key path, or street. If **Copy Logic-ready next** is visible, the clipboard text matches that sentence.
+13. After Escape, Resume still shows **Logic-ready next**, its **Assets on file**, and **Copy Logic-ready next** when that sentence is safe. More filters can narrow or sort by Logic-ready. That is existing evidence, not a new score and not a key fill — a chain-only recorded take is never relabeled WAV/AIFF, and no cluster names MIDI unless it's the real Basic Pitch workbench tip for a song missing a Logic Pro project.
 
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public

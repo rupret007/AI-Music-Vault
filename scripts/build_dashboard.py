@@ -21,6 +21,7 @@ from catalog_surface import (  # noqa: E402
     played_badge_label,
     song_aliases,
     song_logic_ready_cluster,
+    song_logic_ready_evidence_tags,
     song_work_kind,
     surface_stage_label,
 )
@@ -47,7 +48,8 @@ for s in cat['songs']:
         wr=', '.join(s.get('writers',[])),
         live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
         gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''),
-        lr=song_logic_ready_cluster(s, chains.get(s['song_id'])))
+        lr=song_logic_ready_cluster(s, chains.get(s['song_id'])),
+        lrf=song_logic_ready_evidence_tags(s, chains.get(s['song_id'])))
     aliases = song_aliases(s)
     if aliases:
         row['aka'] = aliases
@@ -167,6 +169,7 @@ input{flex:1;min-width:160px}
 .lane-work{margin-left:4px}
 .work-session-copy{font-weight:700;color:var(--ink);margin-top:4px;max-width:650px}
 .sit-logic{margin-top:6px}
+.sit-logic-assets{margin-top:4px;color:var(--ink2);font-size:12.5px}
 .work-session-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .work-session-actions .primary-action{border-color:var(--pot);color:var(--ink)}
 @media(max-width:640px){.work-start{flex:1}.resume-work{align-items:stretch}.controls>input{flex-basis:100%}.advanced-filters{margin-left:auto}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{right:0}}
@@ -184,6 +187,7 @@ input{flex:1;min-width:160px}
   <div class="resume-next" id="resumeWorkNext" hidden></div>
   <button type="button" class="subtle-btn primary-action" id="copyResumeNext" hidden>Copy next step</button>
   <div class="resume-next" id="resumeWorkLogic" hidden></div>
+  <div class="resume-next" id="resumeWorkAssets" hidden></div>
   <button type="button" class="subtle-btn" id="copyResumeLogic" hidden>Copy Logic-ready next</button>
  </div>
  <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. The Session Log stays the handoff.</p>
@@ -220,7 +224,7 @@ input{flex:1;min-width:160px}
  </div></details>
 </div>
 <div class="resultbar"><span id="songResults" aria-live="polite"></span><button type="button" class="subtle-btn" id="clearSongFilters">Clear filters</button></div>
-<div class="memo-scope" id="workSession" hidden><div><span id="workSessionText"></span><div class="work-session-copy" id="workSessionNext" hidden></div><div class="memo-next" id="workSessionLogic" hidden></div><div class="memo-next" id="workSessionEvidence"></div></div><span class="work-session-actions"><button type="button" class="subtle-btn primary-action" id="copyWorkNext" hidden>Copy next step</button> <button type="button" class="subtle-btn" id="copyWorkLogic" hidden>Copy Logic-ready next</button> <button type="button" class="subtle-btn" id="openWorkEvidence" hidden>Review memo evidence</button> <button type="button" class="subtle-btn" id="workPrev" data-work-step="-1">Previous</button> <button type="button" class="subtle-btn" id="workNext" data-work-step="1">Next</button></span></div>
+<div class="memo-scope" id="workSession" hidden><div><span id="workSessionText"></span><div class="work-session-copy" id="workSessionNext" hidden></div><div class="memo-next" id="workSessionLogic" hidden></div><div class="memo-next" id="workSessionAssets" hidden></div><div class="memo-next" id="workSessionEvidence"></div></div><span class="work-session-actions"><button type="button" class="subtle-btn primary-action" id="copyWorkNext" hidden>Copy next step</button> <button type="button" class="subtle-btn" id="copyWorkLogic" hidden>Copy Logic-ready next</button> <button type="button" class="subtle-btn" id="openWorkEvidence" hidden>Review memo evidence</button> <button type="button" class="subtle-btn" id="workPrev" data-work-step="-1">Previous</button> <button type="button" class="subtle-btn" id="workNext" data-work-step="1">Next</button></span></div>
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
@@ -251,6 +255,7 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  songResults=document.getElementById('songResults'),clearSongFilters=document.getElementById('clearSongFilters'),
  workSession=document.getElementById('workSession'),workSessionText=document.getElementById('workSessionText'),
  workSessionNext=document.getElementById('workSessionNext'),workSessionLogic=document.getElementById('workSessionLogic'),
+ workSessionAssets=document.getElementById('workSessionAssets'),
  workSessionEvidence=document.getElementById('workSessionEvidence'),
  copyWorkNext=document.getElementById('copyWorkNext'),copyWorkLogic=document.getElementById('copyWorkLogic'),
  openWorkEvidence=document.getElementById('openWorkEvidence'),
@@ -260,6 +265,7 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  resumeWorkHint=document.getElementById('resumeWorkHint'),resumeWorkStatus=document.getElementById('resumeWorkStatus'),
  resumeWorkNext=document.getElementById('resumeWorkNext'),copyResumeNext=document.getElementById('copyResumeNext'),
  resumeWorkLogic=document.getElementById('resumeWorkLogic'),copyResumeLogic=document.getElementById('copyResumeLogic'),
+ resumeWorkAssets=document.getElementById('resumeWorkAssets'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
  mq=document.getElementById('mq'),mlist=document.getElementById('mlist'),
@@ -407,6 +413,11 @@ function updateResumeWork(){
   resumeWorkLogic.hidden=!logic;
   resumeWorkLogic.textContent=logic?`Logic-ready next: ${logic}`:'';
  }
+ const resumeFormats=typeof logicReadyFormats==='function'?logicReadyFormats(song):[];
+ if(typeof resumeWorkAssets!=='undefined'&&resumeWorkAssets){
+  resumeWorkAssets.hidden=!resumeFormats.length;
+  resumeWorkAssets.textContent=resumeFormats.length?`Assets on file: ${resumeFormats.join(' · ')}`:'';
+ }
  if(typeof copyResumeLogic!=='undefined'&&copyResumeLogic){
   copyResumeLogic.hidden=!logic;
   copyResumeLogic.disabled=!logic;
@@ -479,6 +490,10 @@ function logicReadyNext(cluster){
  const next=String((maps.next||{})[cluster]||'');
  return next&&!workCardLeaks(next)?next:'';
 }
+function logicReadyFormats(song){
+ const tags=song&&Array.isArray(song.lrf)?song.lrf:[];
+ return tags.map(t=>String(t||'').trim()).filter(Boolean);
+}
 function logicReadyRank(cluster){
  const maps=typeof LOGIC_READY!=='undefined'?LOGIC_READY:{};
  const n=Number((maps.rank||{})[cluster]);
@@ -523,7 +538,9 @@ function buildSongWorkCard(song,evidence){
  if(gate)lines.push('Gate: '+gate);
  const lrLabel=typeof logicReadyLabel==='function'?logicReadyLabel(song.lr):'';
  const lrNext=typeof logicReadyNext==='function'?logicReadyNext(song.lr):'';
+ const lrFormats=typeof logicReadyFormats==='function'?logicReadyFormats(song):[];
  if(lrLabel)lines.push('Logic-ready: '+lrLabel);
+ if(lrFormats.length)lines.push('Assets on file: '+lrFormats.join(' · '));
  if(lrNext)lines.push('Logic next: '+lrNext);
  const ev=evidence||(song&&typeof memoEvidenceBySong!=='undefined'&&memoEvidenceBySong[song.id])||null;
  if(ev&&ev.n)lines.push('Memos: '+ev.n+' searchable'+(ev.last?' · latest '+ev.last:''));
@@ -676,13 +693,14 @@ function render(){
   const via=viaById[d.id]||'';
   const lrPill=typeof logicReadyPill==='function'?logicReadyPill(d.lr):'';
   const lrNext=typeof logicReadyNext==='function'?logicReadyNext(d.lr):'';
+  const lrFormats=typeof logicReadyFormats==='function'?logicReadyFormats(d):[];
   return `
  <div class="row" data-song-id="${esc(d.id)}"><div class="rhead" role="button" tabindex="0" aria-expanded="false" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
   <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?` <span class="pill">${esc(lrPill)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
  </div><div class="detail" hidden>
-  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)} <button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button></div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latest.f)}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latest.f)}">Copy intake name</button><div class="memo-next">Copy the intake name; write, produce, or listen on your Mac. This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen on your Mac. This page does not open audio.</div>`}</div>
+  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${lrFormats.length?`<div class="sit-logic-assets">Assets on file: ${lrFormats.map(t=>esc(t)).join(' · ')}</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)} <button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button></div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latest.f)}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latest.f)}">Copy intake name</button><div class="memo-next">Copy the intake name; write, produce, or listen on your Mac. This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen on your Mac. This page does not open audio.</div>`}</div>
   ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
   ${hook?`<h4>Hook</h4>${esc(hook)}`:''}
   <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${d.mom?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
@@ -809,6 +827,11 @@ function updateWorkSessionState(){
  if(typeof workSessionLogic!=='undefined'&&workSessionLogic){
   workSessionLogic.hidden=!logic;
   workSessionLogic.textContent=logic?`Logic-ready next: ${logic}`:'';
+ }
+ const sessionFormats=typeof logicReadyFormats==='function'?logicReadyFormats(song):[];
+ if(typeof workSessionAssets!=='undefined'&&workSessionAssets){
+  workSessionAssets.hidden=!sessionFormats.length;
+  workSessionAssets.textContent=sessionFormats.length?`Assets on file: ${sessionFormats.join(' · ')}`:'';
  }
  if(copyWorkNext){
   copyWorkNext.hidden=!next;

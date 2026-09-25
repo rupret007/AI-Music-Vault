@@ -34,6 +34,8 @@ from catalog_surface import (  # noqa: E402
     safe_song_next_step,
     song_aliases,
     song_logic_ready_cluster,
+    song_logic_ready_evidence_label,
+    song_logic_ready_evidence_tags,
     song_logic_ready_next,
     song_search_hit,
     song_work_card,
@@ -681,6 +683,109 @@ class DashboardLogicReadyTests(unittest.TestCase):
             self.assertNotIn(".logicx", nxt.lower())
             self.assertNotIn(".wav", nxt.lower())
 
+    def test_evidence_tags_read_logic_native_asset_types_only(self):
+        self.assertEqual(
+            song_logic_ready_evidence_tags(
+                {"key": "Am", "sources": ["song v1.0.logicx", "mix.wav"]}
+            ),
+            ["Logic Pro project", "WAV/AIFF", "Key on file"],
+        )
+        self.assertEqual(
+            song_logic_ready_evidence_tags(
+                {"sources": ["stems bounce"]}
+            ),
+            ["Stems"],
+        )
+        self.assertEqual(
+            song_logic_ready_evidence_tags(
+                {"key": "Am"}, {"files": [{"title": "take 1", "kind": "studio-take"}]}
+            ),
+            ["Recorded take", "Key on file"],
+        )
+        self.assertEqual(song_logic_ready_evidence_tags({}), [])
+        self.assertEqual(song_logic_ready_evidence_tags(None), [])
+        self.assertEqual(
+            song_logic_ready_evidence_label({"key": "Am"}),
+            "Key on file",
+        )
+        self.assertEqual(song_logic_ready_evidence_label({}), "")
+
+    def test_evidence_tags_never_carry_a_filename_or_path(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "data", "version_chains.json"), encoding="utf-8"
+        ) as handle:
+            chains = json.load(handle)
+        seen_any = False
+        for song in catalog["songs"]:
+            tags = song_logic_ready_evidence_tags(
+                song, chains.get(song["song_id"])
+            )
+            if tags:
+                seen_any = True
+            label = " · ".join(tags)
+            self.assertFalse(work_card_leaks_private_locators(label), label)
+            self.assertNotIn(".", label, label)
+        self.assertTrue(seen_any)
+
+    def test_evidence_tags_agree_with_the_cluster_they_explain(self):
+        # closest_logic_dropin always carries a literal WAV/AIFF or stems
+        # word (never just a version-chain take) — the cluster's own
+        # definition guarantees it, so the tag list must say so too.
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "data", "version_chains.json"), encoding="utf-8"
+        ) as handle:
+            chains = json.load(handle)
+        for song in catalog["songs"]:
+            chain = chains.get(song["song_id"])
+            cluster = song_logic_ready_cluster(song, chain)
+            tags = song_logic_ready_evidence_tags(song, chain)
+            if cluster == "closest_logic_dropin":
+                self.assertIn("Logic Pro project", tags, song["song_id"])
+                self.assertTrue(
+                    "WAV/AIFF" in tags or "Stems" in tags, song["song_id"]
+                )
+                self.assertIn("Key on file", tags, song["song_id"])
+            if cluster == "empty_logic_ready":
+                self.assertEqual(tags, [], song["song_id"])
+            if cluster == "key_only":
+                self.assertEqual(tags, ["Key on file"], song["song_id"])
+
+    def test_work_card_carries_asset_tags_from_precomputed_lrf(self):
+        card = song_work_card(
+            {
+                "id": "ST-0001",
+                "t": "Turn Over The Flag",
+                "nx": "Track overdubs",
+                "lr": "closest_logic_dropin",
+                "lrf": ["Logic Pro project", "WAV/AIFF", "Key on file"],
+            }
+        )
+        self.assertIn(
+            "Assets on file: Logic Pro project · WAV/AIFF · Key on file", card
+        )
+        self.assertNotIn(".logicx", card)
+        self.assertNotIn(".wav", card)
+        # A row that explicitly precomputed no tags (empty lrf) must not
+        # fall back to recomputing from absent raw evidence fields.
+        no_tags_card = song_work_card(
+            {
+                "id": "JS-9999",
+                "t": "No Evidence",
+                "nx": "Track overdubs",
+                "lr": "empty_logic_ready",
+                "lrf": [],
+            }
+        )
+        self.assertNotIn("Assets on file", no_tags_card)
+
     def test_system_and_midi_horns_are_not_stems_or_keys(self):
         row = {
             "song_id": "ST-0004",
@@ -747,8 +852,11 @@ class DashboardLogicReadyTests(unittest.TestCase):
                 "lr": "closest_logic_dropin",
             }
         )
-        self.assertIn("Logic-ready: Closest Logic drop-in", card)
-        self.assertIn("Logic next: Open the existing Logic project on your Mac.", card)
+        self.assertIn("Logic-ready: Closest Logic Pro drop-in", card)
+        self.assertIn(
+            "Logic next: Open the existing Logic Pro project on your Mac",
+            card,
+        )
         self.assertNotIn(".logicx", card)
         self.assertNotIn(".wav", card)
 
@@ -783,6 +891,39 @@ class DashboardLogicReadyTests(unittest.TestCase):
         )
         self.assertTrue(dashboard_exposes_logic_ready(dashboard))
         self.assertNotIn("folder", json.dumps(logic_ready_maps()))
+
+    def test_committed_dashboard_projects_logic_native_asset_tags_only(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "data", "version_chains.json"), encoding="utf-8"
+        ) as handle:
+            chains = json.load(handle)
+        expected = {
+            song["song_id"]: song_logic_ready_evidence_tags(
+                song, chains.get(song["song_id"])
+            )
+            for song in catalog["songs"]
+        }
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        payloads = embedded_dashboard_payloads(dashboard)
+        rows = json.loads(payloads["DATA"])
+        projected = {row["id"]: row.get("lrf") or [] for row in rows}
+        self.assertEqual(projected, expected)
+        self.assertGreater(sum(1 for tags in expected.values() if tags), 0)
+        for tags in expected.values():
+            for tag in tags:
+                self.assertNotIn(".", tag)
+                self.assertNotIn("/Users", tag)
+                self.assertNotIn("file://", tag)
+        self.assertIn("function logicReadyFormats(", dashboard)
+        self.assertIn("Assets on file", dashboard)
 
 
 if __name__ == "__main__":

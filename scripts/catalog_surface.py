@@ -399,10 +399,12 @@ _PRIVATE_STREET_NAMES = (
 )
 
 # TX stays locked unless transcripts change. DATA may change when the
-# private surface projects already-on-spine aliases or a sanitized
-# Logic-ready cluster id. Do not invent keys or put paths in DATA.
+# private surface projects already-on-spine aliases, a sanitized
+# Logic-ready cluster id, or the per-song Logic-native asset tag list
+# (Logic Pro project / WAV/AIFF / Stems / Recorded take / Key on file —
+# words only, never a filename or path). Do not invent keys or paths.
 EMBEDDED_DATA_SHA256 = (
-    "bab02555bf831cf419864759a0d0c57a2911fe25ef237328514404568cb01e72"
+    "995da4a223b6ffec8ff4cdb231f8baa8aab313be5c25a977ea6b6d93a63355c8"
 )
 EMBEDDED_TX_SHA256 = (
     "4d809dc53540f8c5acfe63ffcee94844634405c2a0583b2accddc9178807b467"
@@ -420,47 +422,57 @@ LOGIC_READY_CLUSTERS = (
     "empty_logic_ready",
 )
 LOGIC_READY_LABELS = {
-    "closest_logic_dropin": "Closest Logic drop-in",
-    "logic_project_plus_key": "Logic project + key",
-    "logic_project_no_key": "Logic project · missing key",
-    "audio_plus_key_no_logic": "Keyed bounce · no Logic project",
-    "audio_only": "Bounce named · missing key",
-    "key_only": "Key only · no Logic project",
+    "closest_logic_dropin": "Closest Logic Pro drop-in",
+    "logic_project_plus_key": "Logic Pro project + key",
+    "logic_project_no_key": "Logic Pro project · missing key",
+    "audio_plus_key_no_logic": "Keyed audio · no Logic Pro project",
+    "audio_only": "Audio named · missing key",
+    "key_only": "Key only · no Logic Pro project",
     "empty_logic_ready": "Empty Logic-ready",
 }
 LOGIC_READY_PILLS = {
-    "closest_logic_dropin": "Logic drop-in",
-    "logic_project_plus_key": "Logic + key",
-    "logic_project_no_key": "Logic · no key",
-    "audio_plus_key_no_logic": "Keyed bounce",
-    "audio_only": "Bounce · no key",
+    "closest_logic_dropin": "Logic Pro drop-in",
+    "logic_project_plus_key": "Logic Pro + key",
+    "logic_project_no_key": "Logic Pro · no key",
+    "audio_plus_key_no_logic": "Keyed audio",
+    "audio_only": "Audio · no key",
     "key_only": "Key only",
     "empty_logic_ready": "Empty Logic-ready",
 }
+# Wording stays fail-closed-safe: never a literal ".logicx"/".wav" extension
+# (that trips work_card_leaks_private_locators on purpose) and never a
+# specific format claim (WAV vs AIFF vs stems vs a version-chain take) for
+# clusters where the underlying evidence can be any of those — the per-song
+# song_logic_ready_evidence_tags() readout carries that specific, real detail.
 LOGIC_READY_NEXT = {
     "closest_logic_dropin": (
-        "Open the existing Logic project on your Mac. "
-        "This page does not open audio."
+        "Open the existing Logic Pro project on your Mac — it already has "
+        "audio (WAV/AIFF or stems) and a key. This page does not open audio."
     ),
     "logic_project_plus_key": (
-        "Open the existing Logic project on your Mac. "
+        "Open the existing Logic Pro project on your Mac. "
         "This page does not open audio."
     ),
     "logic_project_no_key": (
-        "Fill the missing key on your Mac. Do not invent one here."
+        "Fill the missing key on your Mac inside the existing Logic Pro "
+        "project. Do not invent one here."
     ),
     "audio_plus_key_no_logic": (
-        "Start or locate the Logic project on your Mac. "
-        "This page does not open audio."
+        "Start or locate the Logic Pro project on your Mac using the "
+        "existing audio and key. This page does not open audio."
     ),
     "audio_only": (
-        "Fill the missing key on your Mac after you hear the bounce. "
-        "Do not invent one here."
+        "Fill the missing key on your Mac after you hear the existing "
+        "audio. Do not invent one here."
     ),
-    "key_only": "Start the Logic project on your Mac from the known key.",
+    "key_only": (
+        "Start the Logic Pro project on your Mac from the known key. If a "
+        "memo melody exists, Basic Pitch can turn it into MIDI for Logic."
+    ),
     "empty_logic_ready": (
-        "No Logic-ready evidence on the catalog. Recover from Drive or "
-        "the Mac — do not invent a key."
+        "No Logic-ready evidence on the catalog. Recover the key or audio "
+        "from Drive or the Mac — do not invent a key. Basic Pitch can turn "
+        "a recovered memo melody into MIDI for Logic."
     ),
 }
 LOGIC_READY_RANK = {
@@ -589,24 +601,44 @@ def parseable_catalog_key(row) -> str:
     return flatten_work_field(row.get("key"))
 
 
-def song_logic_ready_cluster(row, chain=None) -> str:
-    """Classify one row using the 2026-08-28 Logic-ready walk rules.
+def _logic_ready_signals(row, chain=None) -> dict:
+    """Raw evidence booleans shared by classification and the asset readout.
 
-    This is a readout, not a new score and not a lane change. A lone
-    mp3/m4a on sources is not enough — version-chain files, a wav word,
-    or real stems are. 'system' is not stems. MIDI horns are not MIDI files.
+    A lone mp3/m4a on sources is not enough — version-chain files, a wav
+    word, or real stems are. 'system' is not stems. MIDI horns are not MIDI
+    files. Computed once so the cluster and the per-song tag list can never
+    disagree on what evidence actually exists.
     """
     if not isinstance(row, dict):
-        return "empty_logic_ready"
+        row = {}
     text = logic_ready_evidence_text(row, chain)
     low = text.lower()
-    has_key = bool(parseable_catalog_key(row))
-    has_logicx = bool(_LOGICX_RE.search(text) or "logic-project" in low)
     has_wav = bool(_WAV_RE.search(text))
     has_stems = bool(_STEMS_RE.search(text))
     has_chain = bool(isinstance(chain, dict) and (chain.get("files") or []))
-    has_wav_stems = has_wav or has_stems
-    has_audio_or_chain = has_wav_stems or has_chain
+    return {
+        "has_key": bool(parseable_catalog_key(row)),
+        "has_logicx": bool(_LOGICX_RE.search(text) or "logic-project" in low),
+        "has_wav": has_wav,
+        "has_stems": has_stems,
+        "has_chain": has_chain,
+        "has_wav_stems": has_wav or has_stems,
+        "has_audio_or_chain": has_wav or has_stems or has_chain,
+    }
+
+
+def song_logic_ready_cluster(row, chain=None) -> str:
+    """Classify one row using the 2026-08-28 Logic-ready walk rules.
+
+    This is a readout, not a new score and not a lane change.
+    """
+    if not isinstance(row, dict):
+        return "empty_logic_ready"
+    signals = _logic_ready_signals(row, chain)
+    has_key = signals["has_key"]
+    has_logicx = signals["has_logicx"]
+    has_wav_stems = signals["has_wav_stems"]
+    has_audio_or_chain = signals["has_audio_or_chain"]
     if has_logicx and has_wav_stems and has_key:
         return "closest_logic_dropin"
     if has_logicx and has_key:
@@ -620,6 +652,44 @@ def song_logic_ready_cluster(row, chain=None) -> str:
     if has_key:
         return "key_only"
     return "empty_logic_ready"
+
+
+LOGIC_READY_TAG_PROJECT = "Logic Pro project"
+LOGIC_READY_TAG_WAV = "WAV/AIFF"
+LOGIC_READY_TAG_STEMS = "Stems"
+LOGIC_READY_TAG_TAKE = "Recorded take"
+LOGIC_READY_TAG_KEY = "Key on file"
+
+
+def song_logic_ready_evidence_tags(row, chain=None) -> list[str]:
+    """Per-song readout of which real Logic-native asset types are on file.
+
+    Literal text evidence only — titles, kinds, and the key field. No
+    filenames, no folder paths, no invented formats, no ".logicx"/".wav"
+    extensions (that stays fail-closed on purpose). A version-chain audio
+    file with no literal wav/aiff/stems word reads as a recorded take, not
+    a specific format guess.
+    """
+    if not isinstance(row, dict):
+        return []
+    signals = _logic_ready_signals(row, chain)
+    tags: list[str] = []
+    if signals["has_logicx"]:
+        tags.append(LOGIC_READY_TAG_PROJECT)
+    if signals["has_wav"]:
+        tags.append(LOGIC_READY_TAG_WAV)
+    if signals["has_stems"]:
+        tags.append(LOGIC_READY_TAG_STEMS)
+    if signals["has_chain"] and not signals["has_wav_stems"]:
+        tags.append(LOGIC_READY_TAG_TAKE)
+    if signals["has_key"]:
+        tags.append(LOGIC_READY_TAG_KEY)
+    return tags
+
+
+def song_logic_ready_evidence_label(row, chain=None) -> str:
+    """One copy-safe line of Logic-native asset tags, or empty if none."""
+    return " · ".join(song_logic_ready_evidence_tags(row, chain))
 
 
 def song_logic_ready_label(cluster) -> str:
@@ -911,6 +981,12 @@ def song_work_card(row, evidence=None) -> str:
     logic_next = song_logic_ready_next(cluster)
     if label:
         lines.append(f"Logic-ready: {label}")
+    if "lrf" in row:
+        asset_tags = [str(t) for t in (row.get("lrf") or []) if str(t).strip()]
+    else:
+        asset_tags = song_logic_ready_evidence_tags(row)
+    if asset_tags:
+        lines.append(f"Assets on file: {' · '.join(asset_tags)}")
     if logic_next:
         lines.append(f"Logic next: {logic_next}")
     if isinstance(ev, dict):
@@ -1063,6 +1139,8 @@ def dashboard_exposes_logic_ready(html: str) -> bool:
         "LOGIC_READY",
         "Do not invent one here",
         "This page does not open audio",
+        "function logicReadyFormats(",
+        "Assets on file",
     )
     if not all(marker in chrome for marker in required):
         return False

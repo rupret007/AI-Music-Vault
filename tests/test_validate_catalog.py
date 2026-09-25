@@ -289,6 +289,7 @@ def extras_ok(cat=None):
             'function copyExactSongLogicNext( function copyCurrentWorkLogic( '
             'function copyResumeLogicNext( function copySongLogicNext( '
             'LOGIC_READY Do not invent one here This page does not open audio '
+            'function logicReadyFormats( Assets on file '
         ),
         "audio_files": [],
     }
@@ -2554,6 +2555,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog Logic-ready next leftover — 2026-09-07 "
             "(Cloud Agent Extra High, no audio)"
         )
+        product_logic_native_assets = (
+            "Logic-native asset honesty on open draft #36 — 2026-09-25 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2572,7 +2577,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(product_resume_next, headings)
         self.assertIn(product_name_search, headings)
         self.assertIn(product_logic_ready, headings)
-        self.assertEqual(headings[-1], product_logic_ready)
+        self.assertIn(product_logic_native_assets, headings)
+        self.assertEqual(headings[-1], product_logic_native_assets)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))

@@ -412,7 +412,7 @@ const logicReadyNext = new Function(
   "workCardLeaks",
   "return (" + extractFunction(script, "logicReadyNext") + ");",
 )(logicReadyMaps, workCardLeaks);
-if (logicReadyNext("closest_logic_dropin") !== "Open the existing Logic project on your Mac. This page does not open audio.") {
+if (!logicReadyNext("closest_logic_dropin").startsWith("Open the existing Logic Pro project on your Mac")) {
   fail("closest Logic drop-in must name an owner-only Mac step");
 }
 if (logicReadyNext("missing") !== "") {
@@ -459,6 +459,9 @@ if (!memoCard.includes("Memos: 3 searchable · latest 2025-10-14")) {
   fail("work card may include memo count and date");
 }
 if (memoCard.includes("take.wav")) fail("work card must omit intake filenames");
+const logicReadyFormats = new Function(
+  "return (" + extractFunction(script, "logicReadyFormats") + ");",
+)();
 const logicCard = new Function(
   "flattenWorkField",
   "songWorkKind",
@@ -467,6 +470,7 @@ const logicCard = new Function(
   "safeWorkNextStep",
   "logicReadyLabel",
   "logicReadyNext",
+  "logicReadyFormats",
   "return (" + extractFunction(script, "buildSongWorkCard") + ");",
 )(
   new Function("return (" + extractFunction(script, "flattenWorkField") + ");")(),
@@ -476,14 +480,22 @@ const logicCard = new Function(
   safeWorkNextStep,
   new Function("LOGIC_READY", "return (" + extractFunction(script, "logicReadyLabel") + ");")(logicReadyMaps),
   logicReadyNext,
+  logicReadyFormats,
 )({
   id: "ST-0001",
   t: "Flagship",
   nx: "Track the remaining overdubs",
   lr: "closest_logic_dropin",
+  lrf: ["Logic Pro project", "WAV/AIFF", "Key on file"],
 });
-if (!logicCard.includes("Logic-ready: Closest Logic drop-in") || !logicCard.includes("Logic next: Open the existing Logic project on your Mac.")) {
+if (
+  !logicCard.includes("Logic-ready: Closest Logic Pro drop-in") ||
+  !logicCard.includes("Logic next: Open the existing Logic Pro project on your Mac")
+) {
   fail("work card must carry the sanitized Logic-ready next");
+}
+if (!logicCard.includes("Assets on file: Logic Pro project · WAV/AIFF · Key on file")) {
+  fail("work card must carry the Logic-native asset tags");
 }
 if (logicCard.includes(".logicx") || logicCard.includes(".wav")) {
   fail("Logic-ready work card must not reprint project or bounce filenames");
