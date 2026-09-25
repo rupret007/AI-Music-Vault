@@ -2528,6 +2528,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog remembered-name search — 2026-09-04 "
             "(Cloud Agent Extra High, no audio)"
         )
+        product_logic_export = (
+            "Logic export honesty extended — 2026-09-25 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2545,7 +2549,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(product_session_click, headings)
         self.assertIn(product_resume_next, headings)
         self.assertIn(product_name_search, headings)
-        self.assertEqual(headings[-1], product_name_search)
+        self.assertIn(product_logic_export, headings)
+        self.assertEqual(headings[-1], product_logic_export)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))

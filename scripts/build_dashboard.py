@@ -215,7 +215,7 @@ input{flex:1;min-width:160px}
 <div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div><div class="memo-next" id="memoScopeHook" hidden></div></div><span><button type="button" class="subtle-btn" id="copyMemoWork" hidden data-copy-work="">Copy work card</button> <button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></span></div>
 <div id="mlist"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel.</div></div>
 </div>
-<div class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAVs stay on your Mac — this page does not open audio.</div>
+<div class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAVs stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio.</div>
 <script>
 const DATA = __DATA__;
 const TX = __TX__;
@@ -998,7 +998,7 @@ function mrender(){
   copyMemoWork.dataset.copyWork=song?song.id:'';
  }
  if((!activeMemoSong&&term.length<3)||(term.length>0&&term.length<3)){
-  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words. Copy the intake name; do not open audio from this page.</div>`;return;
+  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words. Copy the intake name; write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div>`;return;
  }
  const hits=[];
  for(const m of TX){

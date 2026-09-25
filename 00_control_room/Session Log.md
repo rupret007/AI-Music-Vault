@@ -534,3 +534,19 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Next continuation point
 Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Use the Songs search box to type the name Jeff actually remembers — alias, folded punctuation, or a long-enough memo lyric — then Enter the first row; use this latest Session Log section for the authoritative project handoff. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Logic export honesty extended — 2026-09-25 (Cloud Agent, no audio)
+### Done
+1. Started from exact private branch `cursor/logic-ready-sitdown-export-honesty-7146` (PR #37). The sit-down already said "Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)" but the memo search hint and page footer still used generic "on your Mac" or "do not open audio" language.
+2. Extended the same export honesty to three surfaces: (a) the memo search hint now tells Jeff to write, produce, or listen in Logic with export honesty before he sees any memo results; (b) the page footer now includes "open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first)" right after "Logic projects, keys, and WAVs stay on your Mac"; (c) the work session evidence line from #37 is unchanged.
+3. Coverage test extended to verify the footer now includes "open in Logic (export honesty:". All 215 tests pass. Catalog validation green. Dashboard regenerated.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. The private dashboard now emphasizes Logic export honesty in all sit-down, memo search, and footer text — Jeff sees "WAVs/AIFF/MIDI preference, no Ableton-first" before every work session. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
