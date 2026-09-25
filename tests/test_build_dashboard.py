@@ -237,6 +237,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("Start a work session", dashboard)
         self.assertIn("More filters", dashboard)
         self.assertIn("Sit-down", dashboard)
+        self.assertIn("Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)", dashboard)
         self.assertIn("Copy work card", dashboard)
         self.assertIn("function songWorkKind(", dashboard)
         self.assertIn("function buildSongWorkCard(", dashboard)
