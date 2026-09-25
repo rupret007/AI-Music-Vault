@@ -26,6 +26,14 @@ ON_DECK_NOTE = "catalog, not the official set"
 
 MEMO_SEARCH_MIN_CHARS = 15
 MEMO_SEARCH_MAX_CHARS = 1500
+UNSAFE_MEMO_INTAKE_SUFFIXES = (
+    ".wav",
+    ".aiff",
+    ".aif",
+    ".logicx",
+    ".mid",
+    ".midi",
+)
 
 PLAYED_BADGE_PREFIX = "played"
 SURFACE_STAGE_REPLACEMENT = "catalog play history — not the official set"
@@ -60,6 +68,28 @@ def collapse_transcript_text(text) -> str:
     return " ".join(out)
 
 
+def sanitize_intake_name(value) -> str:
+    """Keep only a copy-safe memo intake basename (no directories/URI parts)."""
+    name = str(value or "").strip()
+    if not name:
+        return ""
+    normalized = (
+        name.replace("\\", "/").split("?", 1)[0].split("#", 1)[0]
+    )
+    if normalized.lower().startswith("file://"):
+        normalized = normalized[7:]
+    basename = normalized.rsplit("/", 1)[-1].strip()
+    if basename in {"", ".", ".."}:
+        return ""
+    collapsed = re.sub(r"\s{2,}", " ", basename)
+    lowered = collapsed.lower()
+    if lowered in {"(unknown intake)", "unknown intake"}:
+        return ""
+    if lowered.endswith(UNSAFE_MEMO_INTAKE_SUFFIXES):
+        return ""
+    return collapsed
+
+
 def build_memo_search_index(transcripts, matches_by_song) -> tuple[list[dict], dict[str, int]]:
     """Return the compact search index and distinct source/searchable counts.
 
@@ -92,7 +122,7 @@ def build_memo_search_index(transcripts, matches_by_song) -> tuple[list[dict], d
             searchable_matched += 1
         prepared.append(
             {
-                "f": row.get("file") or "",
+                "f": sanitize_intake_name(row.get("file")),
                 "n": row.get("title") or "(untitled)",
                 "d": row.get("date") or "",
                 "u": row.get("dur") or 0,
@@ -228,6 +258,8 @@ OWNER_AUDIO_HREF_SUFFIXES = (
     ".aiff",
     ".aif",
     ".logicx",
+    ".mid",
+    ".midi",
     ".m4a",
     ".mp3",
     ".flac",
@@ -380,8 +412,8 @@ _PRODUCE_MARKS = (
     "arrangement built",
 )
 _OWNER_AUDIO_IN_TEXT_RE = re.compile(
-    r"\([^()]{0,200}\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\)|"
-    r"\b[\w./' -]+\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\b|"
+    r"\([^()]{0,200}\.(?:wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\)|"
+    r"\b[\w./' -]+\.(?:wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\b|"
     r"file://\S+",
     re.IGNORECASE,
 )
@@ -609,7 +641,7 @@ def work_card_leaks_private_locators(text) -> bool:
     low = str(text or "").lower()
     if "file://" in low:
         return True
-    if re.search(r"\.(wav|aiff|aif|logicx|m4a|mp3|flac|band)\b", low):
+    if re.search(r"\.(wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\b", low):
         return True
     return any(name in low for name in _PRIVATE_STREET_NAMES)
 
@@ -848,4 +880,10 @@ def readme_documents_session_click_test(text: str) -> bool:
         and "catalog id" in body
         and "copy next step" in body
         and "do this now" in body
+        and "session log" in body
+        and "sit-down" in body
+        and "logic" in body
+        and "export honesty" in body
+        and "wavs/aiff/midi" in body
+        and "no ableton-first" in body
     )

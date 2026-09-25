@@ -534,3 +534,68 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Next continuation point
 Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Use the Songs search box to type the name Jeff actually remembers — alias, folded punctuation, or a long-enough memo lyric — then Enter the first row; use this latest Session Log section for the authoritative project handoff. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Logic export honesty extended — 2026-09-25 (Cloud Agent, no audio)
+### Done
+1. Started from exact private branch `cursor/logic-ready-sitdown-export-honesty-7146` (PR #37). The sit-down already said "Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)" but the memo search hint and page footer still used generic "on your Mac" or "do not open audio" language.
+2. Extended the same export honesty to three surfaces: (a) the memo search hint now tells Jeff to write, produce, or listen in Logic with export honesty before he sees any memo results; (b) the page footer now includes "open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first)" right after "Logic projects, keys, and WAVs stay on your Mac"; (c) the work session evidence line from #37 is unchanged.
+3. Coverage test extended to verify the footer now includes "open in Logic (export honesty:". All 215 tests pass. Catalog validation green. Dashboard regenerated.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. The private dashboard now emphasizes Logic export honesty in all sit-down, memo search, and footer text — Jeff sees "WAVs/AIFF/MIDI preference, no Ableton-first" before every work session. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## README click-test export honesty — 2026-09-25 (Cloud Agent, no audio)
+### Done
+1. Started from exact private branch `cursor/logic-ready-sitdown-export-honesty-7146` (PR #37) at tip `d51576f`. The dashboard already carried Logic export honesty guidance in the sit-down, memo search hint, resume hint, and footer, but the README click-test section did not mention it.
+2. Extended the README click-test to include step 12: the session evidence, sit-down, memo search hint, and page footer all say to work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio — export to WAV/AIFF/MIDI from Logic on Jeff's Mac.
+3. The validator now fail-closes if the README lacks Logic export honesty guidance. The `readme_documents_session_click_test` function checks for "logic", "export honesty", and "wavs/aiff/midi" (case-insensitive).
+4. Test fixtures updated to include the new requirements. All 217 tests pass. JS navigation smoke ok. Catalog validation green.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. The README click-test now includes Logic export honesty verification (step 12). The validator fail-closes if the README lacks this guidance. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Session Log sit-down handoff export honesty — 2026-09-25 (Cloud Agent, no audio)
+### Done
+1. Started from exact private branch `cursor/logic-ready-sitdown-export-honesty-7146` (PR #37) at tip `b792467dd0c67a78c7f0bb6b36c0b2023b699554`. Logic-first export honesty already appeared across sit-down, memo hint, footer, and README step 12.
+2. Closed the leftover between sit-down and handoff wording: README step 12 now explicitly says to pair Voice Memo Intake name + **Copy next step** in Session Log before leaving a sit-down.
+3. Tightened the README click-test contract so it now fails closed unless the README includes Session Log + sit-down language, WAVs/AIFF/MIDI export honesty, and explicit "no Ableton-first". Validator error text updated to call out the Session Log handoff expectation.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Sit-down handoff is now explicit and fail-closed: pair Voice Memo Intake name + **Copy next step** in Session Log, then work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Latest Session Log handoff export honesty fail-closed — 2026-09-25 (Cloud Agent, no audio)
+### Done
+1. Started from exact private branch `cursor/logic-ready-sitdown-export-honesty-7146` (PR #37) at tip `d1a5c3a0b772838d65c6d126a30df8afaa7bd71b`. README click-test and dashboard sit-down already carried Logic-first export honesty guidance.
+2. Closed the remaining fail-closed gap on Session Log itself: validator now requires the **latest Session Log H2 pass** to restate the sit-down handoff in Session Log plus Logic export honesty language (`WAVs/AIFF/MIDI preference, no Ableton-first`), so a later edit cannot silently drop this instruction.
+3. Updated test fixtures/regression tests to enforce this check and refreshed README / Producer README wording where old shorthand still said only WAVs.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Latest Session Log handoff now fails closed: sit-down handoff belongs in Session Log (pair Voice Memo Intake name + **Copy next step**), then work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.

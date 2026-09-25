@@ -241,6 +241,35 @@ if (!extractFunction(script, "copyVaultText").includes("execCommand")) {
 if (!extractFunction(script, "copyMemoFile").includes("copyVaultText")) {
   fail("intake-name copy must reuse the shared clipboard helper");
 }
+const safeIntakeName = new Function(
+  "return (" + extractFunction(script, "safeIntakeName") + ");",
+)();
+if (safeIntakeName("file:///Users/jeff/Voice Memos/Raw Take 1.m4a?download=1") !== "Raw Take 1.m4a") {
+  fail("intake-name sanitizing must keep only the copy-safe basename");
+}
+if (safeIntakeName("(unknown intake)") !== "" || safeIntakeName("unknown intake") !== "") {
+  fail("placeholder intake labels must not become copyable values");
+}
+if (safeIntakeName("file:///Users/jeff/Voice Memos/private-mix.wav") !== "") {
+  fail("intake-name sanitizing must fail closed for owner-audio WAV basenames");
+}
+if (safeIntakeName("proof.aiff") !== "" || safeIntakeName("line.mid") !== "") {
+  fail("intake-name sanitizing must fail closed for AIFF and MIDI basenames");
+}
+const copyMemoFile = new Function(
+  "safeIntakeName",
+  "copyVaultText",
+  "return (" + extractFunction(script, "copyMemoFile") + ");",
+)(safeIntakeName, (value) => !!value);
+if (copyMemoFile("(unknown intake)", null)) {
+  fail("copy intake name must fail closed when the memo row has no safe intake basename");
+}
+if (copyMemoFile("file:///tmp/private.logicx", null)) {
+  fail("copy intake name must fail closed for owner Logic project basenames");
+}
+if (!copyMemoFile("file:///tmp/Clip.m4a", null)) {
+  fail("copy intake name must still work for a sanitized real memo intake filename");
+}
 
 const songWorkKind = new Function(
   "return (" + extractFunction(script, "songWorkKind") + ");",
@@ -348,6 +377,9 @@ const stripPrivateLocators = new Function(
 if (stripPrivateLocators("Listen to latest (mix.wav) and rate") !== "Listen to latest and rate") {
   fail("work preview must strip owner-audio filenames");
 }
+if (stripPrivateLocators("Listen to latest (arrangement.mid) and rate") !== "Listen to latest and rate") {
+  fail("work preview must strip MIDI filenames");
+}
 if (stripPrivateLocators("LISTEN: play Maxwell Dr 99 (latest take). Verdict.") !== "LISTEN: play. Verdict.") {
   fail("work preview must strip known street fragments");
 }
@@ -371,6 +403,9 @@ const safeWorkNextStep = new Function(
 );
 if (safeWorkNextStep({ nx: "Listen to latest (mix.wav) and rate: finish / rest." }) !== "Listen to latest and rate: finish / rest.") {
   fail("session next step must reuse sanitized catalog action text");
+}
+if (safeWorkNextStep({ nx: "Listen to latest (arrangement.midi) and rate: finish / rest." }) !== "Listen to latest and rate: finish / rest.") {
+  fail("session next step must strip MIDI owner locators");
 }
 if (safeWorkNextStep(null) !== "" || safeWorkNextStep({ nx: "" }) !== "") {
   fail("session next step must fail closed without a usable catalog action");
@@ -541,6 +576,37 @@ if (sessionUi.copy.hidden || sessionUi.copy.disabled || sessionUi.copy.dataset.s
 }
 if (sessionUi.review.hidden || sessionUi.review.disabled || !sessionUi.evidence.textContent.includes("2 searchable memos")) {
   fail("matched evidence must enable review and name its honest receipt count");
+}
+
+const noMemoUi = {
+  panel: { hidden: true }, text: { textContent: "" },
+  action: { hidden: true, textContent: "" }, evidence: { textContent: "" },
+  copy: { hidden: true, disabled: true, dataset: {}, setAttribute(name, value) { this[name] = value; } },
+  review: { hidden: true, disabled: true, dataset: {}, setAttribute(name, value) { this[name] = value; } },
+  prev: {}, next: {},
+};
+const updateNoMemoWorkSessionState = new Function(
+  "workSession", "work", "workSessionText", "workSessionNext", "workSessionEvidence",
+  "copyWorkNext", "openWorkEvidence", "workPrev", "workNext",
+  "visibleSongIds", "activeWorkSongId", "sname", "DATA", "safeWorkNextStep", "memoEvidenceBySong",
+  "return (" + extractFunction(script, "updateWorkSessionState") + ");",
+)(
+  noMemoUi.panel, { value: "listen" }, noMemoUi.text, noMemoUi.action, noMemoUi.evidence,
+  noMemoUi.copy, noMemoUi.review, noMemoUi.prev, noMemoUi.next,
+  ["JS-0001"], "JS-0001", names,
+  [{ id: "JS-0001", nx: "Listen to latest (mix.wav) and rate: finish / rest." }],
+  safeWorkNextStep,
+  {},
+);
+updateNoMemoWorkSessionState();
+if (!noMemoUi.evidence.textContent.includes("Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first).")) {
+  fail("no-memo work session evidence must still carry Logic export honesty guidance");
+}
+if (!noMemoUi.evidence.textContent.includes("This page does not open audio.")) {
+  fail("no-memo work session evidence must retain the no-audio reminder");
+}
+if (!noMemoUi.review.hidden || !noMemoUi.review.disabled) {
+  fail("no-memo work session must not enable memo evidence review");
 }
 
 const copiedNext = [];

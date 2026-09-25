@@ -91,6 +91,7 @@ from validate_catalog import (  # noqa: E402
     catalog_ok_report,
     catalog_ok_report_leaks_published_ids,
     duplicate_session_log_headings,
+    latest_session_log_has_logic_export_handoff,
     latest_session_log_has_continuation,
     latest_session_log_section,
     module_doc_claims_hosted_ci,
@@ -246,7 +247,9 @@ def extras_ok(cat=None):
             "## usable catalog local-JSON — 2026-08-26 (Cloud Agent, no audio)\n\n"
             "once\n\n"
             "### Next continuation point\n\n"
-            "standing Jeff-owned items unchanged\n"
+            "Sit-down handoff goes in Session Log: pair intake name + Copy next "
+            "step, then work in Logic (export honesty, WAVs/AIFF/MIDI preference, "
+            "no Ableton-first).\n"
         ),
         "dashboard_html": (
             "Catalog v1.6 · Turn Over The Flag · Manic · Long Long Drive · "
@@ -1791,7 +1794,9 @@ class ValidateCatalogTests(unittest.TestCase):
             "## Session Log once — 2026-08-26 (Cloud Agent, no audio)\n\n"
             "leftover removed\n\n"
             "### Next continuation point\n\n"
-            "standing Jeff-owned items unchanged\n"
+            "Sit-down handoff goes in Session Log: pair intake name + Copy next "
+            "step, then work in Logic (export honesty, WAVs/AIFF/MIDI preference, "
+            "no Ableton-first).\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
 
@@ -1804,7 +1809,9 @@ class ValidateCatalogTests(unittest.TestCase):
             "## other pass\n\n"
             "### Done\n\n"
             "### Next continuation point\n\n"
-            "standing Jeff-owned items unchanged\n"
+            "Sit-down handoff goes in Session Log: pair intake name + Copy next "
+            "step, then work in Logic (export honesty, WAVs/AIFF/MIDI preference, "
+            "no Ableton-first).\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertEqual(duplicate_session_log_headings(extras["session_log"]), [])
@@ -1847,16 +1854,41 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertFalse(latest_session_log_has_continuation(extras["session_log"]))
 
+    def test_latest_session_log_without_logic_export_handoff_fails(self):
+        extras = extras_ok()
+        extras["session_log"] = (
+            "# Session Log\n\n"
+            "## latest pass\n\n"
+            "### Next continuation point\n\n"
+            "standing Jeff-owned items unchanged\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any(
+                "latest Session Log H2 pass must restate sit-down handoff" in e
+                for e in errors
+            ),
+            errors,
+        )
+        self.assertFalse(
+            latest_session_log_has_logic_export_handoff(extras["session_log"])
+        )
+
     def test_session1_style_continuation_on_latest_pass(self):
         extras = extras_ok()
         extras["session_log"] = (
             "# Session Log\n\n"
             "## Session 1 — 2026-08-18\n\n"
             "### NOT done / next continuation point\n\n"
-            "old\n"
+            "Sit-down handoff goes in Session Log: pair intake name + Copy next "
+            "step, then work in Logic (export honesty, WAVs/AIFF/MIDI preference, "
+            "no Ableton-first).\n"
         )
         self.assertEqual(validate(fixture(), extras), [])
         self.assertTrue(latest_session_log_has_continuation(extras["session_log"]))
+        self.assertTrue(
+            latest_session_log_has_logic_export_handoff(extras["session_log"])
+        )
 
     def test_stale_producer_readme_resume_fails(self):
         extras = extras_ok()
@@ -2181,6 +2213,21 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertFalse(readme_documents_session_click_test(extras["readme"]))
 
+    def test_readme_click_test_requires_session_log_handoff_and_no_ableton_first(self):
+        missing_handoff = (
+            "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
+            "Copy next step. Do this now. Stores only a work kind and catalog ID. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)."
+        )
+        self.assertFalse(readme_documents_session_click_test(missing_handoff))
+        missing_no_ableton = (
+            "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
+            "Copy next step. Do this now. Stores only a work kind and catalog ID. "
+            "Sit-down handoff goes in Session Log. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference)."
+        )
+        self.assertFalse(readme_documents_session_click_test(missing_no_ableton))
+
     def test_public_docs_roles_counts_only_pass(self):
         extras = extras_ok()
         extras["readme"] = (
@@ -2190,7 +2237,9 @@ class ValidateCatalogTests(unittest.TestCase):
             "40 setlist-ready keyed originals; 20-row Vault default-live slice. "
             "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
             "Copy next step. Do this now. "
-            "Stores only a schema version, work kind, and catalog ID.\n"
+            "Stores only a schema version, work kind, and catalog ID. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "Sit-down handoff goes in Session Log.\n"
         )
         extras["apps_md"] = (
             "Local python3 scripts/validate_catalog.py fails closed "
@@ -2528,6 +2577,22 @@ class ValidateCatalogTests(unittest.TestCase):
             "Catalog remembered-name search — 2026-09-04 "
             "(Cloud Agent Extra High, no audio)"
         )
+        product_logic_export = (
+            "Logic export honesty extended — 2026-09-25 "
+            "(Cloud Agent, no audio)"
+        )
+        product_readme_export = (
+            "README click-test export honesty — 2026-09-25 "
+            "(Cloud Agent, no audio)"
+        )
+        product_session_log_export = (
+            "Session Log sit-down handoff export honesty — 2026-09-25 "
+            "(Cloud Agent, no audio)"
+        )
+        product_latest_session_log_handoff = (
+            "Latest Session Log handoff export honesty fail-closed — 2026-09-25 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2545,7 +2610,11 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(product_session_click, headings)
         self.assertIn(product_resume_next, headings)
         self.assertIn(product_name_search, headings)
-        self.assertEqual(headings[-1], product_name_search)
+        self.assertIn(product_logic_export, headings)
+        self.assertIn(product_readme_export, headings)
+        self.assertIn(product_session_log_export, headings)
+        self.assertIn(product_latest_session_log_handoff, headings)
+        self.assertEqual(headings[-1], product_latest_session_log_handoff)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))

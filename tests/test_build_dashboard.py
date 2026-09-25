@@ -39,6 +39,49 @@ from catalog_surface import (  # noqa: E402
 
 
 class DashboardMemoHonestyTests(unittest.TestCase):
+    def test_memo_index_sanitizes_intake_name_to_basename(self):
+        prepared, counts = build_memo_search_index(
+            [
+                {
+                    "uid": "a",
+                    "file": "file:///Users/jeff/Voice Memos/Raw Take 1.m4a?download=1",
+                    "title": "A",
+                    "date": "2026-09-01",
+                    "dur": 12,
+                    "text": "this transcript text is definitely long enough",
+                },
+                {
+                    "uid": "b",
+                    "file": r"C:\\Users\\jeff\\Voice Memos\\Second Take.m4a",
+                    "title": "B",
+                    "date": "2026-09-02",
+                    "dur": 20,
+                    "text": "another transcript that is long enough to keep",
+                },
+            ],
+            {"JS-0001": ["a"], "JS-0002": ["b"]},
+        )
+        self.assertEqual(counts["searchable"], 2)
+        self.assertEqual(prepared[0]["f"], "Raw Take 1.m4a")
+        self.assertEqual(prepared[1]["f"], "Second Take.m4a")
+
+    def test_memo_index_hides_owner_audio_suffixes_in_intake_name(self):
+        prepared, counts = build_memo_search_index(
+            [
+                {
+                    "uid": "leak",
+                    "file": "file:///Users/jeff/Voice Memos/private mix.wav",
+                    "title": "Hidden",
+                    "date": "2026-09-03",
+                    "dur": 21,
+                    "text": "searchable transcript text stays long enough for indexing",
+                }
+            ],
+            {"JS-0001": ["leak"]},
+        )
+        self.assertEqual(counts["searchable"], 1)
+        self.assertEqual(prepared[0]["f"], "")
+
     def test_short_matched_transcript_stays_in_source_truth_not_search_index(self):
         transcripts = [
             {
@@ -176,6 +219,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
 
     def test_dashboard_must_not_open_owner_audio(self):
         self.assertTrue(dashboard_opens_owner_audio('<a href="mix.wav">open</a>'))
+        self.assertTrue(dashboard_opens_owner_audio('<a href="take.mid">open</a>'))
         self.assertTrue(dashboard_opens_owner_audio("<audio src='x.m4a'></audio>"))
         self.assertTrue(dashboard_opens_owner_audio('<a href="file:///tmp/x.wav">x</a>'))
         self.assertTrue(dashboard_opens_owner_audio('<button onclick="play()">x</button>'))
@@ -237,6 +281,9 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("Start a work session", dashboard)
         self.assertIn("More filters", dashboard)
         self.assertIn("Sit-down", dashboard)
+        self.assertIn("Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)", dashboard)
+        self.assertIn("open in Logic (export honesty:", dashboard)
+        self.assertIn("Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac", dashboard)
         self.assertIn("Copy work card", dashboard)
         self.assertIn("function songWorkKind(", dashboard)
         self.assertIn("function buildSongWorkCard(", dashboard)
@@ -248,6 +295,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("function allowedExactWorkSongId(", dashboard)
         self.assertIn("function copyExactSongNextStep(", dashboard)
         self.assertIn("function copyResumeWorkNext(", dashboard)
+        self.assertIn("function intakeNameSummary(", dashboard)
         self.assertIn("safeWorkNextStep(d)", dashboard)
         self.assertIn('id="workSessionNext"', dashboard)
         self.assertIn('id="copyWorkNext"', dashboard)
@@ -255,6 +303,30 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn('id="resumeWorkNext"', dashboard)
         self.assertIn('id="copyResumeNext"', dashboard)
         self.assertIn("function latestMemoForSong(", dashboard)
+        self.assertIn("Sit-down handoff stays in Session Log: copy next step + intake name before leaving.", dashboard)
+        self.assertIn(
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "Sit-down handoff stays in Session Log: copy next step + intake name before leaving.",
+            dashboard,
+        )
+        self.assertIn("then log the sit-down handoff in Session Log.", dashboard)
+        self.assertIn(
+            "No searchable memo evidence for this song. The next step comes from the catalog. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "This page does not open audio.",
+            dashboard,
+        )
+        self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
+        self.assertIn(
+            "Transcripts are machine-made (Whisper, run locally on your Mac) — "
+            "they mishear sung words constantly, so treat hits as leads, not gospel. "
+            "Copy the intake name only (sanitized); write, produce, or listen in Logic "
+            "(export honesty, WAVs/AIFF/MIDI preference, no Ableton-first).",
+            dashboard,
+        )
+        self.assertIn("Copy the intake name only (sanitized)", dashboard)
+        self.assertIn("No copy-safe intake name on this memo row yet;", dashboard)
+        self.assertIn("no copy-safe intake name yet", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
         self.assertNotIn("<h4>Known assets</h4>", dashboard)
 
@@ -350,11 +422,15 @@ class DashboardSongWorkTests(unittest.TestCase):
             ),
             "LISTEN: play. Verdict: gem / meh.",
         )
+        self.assertEqual(
+            strip_private_locators("Listen to latest (arrangement.mid) and decide."),
+            "Listen to latest and decide.",
+        )
         card = song_work_card(
             {
                 "id": "JS-0130",
                 "t": "Been Loving You",
-                "nx": 'LISTEN: play Maxwell Dr 99 (latest take). Verdict: gem.',
+                "nx": "LISTEN: play Maxwell Dr 99 (latest take). arrangement.midi Verdict: gem.",
                 "hk": "Been loving you",
                 "src": ["mix.wav", "song.logicx"],
                 "bs": "file:///Users/jeff/Music/take.wav",
@@ -365,6 +441,7 @@ class DashboardSongWorkTests(unittest.TestCase):
         self.assertNotIn("Maxwell", card)
         self.assertNotIn(".wav", card)
         self.assertNotIn(".logicx", card)
+        self.assertNotIn(".midi", card)
         self.assertNotIn("file://", card)
         self.assertFalse(work_card_leaks_private_locators(card))
 
@@ -375,6 +452,10 @@ class DashboardSongWorkTests(unittest.TestCase):
                     "next_action": "Listen to latest (private-mix.wav) and rate: finish / rest."
                 }
             ),
+            "Listen to latest and rate: finish / rest.",
+        )
+        self.assertEqual(
+            safe_song_next_step({"next_action": "Listen to latest (private-arrangement.mid) and rate: finish / rest."}),
             "Listen to latest and rate: finish / rest.",
         )
         self.assertEqual(safe_song_next_step({"nx": ""}), "")
