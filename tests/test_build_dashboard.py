@@ -276,6 +276,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("function allowedExactWorkSongId(", dashboard)
         self.assertIn("function copyExactSongNextStep(", dashboard)
         self.assertIn("function copyResumeWorkNext(", dashboard)
+        self.assertIn("function intakeNameSummary(", dashboard)
         self.assertIn("safeWorkNextStep(d)", dashboard)
         self.assertIn('id="workSessionNext"', dashboard)
         self.assertIn('id="copyWorkNext"', dashboard)
@@ -287,6 +288,8 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("then log the sit-down handoff in Session Log.", dashboard)
         self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
         self.assertIn("Copy the intake name only (sanitized)", dashboard)
+        self.assertIn("No copy-safe intake name on this memo row yet;", dashboard)
+        self.assertIn("no copy-safe intake name yet", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
         self.assertNotIn("<h4>Known assets</h4>", dashboard)
 

@@ -241,6 +241,26 @@ if (!extractFunction(script, "copyVaultText").includes("execCommand")) {
 if (!extractFunction(script, "copyMemoFile").includes("copyVaultText")) {
   fail("intake-name copy must reuse the shared clipboard helper");
 }
+const safeIntakeName = new Function(
+  "return (" + extractFunction(script, "safeIntakeName") + ");",
+)();
+if (safeIntakeName("file:///Users/jeff/Voice Memos/Raw Take 1.m4a?download=1") !== "Raw Take 1.m4a") {
+  fail("intake-name sanitizing must keep only the copy-safe basename");
+}
+if (safeIntakeName("(unknown intake)") !== "" || safeIntakeName("unknown intake") !== "") {
+  fail("placeholder intake labels must not become copyable values");
+}
+const copyMemoFile = new Function(
+  "safeIntakeName",
+  "copyVaultText",
+  "return (" + extractFunction(script, "copyMemoFile") + ");",
+)(safeIntakeName, (value) => !!value);
+if (copyMemoFile("(unknown intake)", null)) {
+  fail("copy intake name must fail closed when the memo row has no safe intake basename");
+}
+if (!copyMemoFile("file:///tmp/Clip.m4a", null)) {
+  fail("copy intake name must still work for a sanitized real memo intake filename");
+}
 
 const songWorkKind = new Function(
   "return (" + extractFunction(script, "songWorkKind") + ");",
