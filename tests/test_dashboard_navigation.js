@@ -578,6 +578,37 @@ if (sessionUi.review.hidden || sessionUi.review.disabled || !sessionUi.evidence.
   fail("matched evidence must enable review and name its honest receipt count");
 }
 
+const noMemoUi = {
+  panel: { hidden: true }, text: { textContent: "" },
+  action: { hidden: true, textContent: "" }, evidence: { textContent: "" },
+  copy: { hidden: true, disabled: true, dataset: {}, setAttribute(name, value) { this[name] = value; } },
+  review: { hidden: true, disabled: true, dataset: {}, setAttribute(name, value) { this[name] = value; } },
+  prev: {}, next: {},
+};
+const updateNoMemoWorkSessionState = new Function(
+  "workSession", "work", "workSessionText", "workSessionNext", "workSessionEvidence",
+  "copyWorkNext", "openWorkEvidence", "workPrev", "workNext",
+  "visibleSongIds", "activeWorkSongId", "sname", "DATA", "safeWorkNextStep", "memoEvidenceBySong",
+  "return (" + extractFunction(script, "updateWorkSessionState") + ");",
+)(
+  noMemoUi.panel, { value: "listen" }, noMemoUi.text, noMemoUi.action, noMemoUi.evidence,
+  noMemoUi.copy, noMemoUi.review, noMemoUi.prev, noMemoUi.next,
+  ["JS-0001"], "JS-0001", names,
+  [{ id: "JS-0001", nx: "Listen to latest (mix.wav) and rate: finish / rest." }],
+  safeWorkNextStep,
+  {},
+);
+updateNoMemoWorkSessionState();
+if (!noMemoUi.evidence.textContent.includes("Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first).")) {
+  fail("no-memo work session evidence must still carry Logic export honesty guidance");
+}
+if (!noMemoUi.evidence.textContent.includes("This page does not open audio.")) {
+  fail("no-memo work session evidence must retain the no-audio reminder");
+}
+if (!noMemoUi.review.hidden || !noMemoUi.review.disabled) {
+  fail("no-memo work session must not enable memo evidence review");
+}
+
 const copiedNext = [];
 const copyExactSongNextStep = new Function(
   "DATA", "safeWorkNextStep", "copyVaultText", "allowedExactWorkSongId", "songWorkKind", "work",

@@ -283,6 +283,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("Sit-down", dashboard)
         self.assertIn("Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)", dashboard)
         self.assertIn("open in Logic (export honesty:", dashboard)
+        self.assertIn("Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac", dashboard)
         self.assertIn("Copy work card", dashboard)
         self.assertIn("function songWorkKind(", dashboard)
         self.assertIn("function buildSongWorkCard(", dashboard)
