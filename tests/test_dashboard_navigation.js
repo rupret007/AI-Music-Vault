@@ -377,6 +377,9 @@ const stripPrivateLocators = new Function(
 if (stripPrivateLocators("Listen to latest (mix.wav) and rate") !== "Listen to latest and rate") {
   fail("work preview must strip owner-audio filenames");
 }
+if (stripPrivateLocators("Listen to latest (arrangement.mid) and rate") !== "Listen to latest and rate") {
+  fail("work preview must strip MIDI filenames");
+}
 if (stripPrivateLocators("LISTEN: play Maxwell Dr 99 (latest take). Verdict.") !== "LISTEN: play. Verdict.") {
   fail("work preview must strip known street fragments");
 }
@@ -400,6 +403,9 @@ const safeWorkNextStep = new Function(
 );
 if (safeWorkNextStep({ nx: "Listen to latest (mix.wav) and rate: finish / rest." }) !== "Listen to latest and rate: finish / rest.") {
   fail("session next step must reuse sanitized catalog action text");
+}
+if (safeWorkNextStep({ nx: "Listen to latest (arrangement.midi) and rate: finish / rest." }) !== "Listen to latest and rate: finish / rest.") {
+  fail("session next step must strip MIDI owner locators");
 }
 if (safeWorkNextStep(null) !== "" || safeWorkNextStep({ nx: "" }) !== "") {
   fail("session next step must fail closed without a usable catalog action");

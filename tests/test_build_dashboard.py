@@ -219,6 +219,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
 
     def test_dashboard_must_not_open_owner_audio(self):
         self.assertTrue(dashboard_opens_owner_audio('<a href="mix.wav">open</a>'))
+        self.assertTrue(dashboard_opens_owner_audio('<a href="take.mid">open</a>'))
         self.assertTrue(dashboard_opens_owner_audio("<audio src='x.m4a'></audio>"))
         self.assertTrue(dashboard_opens_owner_audio('<a href="file:///tmp/x.wav">x</a>'))
         self.assertTrue(dashboard_opens_owner_audio('<button onclick="play()">x</button>'))
@@ -402,11 +403,15 @@ class DashboardSongWorkTests(unittest.TestCase):
             ),
             "LISTEN: play. Verdict: gem / meh.",
         )
+        self.assertEqual(
+            strip_private_locators("Listen to latest (arrangement.mid) and decide."),
+            "Listen to latest and decide.",
+        )
         card = song_work_card(
             {
                 "id": "JS-0130",
                 "t": "Been Loving You",
-                "nx": 'LISTEN: play Maxwell Dr 99 (latest take). Verdict: gem.',
+                "nx": "LISTEN: play Maxwell Dr 99 (latest take). arrangement.midi Verdict: gem.",
                 "hk": "Been loving you",
                 "src": ["mix.wav", "song.logicx"],
                 "bs": "file:///Users/jeff/Music/take.wav",
@@ -417,6 +422,7 @@ class DashboardSongWorkTests(unittest.TestCase):
         self.assertNotIn("Maxwell", card)
         self.assertNotIn(".wav", card)
         self.assertNotIn(".logicx", card)
+        self.assertNotIn(".midi", card)
         self.assertNotIn("file://", card)
         self.assertFalse(work_card_leaks_private_locators(card))
 
@@ -427,6 +433,10 @@ class DashboardSongWorkTests(unittest.TestCase):
                     "next_action": "Listen to latest (private-mix.wav) and rate: finish / rest."
                 }
             ),
+            "Listen to latest and rate: finish / rest.",
+        )
+        self.assertEqual(
+            safe_song_next_step({"next_action": "Listen to latest (private-arrangement.mid) and rate: finish / rest."}),
             "Listen to latest and rate: finish / rest.",
         )
         self.assertEqual(safe_song_next_step({"nx": ""}), "")

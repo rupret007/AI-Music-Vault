@@ -258,6 +258,8 @@ OWNER_AUDIO_HREF_SUFFIXES = (
     ".aiff",
     ".aif",
     ".logicx",
+    ".mid",
+    ".midi",
     ".m4a",
     ".mp3",
     ".flac",
@@ -410,8 +412,8 @@ _PRODUCE_MARKS = (
     "arrangement built",
 )
 _OWNER_AUDIO_IN_TEXT_RE = re.compile(
-    r"\([^()]{0,200}\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\)|"
-    r"\b[\w./' -]+\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\b|"
+    r"\([^()]{0,200}\.(?:wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\)|"
+    r"\b[\w./' -]+\.(?:wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\b|"
     r"file://\S+",
     re.IGNORECASE,
 )
@@ -639,7 +641,7 @@ def work_card_leaks_private_locators(text) -> bool:
     low = str(text or "").lower()
     if "file://" in low:
         return True
-    if re.search(r"\.(wav|aiff|aif|logicx|m4a|mp3|flac|band)\b", low):
+    if re.search(r"\.(wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\b", low):
         return True
     return any(name in low for name in _PRIVATE_STREET_NAMES)
 

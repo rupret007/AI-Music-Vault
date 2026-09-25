@@ -413,8 +413,8 @@ function forgetLastWorkSession(){
 }
 function stripPrivateLocators(text){
  let s=String(text||'');
- s=s.replace(/\([^()]{0,200}\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\)/ig,'');
- s=s.replace(/\b[\w./' -]+\.(?:wav|aiff|aif|logicx|m4a|mp3|flac|band)\b/ig,'');
+ s=s.replace(/\([^()]{0,200}\.(?:wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\)/ig,'');
+ s=s.replace(/\b[\w./' -]+\.(?:wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\b/ig,'');
  s=s.replace(new RegExp('file:'+'//\\S+','ig'),'');
  s=s.replace(/\b(?:Maxwell Dr|Crescent Dr|Eagle Mountain Dr)\b[^,.;]*/ig,'');
  return s.replace(/\s{2,}/g,' ').replace(/\s+([,.;:])/g,'$1').replace(/^[\s-]+|[\s-]+$/g,'');
@@ -422,7 +422,7 @@ function stripPrivateLocators(text){
 function workCardLeaks(text){
  const low=String(text||'').toLowerCase();
  if(low.includes('file:'+'//'))return true;
- if(/\.(wav|aiff|aif|logicx|m4a|mp3|flac|band)\b/.test(low))return true;
+ if(/\.(wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\b/.test(low))return true;
  return low.includes('maxwell dr')||low.includes('crescent dr')||low.includes('eagle mountain dr');
 }
 function nextStepIsIncomplete(text){
