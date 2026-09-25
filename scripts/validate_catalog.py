@@ -220,6 +220,21 @@ def latest_session_log_has_continuation(text: str) -> bool:
     return bool(SESSION_LOG_CONTINUATION_RE.search(latest_session_log_section(text)))
 
 
+def latest_session_log_has_logic_export_handoff(text: str) -> bool:
+    """Latest H2 must restate Logic-first sit-down export honesty handoff."""
+    section = latest_session_log_section(text).lower()
+    return (
+        "session log" in section
+        and "sit-down" in section
+        and "copy next step" in section
+        and "intake name" in section
+        and "logic" in section
+        and "export honesty" in section
+        and "wavs/aiff/midi" in section
+        and "no ableton-first" in section
+    )
+
+
 def apps_md_claims_hosted_ci(text: str) -> bool:
     """Current docs must not treat hosted CI as the catalog gate."""
     return bool(STALE_HOSTED_CI_RE.search(text or ""))
@@ -1866,6 +1881,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "latest Session Log H2 pass has no Next continuation point — "
                 "resume must not fall back to Session 1"
+            )
+        elif not latest_session_log_has_logic_export_handoff(session_log):
+            errors.append(
+                "latest Session Log H2 pass must restate sit-down handoff in "
+                "Session Log plus Logic export honesty "
+                "(WAVs/AIFF/MIDI preference, no Ableton-first)"
             )
 
     producer = extras.get("producer_readme")

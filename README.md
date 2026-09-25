@@ -67,7 +67,7 @@ and invalid, stale, or mismatched records are discarded. No title, note,
 transcript, next action, filename, or audio locator is stored. These are local
 navigation links over the existing index;
 they do not open, upload, or modify audio. Logic projects, keys, and WAVs
-stay owner-only.
+and AIFF/MIDI exports stay owner-only and Logic-first (no Ableton-first).
 
 ### Click-test the private session
 
