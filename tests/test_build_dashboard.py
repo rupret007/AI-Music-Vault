@@ -257,6 +257,9 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn('id="resumeWorkNext"', dashboard)
         self.assertIn('id="copyResumeNext"', dashboard)
         self.assertIn("function latestMemoForSong(", dashboard)
+        self.assertIn("Sit-down handoff stays in Session Log: copy next step + intake name before leaving.", dashboard)
+        self.assertIn("then log the sit-down handoff in Session Log.", dashboard)
+        self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
         self.assertNotIn("<h4>Known assets</h4>", dashboard)
 

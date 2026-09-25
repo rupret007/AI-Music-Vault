@@ -96,7 +96,7 @@ input{flex:1;min-width:160px}
   <div class="resume-next" id="resumeWorkNext" hidden></div>
   <button type="button" class="subtle-btn primary-action" id="copyResumeNext" hidden>Copy next step</button>
  </div>
- <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. The Session Log stays the handoff.</p>
+ <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
  <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
 </section>
 <div class="lanes">
@@ -675,7 +675,7 @@ function updateWorkSessionState(){
   workSessionEvidence.textContent=!song
    ?'Choose a song to see its verified catalog action.'
    :ev&&ev.n
-    ?`${ev.n} searchable memo${ev.n===1?'':'s'}${ev.last?' · latest '+ev.last:''}. Review the evidence before working in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first).`
+    ?`${ev.n} searchable memo${ev.n===1?'':'s'}${ev.last?' · latest '+ev.last:''}. Review the evidence before working in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first), then log the sit-down handoff in Session Log.`
     :next?'No searchable memo evidence for this song. The next step comes from the catalog.':'No safe catalog next step or searchable memo evidence.';
  }
  if(openWorkEvidence){
@@ -923,7 +923,7 @@ function mrender(){
   copyMemoWork.dataset.copyWork=song?song.id:'';
  }
  if((!activeMemoSong&&term.length<3)||(term.length>0&&term.length<3)){
-  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words. Copy the intake name; write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div>`;return;
+  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words. Copy the intake name; write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div>`;return;
  }
  const hits=[];
  for(const m of TX){
