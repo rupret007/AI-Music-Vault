@@ -60,6 +60,22 @@ def collapse_transcript_text(text) -> str:
     return " ".join(out)
 
 
+def sanitize_intake_name(value) -> str:
+    """Keep only a copy-safe memo intake basename (no directories/URI parts)."""
+    name = str(value or "").strip()
+    if not name:
+        return ""
+    normalized = (
+        name.replace("\\", "/").split("?", 1)[0].split("#", 1)[0]
+    )
+    if normalized.lower().startswith("file://"):
+        normalized = normalized[7:]
+    basename = normalized.rsplit("/", 1)[-1].strip()
+    if basename in {"", ".", ".."}:
+        return ""
+    return re.sub(r"\s{2,}", " ", basename)
+
+
 def build_memo_search_index(transcripts, matches_by_song) -> tuple[list[dict], dict[str, int]]:
     """Return the compact search index and distinct source/searchable counts.
 
@@ -92,7 +108,7 @@ def build_memo_search_index(transcripts, matches_by_song) -> tuple[list[dict], d
             searchable_matched += 1
         prepared.append(
             {
-                "f": row.get("file") or "",
+                "f": sanitize_intake_name(row.get("file")),
                 "n": row.get("title") or "(untitled)",
                 "d": row.get("date") or "",
                 "u": row.get("dur") or 0,

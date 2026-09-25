@@ -606,6 +606,7 @@ function render(){
   const nxt=safeWorkNextStep(d);
   const nxtShort=nxt.length>90?nxt.slice(0,87)+'…':nxt;
   const latest=latestMemoForSong(d.id);
+ const latestIntake=latest?safeIntakeName(latest.f):'';
   const hook=stripPrivateLocators(flattenWorkField(d.hk));
   const theme=stripPrivateLocators(flattenWorkField(d.th));
   const questions=stripPrivateLocators(flattenWorkField(d.oq));
@@ -618,7 +619,7 @@ function render(){
   <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
  </div><div class="detail" hidden>
-  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latest.f)}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latest.f)}">Copy intake name</button><div class="memo-next">Copy the intake name; write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div>`}</div>
+  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latestIntake||'(unknown intake)')}</span> <button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake)}">Copy intake name</button><div class="memo-next">Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div>`}</div>
   ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
   ${hook?`<h4>Hook</h4>${esc(hook)}`:''}
   <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${d.mom?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
@@ -862,6 +863,17 @@ function copySongWork(songId,btn){
  const song=DATA.find(d=>d.id===String(songId||''));
  return copyVaultText(buildSongWorkCard(song),btn,'Copy work card');
 }
+function safeIntakeName(name){
+ const raw=String(name||'').trim();
+ if(!raw)return '';
+ let cleaned=raw.replace(/\\/g,'/').split('?')[0].split('#')[0];
+ const filePrefix='file:'+'//';
+ if(cleaned.toLowerCase().startsWith(filePrefix))cleaned=cleaned.slice(filePrefix.length);
+ const pieces=cleaned.split('/').filter(Boolean);
+ const base=(pieces.length?pieces[pieces.length-1]:cleaned).trim();
+ if(!base||base==='.'||base==='..')return '';
+ return base.replace(/\s{2,}/g,' ');
+}
 function allowedExactWorkSongId(songId){
  const id=String(songId||'');
  if(!id)return '';
@@ -973,7 +985,7 @@ function sortMemoHits(hits){
  return dated.concat(empty);
 }
 function copyMemoFile(name,btn){
- return copyVaultText(name,btn,'Copy intake name');
+ return copyVaultText(safeIntakeName(name),btn,'Copy intake name');
 }
 function mrender(){
  const term=mq.value.toLowerCase().trim();
@@ -998,7 +1010,7 @@ function mrender(){
   copyMemoWork.dataset.copyWork=song?song.id:'';
  }
  if((!activeMemoSong&&term.length<3)||(term.length>0&&term.length<3)){
-  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words. Copy the intake name; write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div>`;return;
+  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div>`;return;
  }
  const hits=[];
  for(const m of TX){
@@ -1013,10 +1025,12 @@ function mrender(){
  const ordered=sortMemoHits(hits);
  const visible=ordered.slice(0,80);
  const summary=ordered.length?`<div class="resultbar"><span>Showing ${visible.length}${ordered.length>visible.length?` of ${ordered.length}`:''} matching memo${ordered.length===1?'':'s'} · newest first</span></div>`:'';
- mlist.innerHTML=ordered.length?summary+visible.map(({m,snip})=>`
+ mlist.innerHTML=ordered.length?summary+visible.map(({m,snip})=>{
+  const intake=safeIntakeName(m.f)||'(unknown intake)';
+  return `
   <div class="mrow"><div class="mmeta">${esc(m.d)} · ${Math.round((Number(m.u)||0)/60)}min${m.s&&sname[m.s]?` · matched to <button type="button" class="song-link" data-open-song="${esc(m.s)}">${esc(sname[m.s])}</button>`:' · unmatched'}</div>
   <b>${markHay(m.n,term)}</b><div class="msnip">${snip}</div>
-  <div class="mmeta" style="margin-top:4px">file: ${esc(m.f)} (Voice Memo Intake) <button type="button" class="subtle-btn" data-copy-file="${esc(m.f)}">Copy intake name</button></div></div>`).join('')
+  <div class="mmeta" style="margin-top:4px">file: ${esc(intake)} (Voice Memo Intake) <button type="button" class="subtle-btn" data-copy-file="${esc(intake)}">Copy intake name</button></div></div>`;}).join('')
   :'<div class="empty">No matched memo evidence found — clear the song filter or try a different word.</div>';
 }
 mq.addEventListener('input',mrender);

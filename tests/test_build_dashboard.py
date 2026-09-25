@@ -39,6 +39,32 @@ from catalog_surface import (  # noqa: E402
 
 
 class DashboardMemoHonestyTests(unittest.TestCase):
+    def test_memo_index_sanitizes_intake_name_to_basename(self):
+        prepared, counts = build_memo_search_index(
+            [
+                {
+                    "uid": "a",
+                    "file": "file:///Users/jeff/Voice Memos/Raw Take 1.m4a?download=1",
+                    "title": "A",
+                    "date": "2026-09-01",
+                    "dur": 12,
+                    "text": "this transcript text is definitely long enough",
+                },
+                {
+                    "uid": "b",
+                    "file": r"C:\\Users\\jeff\\Voice Memos\\Second Take.m4a",
+                    "title": "B",
+                    "date": "2026-09-02",
+                    "dur": 20,
+                    "text": "another transcript that is long enough to keep",
+                },
+            ],
+            {"JS-0001": ["a"], "JS-0002": ["b"]},
+        )
+        self.assertEqual(counts["searchable"], 2)
+        self.assertEqual(prepared[0]["f"], "Raw Take 1.m4a")
+        self.assertEqual(prepared[1]["f"], "Second Take.m4a")
+
     def test_short_matched_transcript_stays_in_source_truth_not_search_index(self):
         transcripts = [
             {
@@ -260,6 +286,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("Sit-down handoff stays in Session Log: copy next step + intake name before leaving.", dashboard)
         self.assertIn("then log the sit-down handoff in Session Log.", dashboard)
         self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
+        self.assertIn("Copy the intake name only (sanitized)", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
         self.assertNotIn("<h4>Known assets</h4>", dashboard)
 
