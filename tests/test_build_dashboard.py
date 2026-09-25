@@ -303,7 +303,18 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn('id="copyResumeNext"', dashboard)
         self.assertIn("function latestMemoForSong(", dashboard)
         self.assertIn("Sit-down handoff stays in Session Log: copy next step + intake name before leaving.", dashboard)
+        self.assertIn(
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "Sit-down handoff stays in Session Log: copy next step + intake name before leaving.",
+            dashboard,
+        )
         self.assertIn("then log the sit-down handoff in Session Log.", dashboard)
+        self.assertIn(
+            "No searchable memo evidence for this song. The next step comes from the catalog. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "This page does not open audio.",
+            dashboard,
+        )
         self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
         self.assertIn(
             "Transcripts are machine-made (Whisper, run locally on your Mac) — "

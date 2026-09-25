@@ -171,7 +171,7 @@ input{flex:1;min-width:160px}
   <div class="resume-next" id="resumeWorkNext" hidden></div>
   <button type="button" class="subtle-btn primary-action" id="copyResumeNext" hidden>Copy next step</button>
  </div>
- <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
+ <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
  <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
 </section>
 <div class="lanes">
@@ -752,7 +752,7 @@ function updateWorkSessionState(){
    ?'Choose a song to see its verified catalog action.'
    :ev&&ev.n
     ?`${ev.n} searchable memo${ev.n===1?'':'s'}${ev.last?' · latest '+ev.last:''}. Review the evidence before working in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first), then log the sit-down handoff in Session Log.`
-    :next?'No searchable memo evidence for this song. The next step comes from the catalog.':'No safe catalog next step or searchable memo evidence.';
+    :next?'No searchable memo evidence for this song. The next step comes from the catalog. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.':'No safe catalog next step or searchable memo evidence. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.';
  }
  if(openWorkEvidence){
   openWorkEvidence.hidden=!(song&&ev&&ev.n);
