@@ -567,3 +567,19 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Next continuation point
 Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. The README click-test now includes Logic export honesty verification (step 12). The validator fail-closes if the README lacks this guidance. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Session Log sit-down handoff export honesty — 2026-09-25 (Cloud Agent, no audio)
+### Done
+1. Started from exact private branch `cursor/logic-ready-sitdown-export-honesty-7146` (PR #37) at tip `b792467dd0c67a78c7f0bb6b36c0b2023b699554`. Logic-first export honesty already appeared across sit-down, memo hint, footer, and README step 12.
+2. Closed the leftover between sit-down and handoff wording: README step 12 now explicitly says to pair Voice Memo Intake name + **Copy next step** in Session Log before leaving a sit-down.
+3. Tightened the README click-test contract so it now fails closed unless the README includes Session Log + sit-down language, WAVs/AIFF/MIDI export honesty, and explicit "no Ableton-first". Validator error text updated to call out the Session Log handoff expectation.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Sit-down handoff is now explicit and fail-closed: pair Voice Memo Intake name + **Copy next step** in Session Log, then work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
