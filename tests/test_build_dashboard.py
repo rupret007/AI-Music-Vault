@@ -65,6 +65,23 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertEqual(prepared[0]["f"], "Raw Take 1.m4a")
         self.assertEqual(prepared[1]["f"], "Second Take.m4a")
 
+    def test_memo_index_hides_owner_audio_suffixes_in_intake_name(self):
+        prepared, counts = build_memo_search_index(
+            [
+                {
+                    "uid": "leak",
+                    "file": "file:///Users/jeff/Voice Memos/private mix.wav",
+                    "title": "Hidden",
+                    "date": "2026-09-03",
+                    "dur": 21,
+                    "text": "searchable transcript text stays long enough for indexing",
+                }
+            ],
+            {"JS-0001": ["leak"]},
+        )
+        self.assertEqual(counts["searchable"], 1)
+        self.assertEqual(prepared[0]["f"], "")
+
     def test_short_matched_transcript_stays_in_source_truth_not_search_index(self):
         transcripts = [
             {

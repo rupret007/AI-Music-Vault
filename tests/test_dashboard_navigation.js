@@ -250,6 +250,12 @@ if (safeIntakeName("file:///Users/jeff/Voice Memos/Raw Take 1.m4a?download=1") !
 if (safeIntakeName("(unknown intake)") !== "" || safeIntakeName("unknown intake") !== "") {
   fail("placeholder intake labels must not become copyable values");
 }
+if (safeIntakeName("file:///Users/jeff/Voice Memos/private-mix.wav") !== "") {
+  fail("intake-name sanitizing must fail closed for owner-audio WAV basenames");
+}
+if (safeIntakeName("proof.aiff") !== "" || safeIntakeName("line.mid") !== "") {
+  fail("intake-name sanitizing must fail closed for AIFF and MIDI basenames");
+}
 const copyMemoFile = new Function(
   "safeIntakeName",
   "copyVaultText",
@@ -257,6 +263,9 @@ const copyMemoFile = new Function(
 )(safeIntakeName, (value) => !!value);
 if (copyMemoFile("(unknown intake)", null)) {
   fail("copy intake name must fail closed when the memo row has no safe intake basename");
+}
+if (copyMemoFile("file:///tmp/private.logicx", null)) {
+  fail("copy intake name must fail closed for owner Logic project basenames");
 }
 if (!copyMemoFile("file:///tmp/Clip.m4a", null)) {
   fail("copy intake name must still work for a sanitized real memo intake filename");

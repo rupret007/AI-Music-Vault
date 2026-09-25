@@ -26,6 +26,14 @@ ON_DECK_NOTE = "catalog, not the official set"
 
 MEMO_SEARCH_MIN_CHARS = 15
 MEMO_SEARCH_MAX_CHARS = 1500
+UNSAFE_MEMO_INTAKE_SUFFIXES = (
+    ".wav",
+    ".aiff",
+    ".aif",
+    ".logicx",
+    ".mid",
+    ".midi",
+)
 
 PLAYED_BADGE_PREFIX = "played"
 SURFACE_STAGE_REPLACEMENT = "catalog play history — not the official set"
@@ -73,7 +81,13 @@ def sanitize_intake_name(value) -> str:
     basename = normalized.rsplit("/", 1)[-1].strip()
     if basename in {"", ".", ".."}:
         return ""
-    return re.sub(r"\s{2,}", " ", basename)
+    collapsed = re.sub(r"\s{2,}", " ", basename)
+    lowered = collapsed.lower()
+    if lowered in {"(unknown intake)", "unknown intake"}:
+        return ""
+    if lowered.endswith(UNSAFE_MEMO_INTAKE_SUFFIXES):
+        return ""
+    return collapsed
 
 
 def build_memo_search_index(transcripts, matches_by_song) -> tuple[list[dict], dict[str, int]]:

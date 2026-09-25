@@ -800,6 +800,7 @@ function safeIntakeName(name){
  const normalized=base.replace(/\s{2,}/g,' ');
  const low=normalized.toLowerCase();
  if(low==='(unknown intake)'||low==='unknown intake')return '';
+ if(['.wav','.aiff','.aif','.logicx','.mid','.midi'].some(ext=>low.endsWith(ext)))return '';
  return normalized;
 }
 function intakeNameSummary(name){
