@@ -4,7 +4,7 @@
 
 This is the working brain of the Jeff Story catalog: 150 song entities spanning 1999–2026 across Stalemate, Something Dirty, Trailer Swift, Rad Dad, and solo work — plus the tooling that found, matched, scored, and keeps track of all of it.
 
-> ⚠️ **Private repository.** Contains unreleased album material, personal lyrics, collaborators' compositions, and home-address strings inside voice-memo titles. Not for public distribution. Audio masters are deliberately **not** stored here — they live in the local vault and Google Drive.
+> ⚠️ **Public repository (for GitHub Actions).** This repo still contains unreleased album material, personal lyrics, collaborators' compositions, and home-address strings inside some historical voice-memo titles. Audio masters are deliberately **not** stored here — they live in the local vault and Google Drive.
 
 ---
 
@@ -38,8 +38,9 @@ python3 scripts/export_catalog_csv.py --check
 These checks read the committed catalog metadata, StoryBoard export, and local
 generated dashboard only.
 They do not open or upload audio, modify originals, or contact an AI service.
-Keep the repository and its test output private because catalog metadata can
-still contain unreleased, personal, collaborator, or location information.
+Treat local clones, screenshots, and test logs as sensitive because catalog
+metadata can still contain unreleased, personal, collaborator, or location
+information.
 The private dashboard links catalog songs that have searchable matched voice
 memos to that evidence, and each matched memo back to its song. Songs with
 searchable matches can be scanned, filtered, and sorted by latest memo date;
