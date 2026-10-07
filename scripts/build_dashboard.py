@@ -11,12 +11,17 @@ import json, os, sys
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from catalog_surface import (  # noqa: E402
+    LOGIC_READY_CLUSTERS,
+    LOGIC_READY_LABELS,
     ON_DECK_NOTE,
     SURFACE_SUBTITLE,
     build_memo_search_index,
+    logic_ready_maps,
     overlay_feed_scopes,
     played_badge_label,
     song_aliases,
+    song_logic_ready_cluster,
+    song_logic_ready_evidence_tags,
     song_work_kind,
     surface_stage_label,
 )
@@ -24,11 +29,13 @@ from catalog_surface import (  # noqa: E402
 CAT_PATH = os.path.join(HERE, "data", "master_catalog.json")
 API_PATH = os.path.join(HERE, "data", "app_api.json")
 TX_PATH = os.path.join(HERE, "data", "vm_transcribed.json")
+CHAIN_PATH = os.path.join(HERE, "data", "version_chains.json")
 VM_MATCHES_PATH = os.path.join(HERE, "01_source_manifests", "voicememo", "vm_matches.json")
 OUT_PATH = os.path.join(HERE, "Jeff Story Song Vault Dashboard.html")
 
 cat = json.load(open(CAT_PATH))
 app_api = json.load(open(API_PATH)) if os.path.exists(API_PATH) else {}
+chains = json.load(open(CHAIN_PATH)) if os.path.exists(CHAIN_PATH) else {}
 slim = []
 for s in cat['songs']:
     row = dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
@@ -40,7 +47,9 @@ for s in cat['songs']:
         src=s.get('sources',[]), sc=s.get('soundcloud',[]), oq=s.get('open_questions',''),
         wr=', '.join(s.get('writers',[])),
         live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
-        gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''))
+        gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''),
+        lr=song_logic_ready_cluster(s, chains.get(s['song_id'])),
+        lrf=song_logic_ready_evidence_tags(s, chains.get(s['song_id'])))
     aliases = song_aliases(s)
     if aliases:
         row['aka'] = aliases
@@ -56,6 +65,11 @@ def _lane_work_pill(song_id: str) -> str:
     return f'<span class="pill wk-{kind} lane-work">{kind}</span>'
 
 DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
+LOGIC_READY = json.dumps(logic_ready_maps(), ensure_ascii=False).replace('</', '<\\/')
+LOGIC_READY_FILTER = "".join(
+    f'<option value="{cluster}">{LOGIC_READY_LABELS[cluster]}</option>'
+    for cluster in LOGIC_READY_CLUSTERS
+)
 
 # Transcripts: compact index (title, date, duration, cleaned text capped at 1500
 # chars). Overlay song_id from vm_matches.json (372/88); the transcript file
@@ -78,132 +92,152 @@ page = r'''<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Jeff Story Song Vault</title>
 <style>
-:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#8f8e85;
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;
  --pot:#3987e5;--rdy:#d95926;--mom:#199e70;--line:#3a3a38;--good:#199e70;}
 @media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;
- --ink2:#4a4a45;--ink3:#8f8e85;--pot:#2a78d6;--rdy:#eb6834;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
+ --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--rdy:#eb6834;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
+html,body{overflow-x:hidden}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:20;background:var(--pot);color:#fff;padding:8px 12px;border-radius:8px}
+.skip-link:focus,.skip-link:focus-visible{left:8px}
+:focus-visible{outline:2px solid var(--pot);outline-offset:2px}
 h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 16px}
 .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:100px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:100px;flex:1 1 140px}
 .stat b{font-size:20px;display:block} .stat span{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
 .work-now{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
-.work-now h2{font-size:15px}.work-now p{color:var(--ink3);font-size:12px;margin:2px 0 10px}
+.work-now h2{font-size:15px}.work-now p{color:var(--ink3);font-size:13px;margin:2px 0 10px}
 .work-starts{display:flex;gap:8px;flex-wrap:wrap}
-.work-start{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:700}
+.work-start{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:700;min-height:44px}
 .work-start span{color:var(--ink3);font-weight:500;margin-left:4px}
 .work-start:hover,.work-start:focus-visible{border-color:var(--pot);outline:2px solid var(--pot);outline-offset:2px}
 .resume-work{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
 .resume-work .work-start{flex:1;text-align:left}
-.resume-next{flex:1 1 100%;font-weight:700;color:var(--ink);max-width:650px}
+.resume-next{flex:1 1 100%;font-weight:700;color:var(--ink);max-width:650px;overflow-wrap:anywhere}
 .resume-work .primary-action{border-color:var(--pot);color:var(--ink)}
-.resume-hint,.resume-status{color:var(--ink3);font-size:12px;margin:8px 0 0}
+.resume-hint,.resume-status{color:var(--ink3);font-size:13px;margin:8px 0 0}
 .resume-status{color:var(--ink2);min-height:1.2em}
 .lanes{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
 .lanes h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);margin-bottom:8px}
-.lane{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed var(--line)}
+.lane{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px dashed var(--line)}
 .lane:last-child{border:none}
 .tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:99px;background:var(--card2);color:var(--ink2);white-space:nowrap}
 .tag.f{color:var(--pot)} .tag.q{color:var(--good)} .tag.x{color:var(--rdy)}
-.tabs{display:flex;gap:6px;margin-bottom:12px}
-.tab{padding:8px 16px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink2);cursor:pointer;font-size:13px;font-weight:600}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{padding:8px 16px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink2);cursor:pointer;font-size:15px;font-weight:600;min-height:44px}
 .tab.on{background:var(--card2);color:var(--ink);border-color:var(--ink3)}
 .controls{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
-input,select,.subtle-btn,.memo-link,.song-link{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
-input{flex:1;min-width:160px}
+input,select,.subtle-btn,.memo-link,.song-link{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px;min-height:44px}
+input{flex:1;min-width:0;width:100%}
 .advanced-filters{position:relative}
-.advanced-filters summary{list-style:none;background:var(--card);color:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer;font-weight:600}
+.advanced-filters summary{list-style:none;background:var(--card);color:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px;cursor:pointer;font-weight:600;min-height:44px}
 .advanced-filters summary::-webkit-details-marker{display:none}
 .advanced-filters summary::after{content:' +';color:var(--ink3)}
 .advanced-filters[open] summary::after{content:' −'}
-.advanced-menu{position:absolute;right:0;top:42px;display:grid;gap:8px;width:min(340px,calc(100vw - 40px));padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px #0008;z-index:8}
+.advanced-menu{position:absolute;right:0;top:48px;display:grid;gap:8px;width:min(340px,calc(100vw - 24px));padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px #0008;z-index:8}
 .advanced-menu select{width:100%}
-.row{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;overflow:hidden}
-.rhead{display:grid;grid-template-columns:64px 1fr 110px 110px 110px;gap:8px;align-items:center;padding:10px 12px;cursor:pointer}
+.row{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;overflow:hidden;max-width:100%}
+.rhead{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;padding:10px 12px;cursor:pointer}
 .rhead:hover,.rhead:focus-visible{background:var(--card2);outline:2px solid var(--pot);outline-offset:-2px}
-@media(max-width:640px){.rhead{grid-template-columns:1fr 90px 90px}.rid,.bw-r{display:none}}
+.scores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;grid-column:1/-1}
+.score{min-width:0}.score-lab{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3)}
+@media(min-width:641px){.rhead{grid-template-columns:64px minmax(0,1fr) 110px 110px 110px}.scores{display:contents;grid-column:auto}.score-lab{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}}
 .rid{color:var(--ink3);font-size:11px;font-family:ui-monospace,Menlo,monospace}
-.rtitle{font-weight:600} .rproj{color:var(--ink3);font-size:11px}
-.barwrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink2)}
-.bar{height:6px;border-radius:4px;background:var(--card2);flex:1;overflow:hidden}
+.rtitle,.rproj,.mrow,.msnip{overflow-wrap:anywhere;word-break:break-word}
+.rtitle{font-weight:600} .rproj{color:var(--ink3);font-size:12px}
+.barwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);min-width:0}
+.bar{height:6px;border-radius:4px;background:var(--card2);flex:1;overflow:hidden;min-width:0}
 .bar i{display:block;height:100%;border-radius:4px}
-.detail{padding:4px 14px 14px;border-top:1px solid var(--line);color:var(--ink2);font-size:13px}
+.detail{padding:4px 14px 14px;border-top:1px solid var(--line);color:var(--ink2);font-size:15px}
 [hidden]{display:none!important}
-.detail h4{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);margin:10px 0 3px}
+.detail h4{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);margin:10px 0 3px}
 .detail ul{margin-left:18px} .detail li{margin:2px 0}
-.pill{display:inline-block;font-size:11px;background:var(--card2);border-radius:99px;padding:2px 9px;margin:2px 3px 2px 0;color:var(--ink2)}
-.covers-note,.foot{color:var(--ink3);font-size:12px;margin:14px 0}
-.legend{display:flex;gap:14px;font-size:11px;color:var(--ink2);margin:0 0 10px;flex-wrap:wrap}
+.pill{display:inline-block;font-size:12px;background:var(--card2);border-radius:99px;padding:4px 9px;margin:2px 3px 2px 0;color:var(--ink2)}
+.covers-note,.foot{color:var(--ink3);font-size:13px;margin:14px 0;overflow-wrap:anywhere}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink2);margin:0 0 10px;flex-wrap:wrap}
 .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
 .empty{color:var(--ink3);text-align:center;padding:30px}
 .mrow{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;padding:10px 14px}
-.mrow b{font-size:13px} .mmeta{color:var(--ink3);font-size:11px;margin-bottom:4px}
-.msnip{color:var(--ink2);font-size:12.5px} .msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff;border-radius:3px;padding:0 2px}
-.mhint{color:var(--ink3);font-size:12px;padding:16px;text-align:center}
-.resultbar,.memo-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink3);font-size:12px;margin:0 0 10px}
+.mrow b{font-size:15px} .mmeta{color:var(--ink3);font-size:12px;margin-bottom:4px}
+.msnip{color:var(--ink2);font-size:14px} .msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff;border-radius:3px;padding:0 2px}
+.mhint{color:var(--ink3);font-size:13px;padding:16px;text-align:center;overflow-wrap:anywhere}
+.resultbar,.memo-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink3);font-size:13px;margin:0 0 10px;flex-wrap:wrap}
 .memo-scope{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink2)}
 .subtle-btn,.memo-link,.song-link{cursor:pointer;font-weight:600}
-.subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:4px 8px;color:var(--pot)}
-.song-link{border:0;background:transparent;padding:0;font-size:inherit;text-decoration:underline;text-underline-offset:2px}
+.subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:8px 10px;color:var(--pot)}
+.song-link{border:0;background:transparent;padding:8px 4px;font-size:inherit;text-decoration:underline;text-underline-offset:2px;min-height:44px}
 .lane .song-link{font-weight:700;color:var(--ink)}
-.memo-next{color:var(--ink3);font-size:12px;margin-top:3px}
+.memo-next{color:var(--ink3);font-size:13px;margin-top:3px;overflow-wrap:anywhere}
 .copied{color:var(--good)}
 .pill.wk-write{color:var(--pot)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--mom)}
 .work-copy,.sit-down{margin-top:8px}
 .sit-memo{margin-top:4px}
+.sit-logic{margin-top:6px}
+.sit-logic-assets{margin-top:4px;color:var(--ink2);font-size:14px;overflow-wrap:anywhere}
 .lane-work{margin-left:4px}
-.work-session-copy{font-weight:700;color:var(--ink);margin-top:4px;max-width:650px}
+.work-session-copy{font-weight:700;color:var(--ink);margin-top:4px;max-width:650px;overflow-wrap:anywhere}
 .work-session-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .work-session-actions .primary-action{border-color:var(--pot);color:var(--ink)}
-@media(max-width:640px){.work-start{flex:1}.resume-work{align-items:stretch}.controls>input{flex-basis:100%}.advanced-filters{margin-left:auto}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{right:0}}
+.pill.memo-link{min-height:44px}
+@media(max-width:640px){.work-start{flex:1 1 100%}.resume-work{align-items:stretch}.controls>input,.controls>select{flex-basis:100%}.advanced-filters{margin-left:0;width:100%}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{right:auto;left:0;width:100%}.lane{align-items:flex-start}}
+@media(max-width:375px){body{padding:12px;font-size:16px}.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}
 </style></head><body>
-<h1>🎸 Jeff Story Song Vault</h1>
-<div class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</div>
-<div class="stats" id="stats"></div>
+<a class="skip-link" href="#main">Skip to catalog</a>
+<header>
+<h1><span aria-hidden="true">🎸 </span>Jeff Story Song Vault</h1>
+<p class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</p>
+</header>
+<div class="stats" id="stats" role="region" aria-label="Catalog counts"></div>
 <section class="work-now" aria-labelledby="workNowTitle">
  <h2 id="workNowTitle">Start a work session</h2>
- <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized next step in front of you. Forget clears the local record.</p>
+ <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
  <div class="work-starts" id="workStarts"></div>
  <div class="resume-work" id="resumeWork" hidden>
   <button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button>
   <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
   <div class="resume-next" id="resumeWorkNext" hidden></div>
   <button type="button" class="subtle-btn primary-action" id="copyResumeNext" hidden>Copy next step</button>
+  <div class="resume-next" id="resumeWorkLogic" hidden></div>
+  <div class="resume-next" id="resumeWorkAssets" hidden></div>
+  <button type="button" class="subtle-btn" id="copyResumeLogic" hidden>Copy Logic-ready next</button>
  </div>
  <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
  <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
 </section>
-<div class="lanes">
- <h2>The three lanes (+ on deck)</h2>
+<section class="lanes" aria-labelledby="lanesTitle">
+ <h2 id="lanesTitle">The three lanes (+ on deck)</h2>
  <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button> ''' + _lane_work_pill("ST-0001") + r'''<span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
  <div class="lane"><span class="tag q">Quick win</span><button type="button" class="song-link" data-open-song="ST-0004">Manic</button> ''' + _lane_work_pill("ST-0004") + r'''<span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
  <div class="lane"><span class="tag x">Experimental</span><button type="button" class="song-link" data-open-song="ST-0009">Long Long Drive</button> ''' + _lane_work_pill("ST-0009") + r'''<span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
  <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button> ''' + _lane_work_pill("JS-0128") + r'''<span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
  <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button> ''' + _lane_work_pill("JS-0107") + r'''<span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
-</div>
-<div class="tabs" role="tablist" aria-label="Vault views">
+</section>
+<nav class="tabs" role="tablist" aria-label="Vault views">
  <button type="button" class="tab on" id="tabS" role="tab" aria-controls="paneS" aria-selected="true">Songs</button>
  <button type="button" class="tab" id="tabM" role="tab" aria-controls="paneM" aria-selected="false">Memo Search (__TX_SEARCHABLE_TOTAL__ searchable)</button>
-</div>
+</nav>
+<main id="main">
 <div id="paneS" role="tabpanel" aria-labelledby="tabS">
 <div class="controls">
  <input id="q" placeholder="Search titles, aliases, hooks… (try: candy lane, only 18, garden)" autocomplete="off" aria-label="Search songs by title, alias, hook, or memo lyric">
- <select id="sort">
+ <select id="sort" aria-label="Sort songs">
   <option value="mom">Sort: Momentum (what's alive)</option>
   <option value="pot">Sort: Potential</option><option value="rdy">Sort: Readiness</option>
   <option value="id">Sort: Catalog ID</option><option value="t">Sort: Title</option>
-  <option value="memo">Sort: Latest memo evidence</option></select>
+  <option value="memo">Sort: Latest memo evidence</option>
+  <option value="logic">Sort: Logic-ready (closest drop-in first)</option></select>
  <details class="advanced-filters" id="advancedFilters"><summary>More filters</summary><div class="advanced-menu">
-  <select id="proj"><option value="">All projects</option></select>
-  <select id="scored"><option value="">All songs</option><option value="1">Scored only</option><option value="0">Unscored / to explore</option></select>
-  <select id="scope"><option value="">All StoryBoard scopes</option></select>
-  <select id="evidence"><option value="">Any memo evidence</option><option value="1">Has searchable memos</option><option value="0">No searchable memos</option></select>
-  <select id="work"><option value="">Any work</option><option value="write">Write</option><option value="produce">Produce</option><option value="listen">Listen</option><option value="rest">Rest</option><option value="inventory">Inventory</option><option value="decide">Decide</option></select>
+  <select id="proj" aria-label="Filter by project"><option value="">All projects</option></select>
+  <select id="scored" aria-label="Filter scored songs"><option value="">All songs</option><option value="1">Scored only</option><option value="0">Unscored / to explore</option></select>
+  <select id="scope" aria-label="Filter StoryBoard scope"><option value="">All StoryBoard scopes</option></select>
+  <select id="evidence" aria-label="Filter memo evidence"><option value="">Any memo evidence</option><option value="1">Has searchable memos</option><option value="0">No searchable memos</option></select>
+  <select id="work" aria-label="Filter work kind"><option value="">Any work</option><option value="write">Write</option><option value="produce">Produce</option><option value="listen">Listen</option><option value="rest">Rest</option><option value="inventory">Inventory</option><option value="decide">Decide</option></select>
+  <select id="logicReady" aria-label="Filter Logic-ready cluster"><option value="">Any Logic-ready</option>__LOGIC_READY_FILTER__</select>
  </div></details>
 </div>
 <div class="resultbar"><span id="songResults" aria-live="polite"></span><button type="button" class="subtle-btn" id="clearSongFilters">Clear filters</button></div>
-<div class="memo-scope" id="workSession" hidden><div><span id="workSessionText"></span><div class="work-session-copy" id="workSessionNext" hidden></div><div class="memo-next" id="workSessionEvidence"></div></div><span class="work-session-actions"><button type="button" class="subtle-btn primary-action" id="copyWorkNext" hidden>Copy next step</button> <button type="button" class="subtle-btn" id="openWorkEvidence" hidden>Review memo evidence</button> <button type="button" class="subtle-btn" id="workPrev" data-work-step="-1">Previous</button> <button type="button" class="subtle-btn" id="workNext" data-work-step="1">Next</button></span></div>
+<div class="memo-scope" id="workSession" hidden><div><span id="workSessionText"></span><div class="work-session-copy" id="workSessionNext" hidden></div><div class="memo-next" id="workSessionLogic" hidden></div><div class="memo-next" id="workSessionAssets" hidden></div><div class="memo-next" id="workSessionEvidence"></div></div><span class="work-session-actions"><button type="button" class="subtle-btn primary-action" id="copyWorkNext" hidden>Copy next step</button> <button type="button" class="subtle-btn" id="copyWorkLogic" hidden>Copy Logic-ready next</button> <button type="button" class="subtle-btn" id="openWorkEvidence" hidden>Review memo evidence</button> <button type="button" class="subtle-btn" id="workPrev" data-work-step="-1">Previous</button> <button type="button" class="subtle-btn" id="workNext" data-work-step="1">Next</button></span></div>
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
@@ -211,13 +245,15 @@ input{flex:1;min-width:160px}
 <div class="covers-note">93 covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
-<div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: alright, garden, better than now)"></div>
+<div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: alright, garden, better than now)" aria-label="Search memo transcripts"></div>
 <div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div><div class="memo-next" id="memoScopeHook" hidden></div></div><span><button type="button" class="subtle-btn" id="copyMemoWork" hidden data-copy-work="">Copy work card</button> <button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></span></div>
 <div id="mlist"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
 </div>
-<div class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio.</div>
+</main>
+<footer class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio. Logic-ready next is catalog evidence, not a completed export.</footer>
 <script>
 const DATA = __DATA__;
+const LOGIC_READY = __LOGIC_READY__;
 const TX = __TX__;
 const TX_TOTAL = __TX_TOTAL__;
 const TX_MATCHED_TOTAL = __TX_MATCHED_TOTAL__;
@@ -227,17 +263,20 @@ const WORK_SESSION_KEY='vault:last-work:v1';
 const q=document.getElementById('q'),proj=document.getElementById('proj'),
  sort=document.getElementById('sort'),scored=document.getElementById('scored'),
  scope=document.getElementById('scope'),evidence=document.getElementById('evidence'),
- work=document.getElementById('work'),workStarts=document.getElementById('workStarts'),
+ work=document.getElementById('work'),logicReady=document.getElementById('logicReady'),workStarts=document.getElementById('workStarts'),
  list=document.getElementById('list'),
  songResults=document.getElementById('songResults'),clearSongFilters=document.getElementById('clearSongFilters'),
  workSession=document.getElementById('workSession'),workSessionText=document.getElementById('workSessionText'),
- workSessionNext=document.getElementById('workSessionNext'),workSessionEvidence=document.getElementById('workSessionEvidence'),
- copyWorkNext=document.getElementById('copyWorkNext'),openWorkEvidence=document.getElementById('openWorkEvidence'),
+ workSessionNext=document.getElementById('workSessionNext'),workSessionLogic=document.getElementById('workSessionLogic'),
+ workSessionAssets=document.getElementById('workSessionAssets'),workSessionEvidence=document.getElementById('workSessionEvidence'),
+ copyWorkNext=document.getElementById('copyWorkNext'),copyWorkLogic=document.getElementById('copyWorkLogic'),openWorkEvidence=document.getElementById('openWorkEvidence'),
  workPrev=document.getElementById('workPrev'),workNext=document.getElementById('workNext'),
  resumeWork=document.getElementById('resumeWork'),resumeWorkButton=document.getElementById('resumeWorkButton'),
  resumeWorkText=document.getElementById('resumeWorkText'),forgetWorkSession=document.getElementById('forgetWorkSession'),
  resumeWorkHint=document.getElementById('resumeWorkHint'),resumeWorkStatus=document.getElementById('resumeWorkStatus'),
  resumeWorkNext=document.getElementById('resumeWorkNext'),copyResumeNext=document.getElementById('copyResumeNext'),
+ resumeWorkLogic=document.getElementById('resumeWorkLogic'),resumeWorkAssets=document.getElementById('resumeWorkAssets'),
+ copyResumeLogic=document.getElementById('copyResumeLogic'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
  mq=document.getElementById('mq'),mlist=document.getElementById('mlist'),
@@ -380,6 +419,22 @@ function updateResumeWork(){
   copyResumeNext.dataset.songId=next&&song?String(song.id||''):'';
   copyResumeNext.setAttribute('aria-label',next&&song?`Copy next step for ${sname[song.id]||song.id}`:'No safe next step to copy');
  }
+ const logic=typeof logicReadyNext==='function'?logicReadyNext(song&&song.lr):'';
+ if(typeof resumeWorkLogic!=='undefined'&&resumeWorkLogic){
+  resumeWorkLogic.hidden=!logic;
+  resumeWorkLogic.textContent=logic?`Logic-ready next: ${logic}`:'';
+ }
+ const resumeFormats=typeof logicReadyFormats==='function'?logicReadyFormats(song):[];
+ if(typeof resumeWorkAssets!=='undefined'&&resumeWorkAssets){
+  resumeWorkAssets.hidden=!resumeFormats.length;
+  resumeWorkAssets.textContent=resumeFormats.length?`Assets on file: ${resumeFormats.join(' · ')}`:'';
+ }
+ if(typeof copyResumeLogic!=='undefined'&&copyResumeLogic){
+  copyResumeLogic.hidden=!logic;
+  copyResumeLogic.disabled=!logic;
+  copyResumeLogic.dataset.songId=logic&&song?String(song.id||''):'';
+  copyResumeLogic.setAttribute('aria-label',logic&&song?`Copy Logic-ready next for ${sname[song.id]||song.id}`:'No Logic-ready next to copy');
+ }
  return saved;
 }
 function rememberWorkSession(kind,id){
@@ -433,6 +488,28 @@ function safeWorkNextStep(song){
  const next=stripPrivateLocators(flattenWorkField(song.nx));
  return next&&!nextStepIsIncomplete(next)&&!workCardLeaks(next)?next:'';
 }
+function logicReadyLabel(cluster){
+ const maps=typeof LOGIC_READY!=='undefined'?LOGIC_READY:{};
+ return String((maps.labels||{})[cluster]||'');
+}
+function logicReadyPill(cluster){
+ const maps=typeof LOGIC_READY!=='undefined'?LOGIC_READY:{};
+ return String((maps.pills||{})[cluster]||'');
+}
+function logicReadyNext(cluster){
+ const maps=typeof LOGIC_READY!=='undefined'?LOGIC_READY:{};
+ const next=String((maps.next||{})[cluster]||'');
+ return next&&!workCardLeaks(next)?next:'';
+}
+function logicReadyFormats(song){
+ const tags=song&&Array.isArray(song.lrf)?song.lrf:[];
+ return tags.map(t=>String(t||'').trim()).filter(Boolean);
+}
+function logicReadyRank(cluster){
+ const maps=typeof LOGIC_READY!=='undefined'?LOGIC_READY:{};
+ const n=Number((maps.rank||{})[cluster]);
+ return Number.isFinite(n)?n:99;
+}
 function latestMemoForSong(songId,rows){
  const id=String(songId||'');
  const src=rows||(typeof TX!=='undefined'?TX:[]);
@@ -470,6 +547,12 @@ function buildSongWorkCard(song,evidence){
  if(song.bpm)lines.push('BPM: '+String(song.bpm));
  const gate=flattenWorkField(String(song.gate||'').split('—')[0]);
  if(gate)lines.push('Gate: '+gate);
+ const lrLabel=typeof logicReadyLabel==='function'?logicReadyLabel(song.lr):'';
+ const lrNext=typeof logicReadyNext==='function'?logicReadyNext(song.lr):'';
+ const lrFormats=typeof logicReadyFormats==='function'?logicReadyFormats(song):[];
+ if(lrLabel)lines.push('Logic-ready: '+lrLabel);
+ if(lrFormats.length)lines.push('Assets on file: '+lrFormats.join(' · '));
+ if(lrNext)lines.push('Logic next: '+lrNext);
  const ev=evidence||(song&&typeof memoEvidenceBySong!=='undefined'&&memoEvidenceBySong[song.id])||null;
  if(ev&&ev.n)lines.push('Memos: '+ev.n+' searchable'+(ev.last?' · latest '+ev.last:''));
  const card=lines.filter(Boolean).join('\n');
@@ -521,7 +604,7 @@ function songSearchHit(row,term){
  if(kept.some(name=>name.startsWith(norm)))return {hit:true,rank:1,via:'name'};
  if(kept.some(name=>name.includes(norm)))return {hit:true,rank:2,via:'name'};
  const audio=String(row.au||'').split('—')[0];
- const field=normalizeSearch([row.th,row.hk,row.c,row.st,row.wr,stripPrivateLocators(row.nx||''),row.oq,row.gate,row.scope_label,row.ly,audio,row.key].join(' '));
+ const field=normalizeSearch([row.th,row.hk,row.c,row.st,row.wr,stripPrivateLocators(row.nx||''),row.oq,row.gate,row.scope_label,row.ly,audio,row.key,typeof logicReadyLabel==='function'?logicReadyLabel(row.lr):''].join(' '));
  if(field.includes(norm))return {hit:true,rank:3,via:'field'};
  if(norm.length>=3&&memoLyricNorm(row.id).includes(norm))return {hit:true,rank:4,via:'memo'};
  return {hit:false,rank:99,via:''};
@@ -563,6 +646,11 @@ function sortSongRows(rows,term,sortKey){
    if(!db)return -1;
    return db.localeCompare(da)||(eb.n-ea.n)||a.row.id.localeCompare(b.row.id);
   }
+  if(k==='logic'){
+   const ra=typeof logicReadyRank==='function'?logicReadyRank(a.row.lr):99;
+   const rb=typeof logicReadyRank==='function'?logicReadyRank(b.row.lr):99;
+   return (ra-rb)||((b.row.mom||0)-(a.row.mom||0))||a.row.id.localeCompare(b.row.id);
+  }
   if(k==='t')return a.row.t.localeCompare(b.row.t)||a.row.id.localeCompare(b.row.id);
   if(k==='id')return a.row.id.localeCompare(b.row.id);
   return ((b.row[k]||0)-(a.row[k]||0))||a.row.id.localeCompare(b.row.id);
@@ -578,7 +666,8 @@ function bar(v,c){
 function render(){
  const rawTerm=q.value, term=String(rawTerm||'').trim(), pv=proj.value, sv=scored.value, scv=scope.value,
   evv=(typeof evidence!=='undefined'&&evidence)?evidence.value:'',
-  wv=(typeof work!=='undefined'&&work)?work.value:'';
+  wv=(typeof work!=='undefined'&&work)?work.value:'',
+  lrv=(typeof logicReady!=='undefined'&&logicReady)?logicReady.value:'';
  const filtered=[];
  DATA.forEach(d=>{
   if(pv&&d.p!==pv)return;
@@ -587,6 +676,7 @@ function render(){
   if(evv==='1'&&!memoEvidenceBySong[d.id])return;
   if(evv==='0'&&memoEvidenceBySong[d.id])return;
   if(wv&&songWorkKind(d.nx)!==wv)return;
+  if(lrv&&d.lr!==lrv)return;
   const hit=term?songSearchHit(d,term):{hit:true,rank:99,via:''};
   if(hit.hit)filtered.push(d);
  });
@@ -598,7 +688,7 @@ function render(){
  songResults.textContent=term
   ?`Showing ${rows.length} of ${DATA.length} songs · closest name first`
   :`Showing ${rows.length} of ${DATA.length} songs`;
- clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||k!=='mom');
+ clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||lrv||k!=='mom');
  if(typeof visibleSongIds!=='undefined')visibleSongIds=rows.map(d=>d.id);
  list.innerHTML=rows.length?rows.map((d,i)=>{
   const wk=songWorkKind(d.nx);
@@ -613,13 +703,17 @@ function render(){
   const aliases=songAliases(d);
   const akaLabel=aliases.length?aliases.join(' · '):'';
   const via=viaById[d.id]||'';
+  const lrPill=typeof logicReadyPill==='function'?logicReadyPill(d.lr):'';
+  const lrNext=typeof logicReadyNext==='function'?logicReadyNext(d.lr):'';
+  const lrFormats=typeof logicReadyFormats==='function'?logicReadyFormats(d):[];
+  const scoreLabel=`${esc(d.t)} ${esc(d.id)}. Potential ${d.pot||'unscored'}, readiness ${d.rdy||'unscored'}, momentum ${d.mom||'unscored'}`;
   return `
- <div class="row" data-song-id="${esc(d.id)}"><div class="rhead" role="button" tabindex="0" aria-expanded="false" data-toggle-song>
+ <div class="row" data-song-id="${esc(d.id)}"><div class="rhead" role="button" tabindex="0" aria-expanded="false" aria-label="${scoreLabel}" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
-  <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
-  ${bar(d.pot,'pot')}<span class="bw-r">${bar(d.rdy,'rdy')}</span>${bar(d.mom,'mom')}
+  <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?` <span class="pill">${esc(lrPill)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
+  <div class="scores" role="group" aria-label="Potential, readiness, and momentum scores"><div class="score"><span class="score-lab" role="columnheader">Potential</span>${bar(d.pot,'pot')}</div><div class="score"><span class="score-lab" role="columnheader">Readiness</span>${bar(d.rdy,'rdy')}</div><div class="score"><span class="score-lab" role="columnheader">Momentum</span>${bar(d.mom,'mom')}</div></div>
  </div><div class="detail" hidden>
-  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latestIntake.label)}</span>${latestIntake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}<div class="memo-next">${latestIntake.copy?'Copy the intake name only (sanitized);':'No copy-safe intake name on this memo row yet;'} write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div>`}</div>
+  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${lrFormats.length?`<div class="sit-logic-assets">Assets on file: ${lrFormats.map(t=>esc(t)).join(' · ')}</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)} <button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button></div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latestIntake.label)}</span>${latestIntake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}<div class="memo-next">${latestIntake.copy?'Copy the intake name only (sanitized);':'No copy-safe intake name on this memo row yet;'} write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div>`}</div>
   ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
   ${hook?`<h4>Hook</h4>${esc(hook)}`:''}
   <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${d.mom?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
@@ -714,6 +808,7 @@ function openWork(kind,songId){
  q.value='';proj.value='';scored.value='';scope.value='';
  if(typeof sort!=='undefined'&&sort)sort.value='mom';
  if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+ if(typeof logicReady!=='undefined'&&logicReady)logicReady.value='';
  if(typeof work!=='undefined'&&work)work.value=k;
  showTab('S');render();
  if(typeof writeVaultHash==='function')writeVaultHash('work',k);
@@ -736,16 +831,32 @@ function updateWorkSessionState(){
  }
  const song=idx>=0&&typeof DATA!=='undefined'?DATA.find(row=>row&&row.id===ids[idx]):null;
  const next=safeWorkNextStep(song);
+ const logic=typeof logicReadyNext==='function'?logicReadyNext(song&&song.lr):'';
  const ev=song&&typeof memoEvidenceBySong!=='undefined'?memoEvidenceBySong[song.id]:null;
  if(workSessionNext){
   workSessionNext.hidden=!next;
   workSessionNext.textContent=next?`Do this now: ${next}`:'';
+ }
+ if(typeof workSessionLogic!=='undefined'&&workSessionLogic){
+  workSessionLogic.hidden=!logic;
+  workSessionLogic.textContent=logic?`Logic-ready next: ${logic}`:'';
+ }
+ const sessionFormats=typeof logicReadyFormats==='function'?logicReadyFormats(song):[];
+ if(typeof workSessionAssets!=='undefined'&&workSessionAssets){
+  workSessionAssets.hidden=!sessionFormats.length;
+  workSessionAssets.textContent=sessionFormats.length?`Assets on file: ${sessionFormats.join(' · ')}`:'';
  }
  if(copyWorkNext){
   copyWorkNext.hidden=!next;
   copyWorkNext.disabled=!next;
   copyWorkNext.dataset.songId=next&&song?String(song.id||''):'';
   copyWorkNext.setAttribute('aria-label',next&&song?`Copy next step for ${sname[song.id]||song.id}`:'No safe next step to copy');
+ }
+ if(typeof copyWorkLogic!=='undefined'&&copyWorkLogic){
+  copyWorkLogic.hidden=!logic;
+  copyWorkLogic.disabled=!logic;
+  copyWorkLogic.dataset.songId=logic&&song?String(song.id||''):'';
+  copyWorkLogic.setAttribute('aria-label',logic&&song?`Copy Logic-ready next for ${sname[song.id]||song.id}`:'No Logic-ready next to copy');
  }
  if(workSessionEvidence){
   workSessionEvidence.textContent=!song
@@ -792,6 +903,7 @@ function openSong(songId){
  if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';
  q.value=id;proj.value='';scored.value='';scope.value='';sort.value='id';
  if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+ if(typeof logicReady!=='undefined'&&logicReady)logicReady.value='';
  if(typeof work!=='undefined'&&work)work.value='';
  showTab('S');render();
  const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
@@ -821,10 +933,11 @@ function handleVaultKey(e){
  }
  const hasWork=typeof work!=='undefined'&&work&&work.value;
  const hasSearch=!!(q&&String(q.value||'').trim());
- const hasFilters=!!((proj&&proj.value)||(scored&&scored.value)||(scope&&scope.value)||(typeof evidence!=='undefined'&&evidence&&evidence.value)||(sort&&sort.value&&sort.value!=='mom'));
+ const hasFilters=!!((proj&&proj.value)||(scored&&scored.value)||(scope&&scope.value)||(typeof evidence!=='undefined'&&evidence&&evidence.value)||(typeof logicReady!=='undefined'&&logicReady&&logicReady.value)||(sort&&sort.value&&sort.value!=='mom'));
  if(typeof paneS!=='undefined'&&paneS&&!paneS.hidden&&(sname[q.value]||hasWork||hasSearch||hasFilters)){
   q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';
   if(typeof evidence!=='undefined'&&evidence)evidence.value='';
+  if(typeof logicReady!=='undefined'&&logicReady)logicReady.value='';
   if(typeof work!=='undefined'&&work)work.value='';
   if(typeof lastWorkKind!=='undefined')lastWorkKind='';
   if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';
@@ -910,6 +1023,29 @@ function copyResumeWorkNext(btn){
  const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
  return copyExactSongNextStep(id,btn);
 }
+function copyExactSongLogicNext(songId,btn){
+ const id=allowedExactWorkSongId(songId);
+ if(!id||typeof DATA==='undefined')return false;
+ const song=DATA.find(d=>d&&d.id===id);
+ if(!song)return false;
+ const kind=(typeof work!=='undefined'&&work&&work.value)?String(work.value||''):'';
+ const saved=(!kind&&typeof readStoredWorkSession==='function')?readStoredWorkSession(vaultStorage(),typeof sname!=='undefined'?sname:null,DATA):null;
+ const expected=kind||(saved&&saved.kind)||'';
+ if(!expected||songWorkKind(song.nx)!==expected)return false;
+ return copyVaultText(logicReadyNext(song.lr),btn,'Copy Logic-ready next');
+}
+function copyCurrentWorkLogic(btn){
+ const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
+ return copyExactSongLogicNext(id,btn);
+}
+function copyResumeLogicNext(btn){
+ const id=btn&&btn.dataset?String(btn.dataset.songId||''):'';
+ return copyExactSongLogicNext(id,btn);
+}
+function copySongLogicNext(songId,btn){
+ const song=typeof DATA!=='undefined'?DATA.find(d=>d&&d.id===String(songId||'')):null;
+ return copyVaultText(logicReadyNext(song&&song.lr),btn,'Copy Logic-ready next');
+}
 function reviewCurrentWorkEvidence(btn){
  const id=allowedExactWorkSongId(btn&&btn.dataset?btn.dataset.songId:'');
  if(!id||!memoCountBySong[id])return false;
@@ -919,6 +1055,8 @@ function reviewCurrentWorkEvidence(btn){
 list.addEventListener('click',e=>{
  const copyFile=e.target.closest('[data-copy-file]');
  if(copyFile){copyMemoFile(copyFile.dataset.copyFile,copyFile);return;}
+ const copyLogic=e.target.closest('[data-copy-logic]');
+ if(copyLogic){copySongLogicNext(copyLogic.dataset.copyLogic,copyLogic);return;}
  const copy=e.target.closest('[data-copy-work]');
  if(copy){copySongWork(copy.dataset.copyWork,copy);return;}
  const memos=e.target.closest('[data-open-memos]');
@@ -926,12 +1064,12 @@ list.addEventListener('click',e=>{
  const head=e.target.closest('[data-toggle-song]');if(head)toggleSong(head);
 });
 list.addEventListener('keydown',e=>{
- if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]')||e.target.closest('[data-copy-file]'))return;
+ if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]')||e.target.closest('[data-copy-file]')||e.target.closest('[data-copy-logic]'))return;
  const head=e.target.closest('[data-toggle-song]');
  if(head&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleSong(head);}
 });
 if(q)q.addEventListener('keydown',handleSongSearchKey);
-[q,proj,sort,scored,scope,evidence,work].forEach(el=>{if(el)el.addEventListener('input',()=>{
+[q,proj,sort,scored,scope,evidence,work,logicReady].forEach(el=>{if(el)el.addEventListener('input',()=>{
  if(el===work){
   if(typeof lastWorkKind!=='undefined')lastWorkKind=work.value||'';
   if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';
@@ -943,7 +1081,7 @@ if(q)q.addEventListener('keydown',handleSongSearchKey);
   if(work.value&&typeof activeWorkSongId!=='undefined'&&activeWorkSongId)focusWorkSong(activeWorkSongId);
  }
 });});
-clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(work)work.value='';if(typeof lastWorkKind!=='undefined')lastWorkKind='';if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
+clearSongFilters.addEventListener('click',()=>{q.value='';proj.value='';sort.value='mom';scored.value='';scope.value='';if(evidence)evidence.value='';if(logicReady)logicReady.value='';if(work)work.value='';if(typeof lastWorkKind!=='undefined')lastWorkKind='';if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';if(typeof writeVaultHash==='function')writeVaultHash('','');render();q.focus();});
 document.querySelector('.lanes').addEventListener('click',e=>{
  const song=e.target.closest('[data-open-song]');
  if(song)openSong(song.dataset.openSong);
@@ -957,7 +1095,9 @@ if(forgetWorkSession)forgetWorkSession.addEventListener('click',forgetLastWorkSe
 if(workPrev)workPrev.addEventListener('click',()=>stepWork(-1));
 if(workNext)workNext.addEventListener('click',()=>stepWork(1));
 if(copyWorkNext)copyWorkNext.addEventListener('click',()=>copyCurrentWorkNext(copyWorkNext));
+if(copyWorkLogic)copyWorkLogic.addEventListener('click',()=>copyCurrentWorkLogic(copyWorkLogic));
 if(copyResumeNext)copyResumeNext.addEventListener('click',()=>copyResumeWorkNext(copyResumeNext));
+if(copyResumeLogic)copyResumeLogic.addEventListener('click',()=>copyResumeLogicNext(copyResumeLogic));
 if(openWorkEvidence)openWorkEvidence.addEventListener('click',()=>reviewCurrentWorkEvidence(openWorkEvidence));
 tabS.addEventListener('click',()=>{
  showTab('S');
@@ -1062,6 +1202,8 @@ if(typeof window!=='undefined'){window.addEventListener('hashchange',applyVaultH
 </script></body></html>'''
 
 page = (page.replace('__DATA__', DATA)
+    .replace('__LOGIC_READY__', LOGIC_READY)
+    .replace('__LOGIC_READY_FILTER__', LOGIC_READY_FILTER)
     .replace('__TX__', TX)
     .replace('__TX_TOTAL__', str(TX_TOTAL))
     .replace('__TX_MATCHED_TOTAL__', str(TX_MATCHED_TOTAL))

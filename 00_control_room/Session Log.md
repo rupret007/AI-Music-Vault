@@ -599,3 +599,19 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Next continuation point
 Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Latest Session Log handoff now fails closed: sit-down handoff belongs in Session Log (pair Voice Memo Intake name + **Copy next step**), then work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Logic-ready sit-down port plus phone/a11y — 2026-10-06 (local Cursor, no audio)
+### Done
+1. Started from draft PR #37 (`cursor/logic-ready-sitdown-export-honesty-7146`). Compared sibling draft PR #36 (`cursor/logic-ready-sitdown-de6f`): #36 is not contained in #37. Ported the useful leftover — sanitized Logic-ready cluster, Assets on file, Copy Logic-ready next, and public-repo visibility honesty — onto this branch without dropping #37's Logic export honesty / MIDI / intake-name fail-closed work.
+2. Polished the local dashboard for Jeff's phone and desktop: 375px layout, landmarks, labeled controls, 44px tap targets, visible focus, score headers, and overflow-wrap so song rows do not force horizontal scroll.
+3. Logic / WAV / AIFF / MIDI export stays not done. Sit-down Logic-ready next is catalog evidence only. No Suno, no paid APIs, no audio files touched.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified. No Logic, WAV, AIFF, or MIDI export happened.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged except the dashboard DATA hash after projecting already-on-spine Logic-ready cluster ids and asset tags.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Sit-down handoff belongs in Session Log: pair intake name + **Copy next step**, then work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Draft PR #36 can be closed after this port lands. StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.

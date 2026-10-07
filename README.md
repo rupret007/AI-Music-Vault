@@ -4,7 +4,7 @@
 
 This is the working brain of the Jeff Story catalog: 150 song entities spanning 1999–2026 across Stalemate, Something Dirty, Trailer Swift, Rad Dad, and solo work — plus the tooling that found, matched, scored, and keeps track of all of it.
 
-> ⚠️ **Private repository.** Contains unreleased album material, personal lyrics, collaborators' compositions, and home-address strings inside voice-memo titles. Not for public distribution. Audio masters are deliberately **not** stored here — they live in the local vault and Google Drive.
+> ⚠️ **Public repository (for GitHub Actions).** This repo still contains unreleased album material, personal lyrics, collaborators' compositions, and home-address strings inside some historical voice-memo titles. Audio masters are deliberately **not** stored here — they live in the local vault and Google Drive.
 
 ---
 
@@ -84,7 +84,7 @@ Open `Jeff Story Song Vault Dashboard.html` locally. Do not upload it.
 9. Refresh again. Resume stays gone.
 10. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
 11. On Songs, type a remembered alias or a title without apostrophes. The closest name is first. Press Enter to open that row. Escape clears the search. A long enough query may also list a song from a searchable matched memo lyric — that is a lead, not a listen.
-12. The session evidence, sit-down, memo search hint, and page footer all say to work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Before leaving a sit-down, pair Voice Memo Intake name + **Copy next step** in Session Log. This page does not open audio — export to WAV/AIFF/MIDI from Logic on Jeff's Mac.
+12. The session evidence, sit-down, memo search hint, and page footer all say to work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down also names a sanitized **Logic-ready next** and **Assets on file** from catalog evidence — that is not a completed export. Click **Copy Logic-ready next** when it is visible. Before leaving a sit-down, pair Voice Memo Intake name + **Copy next step** in Session Log. This page does not open audio — export to WAV/AIFF/MIDI from Logic on Jeff's Mac. Logic / WAV / AIFF / MIDI export stays not done until a real file exists.
 
 StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
 an import, remote catalog URLs are rejected, and this is not a public

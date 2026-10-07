@@ -16,9 +16,11 @@ from catalog_surface import (  # noqa: E402
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
+    dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
     readme_documents_session_click_test,
     catalog_workspace_uses_vault_framing,
@@ -283,6 +285,19 @@ def extras_ok(cat=None):
             'function songSearchHit( function markNormalized( '
             'function focusFoundSong( function handleSongSearchKey( '
             'closest name first titles, aliases, hooks memo lyric aka '
+            'id="logicReady" Sort: Logic-ready Any Logic-ready '
+            'function logicReadyNext( function logicReadyLabel( '
+            'Copy Logic-ready next id="workSessionLogic" id="copyWorkLogic" '
+            'id="resumeWorkLogic" id="copyResumeLogic" sit-logic '
+            'function copyExactSongLogicNext( function copyCurrentWorkLogic( '
+            'function copyResumeLogicNext( function copySongLogicNext( '
+            'LOGIC_READY Do not invent one here This page does not open audio '
+            'function logicReadyFormats( Assets on file '
+            'class="skip-link" href="#main" <header> <main id="main" <footer '
+            'role="tablist" aria-label="Sort songs" '
+            'aria-label="Search memo transcripts" @media(max-width:375px) '
+            'min-height:44px overflow-x:hidden :focus-visible class="score-lab" '
+            'role="columnheader" --ink3:#a8a79c --ink3:#5c5b54 '
         ),
         "audio_files": [],
     }
@@ -1109,6 +1124,30 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+
+    def test_dashboard_without_logic_ready_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="logicReady"', ""
+        ).replace("Copy Logic-ready next", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("sanitized Logic-ready next" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_exposes_logic_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_phone_a11y_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "@media(max-width:375px)", ""
+        ).replace("min-height:44px", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("usable at 375px" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
 
     def test_dashboard_owner_audio_index_fails_closed(self):
         extra = extras_ok()
@@ -2217,16 +2256,25 @@ class ValidateCatalogTests(unittest.TestCase):
         missing_handoff = (
             "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
             "Copy next step. Do this now. Stores only a work kind and catalog ID. "
-            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)."
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "Logic-ready next. Copy Logic-ready next."
         )
         self.assertFalse(readme_documents_session_click_test(missing_handoff))
         missing_no_ableton = (
             "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
             "Copy next step. Do this now. Stores only a work kind and catalog ID. "
             "Sit-down handoff goes in Session Log. "
-            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference)."
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference). "
+            "Logic-ready next. Copy Logic-ready next."
         )
         self.assertFalse(readme_documents_session_click_test(missing_no_ableton))
+        missing_logic_ready = (
+            "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
+            "Copy next step. Do this now. Stores only a work kind and catalog ID. "
+            "Sit-down handoff goes in Session Log. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)."
+        )
+        self.assertFalse(readme_documents_session_click_test(missing_logic_ready))
 
     def test_public_docs_roles_counts_only_pass(self):
         extras = extras_ok()
@@ -2239,7 +2287,8 @@ class ValidateCatalogTests(unittest.TestCase):
             "Copy next step. Do this now. "
             "Stores only a schema version, work kind, and catalog ID. "
             "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
-            "Sit-down handoff goes in Session Log.\n"
+            "Sit-down handoff goes in Session Log. "
+            "Logic-ready next. Copy Logic-ready next.\n"
         )
         extras["apps_md"] = (
             "Local python3 scripts/validate_catalog.py fails closed "
@@ -2593,6 +2642,10 @@ class ValidateCatalogTests(unittest.TestCase):
             "Latest Session Log handoff export honesty fail-closed — 2026-09-25 "
             "(Cloud Agent, no audio)"
         )
+        product_logic_ready_port = (
+            "Logic-ready sit-down port plus phone/a11y — 2026-10-06 "
+            "(local Cursor, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2614,7 +2667,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(product_readme_export, headings)
         self.assertIn(product_session_log_export, headings)
         self.assertIn(product_latest_session_log_handoff, headings)
-        self.assertEqual(headings[-1], product_latest_session_log_handoff)
+        self.assertIn(product_logic_ready_port, headings)
+        self.assertEqual(headings[-1], product_logic_ready_port)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
@@ -2655,6 +2709,8 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
         self.assertTrue(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+        self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
         self.assertTrue(readme_documents_session_click_test(extra["readme"]))
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
