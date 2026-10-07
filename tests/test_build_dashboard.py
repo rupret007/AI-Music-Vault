@@ -14,14 +14,19 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 from catalog_surface import (  # noqa: E402
     EMBEDDED_DATA_SHA256,
     EMBEDDED_TX_SHA256,
+    LOGIC_READY_CLUSTERS,
     build_memo_search_index,
     dashboard_displays_owner_audio_index,
+    dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
+    dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
     embedded_dashboard_payloads,
     latest_memo_for_song,
+    logic_ready_maps,
+    logic_ready_next_leaks_private_locators,
     memo_evidence_by_song,
     memo_lyric_norm_by_song,
     next_step_is_incomplete,
@@ -29,6 +34,10 @@ from catalog_surface import (  # noqa: E402
     parse_vault_hash,
     safe_song_next_step,
     song_aliases,
+    song_logic_ready_cluster,
+    song_logic_ready_evidence_label,
+    song_logic_ready_evidence_tags,
+    song_logic_ready_next,
     song_search_hit,
     song_work_card,
     song_work_kind,
@@ -39,6 +48,49 @@ from catalog_surface import (  # noqa: E402
 
 
 class DashboardMemoHonestyTests(unittest.TestCase):
+    def test_memo_index_sanitizes_intake_name_to_basename(self):
+        prepared, counts = build_memo_search_index(
+            [
+                {
+                    "uid": "a",
+                    "file": "file:///Users/jeff/Voice Memos/Raw Take 1.m4a?download=1",
+                    "title": "A",
+                    "date": "2026-09-01",
+                    "dur": 12,
+                    "text": "this transcript text is definitely long enough",
+                },
+                {
+                    "uid": "b",
+                    "file": r"C:\\Users\\jeff\\Voice Memos\\Second Take.m4a",
+                    "title": "B",
+                    "date": "2026-09-02",
+                    "dur": 20,
+                    "text": "another transcript that is long enough to keep",
+                },
+            ],
+            {"JS-0001": ["a"], "JS-0002": ["b"]},
+        )
+        self.assertEqual(counts["searchable"], 2)
+        self.assertEqual(prepared[0]["f"], "Raw Take 1.m4a")
+        self.assertEqual(prepared[1]["f"], "Second Take.m4a")
+
+    def test_memo_index_hides_owner_audio_suffixes_in_intake_name(self):
+        prepared, counts = build_memo_search_index(
+            [
+                {
+                    "uid": "leak",
+                    "file": "file:///Users/jeff/Voice Memos/private mix.wav",
+                    "title": "Hidden",
+                    "date": "2026-09-03",
+                    "dur": 21,
+                    "text": "searchable transcript text stays long enough for indexing",
+                }
+            ],
+            {"JS-0001": ["leak"]},
+        )
+        self.assertEqual(counts["searchable"], 1)
+        self.assertEqual(prepared[0]["f"], "")
+
     def test_short_matched_transcript_stays_in_source_truth_not_search_index(self):
         transcripts = [
             {
@@ -176,6 +228,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
 
     def test_dashboard_must_not_open_owner_audio(self):
         self.assertTrue(dashboard_opens_owner_audio('<a href="mix.wav">open</a>'))
+        self.assertTrue(dashboard_opens_owner_audio('<a href="take.mid">open</a>'))
         self.assertTrue(dashboard_opens_owner_audio("<audio src='x.m4a'></audio>"))
         self.assertTrue(dashboard_opens_owner_audio('<a href="file:///tmp/x.wav">x</a>'))
         self.assertTrue(dashboard_opens_owner_audio('<button onclick="play()">x</button>'))
@@ -229,6 +282,8 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertTrue(dashboard_exposes_song_work(dashboard))
         self.assertTrue(dashboard_resumes_song_work_privately(dashboard))
         self.assertTrue(dashboard_finds_remembered_song_names(dashboard))
+        self.assertTrue(dashboard_exposes_logic_ready(dashboard))
+        self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
         self.assertFalse(dashboard_displays_owner_audio_index(dashboard))
         self.assertIn('id="work"', dashboard)
         self.assertIn('id="workSession"', dashboard)
@@ -237,6 +292,9 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("Start a work session", dashboard)
         self.assertIn("More filters", dashboard)
         self.assertIn("Sit-down", dashboard)
+        self.assertIn("Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)", dashboard)
+        self.assertIn("open in Logic (export honesty:", dashboard)
+        self.assertIn("Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac", dashboard)
         self.assertIn("Copy work card", dashboard)
         self.assertIn("function songWorkKind(", dashboard)
         self.assertIn("function buildSongWorkCard(", dashboard)
@@ -248,6 +306,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("function allowedExactWorkSongId(", dashboard)
         self.assertIn("function copyExactSongNextStep(", dashboard)
         self.assertIn("function copyResumeWorkNext(", dashboard)
+        self.assertIn("function intakeNameSummary(", dashboard)
         self.assertIn("safeWorkNextStep(d)", dashboard)
         self.assertIn('id="workSessionNext"', dashboard)
         self.assertIn('id="copyWorkNext"', dashboard)
@@ -255,6 +314,30 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn('id="resumeWorkNext"', dashboard)
         self.assertIn('id="copyResumeNext"', dashboard)
         self.assertIn("function latestMemoForSong(", dashboard)
+        self.assertIn("Sit-down handoff stays in Session Log: copy next step + intake name before leaving.", dashboard)
+        self.assertIn(
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "Sit-down handoff stays in Session Log: copy next step + intake name before leaving.",
+            dashboard,
+        )
+        self.assertIn("then log the sit-down handoff in Session Log.", dashboard)
+        self.assertIn(
+            "No searchable memo evidence for this song. The next step comes from the catalog. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "This page does not open audio.",
+            dashboard,
+        )
+        self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
+        self.assertIn(
+            "Transcripts are machine-made (Whisper, run locally on your Mac) — "
+            "they mishear sung words constantly, so treat hits as leads, not gospel. "
+            "Copy the intake name only (sanitized); write, produce, or listen in Logic "
+            "(export honesty, WAVs/AIFF/MIDI preference, no Ableton-first).",
+            dashboard,
+        )
+        self.assertIn("Copy the intake name only (sanitized)", dashboard)
+        self.assertIn("No copy-safe intake name on this memo row yet;", dashboard)
+        self.assertIn("no copy-safe intake name yet", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
         self.assertNotIn("<h4>Known assets</h4>", dashboard)
 
@@ -350,11 +433,15 @@ class DashboardSongWorkTests(unittest.TestCase):
             ),
             "LISTEN: play. Verdict: gem / meh.",
         )
+        self.assertEqual(
+            strip_private_locators("Listen to latest (arrangement.mid) and decide."),
+            "Listen to latest and decide.",
+        )
         card = song_work_card(
             {
                 "id": "JS-0130",
                 "t": "Been Loving You",
-                "nx": 'LISTEN: play Maxwell Dr 99 (latest take). Verdict: gem.',
+                "nx": "LISTEN: play Maxwell Dr 99 (latest take). arrangement.midi Verdict: gem.",
                 "hk": "Been loving you",
                 "src": ["mix.wav", "song.logicx"],
                 "bs": "file:///Users/jeff/Music/take.wav",
@@ -365,6 +452,7 @@ class DashboardSongWorkTests(unittest.TestCase):
         self.assertNotIn("Maxwell", card)
         self.assertNotIn(".wav", card)
         self.assertNotIn(".logicx", card)
+        self.assertNotIn(".midi", card)
         self.assertNotIn("file://", card)
         self.assertFalse(work_card_leaks_private_locators(card))
 
@@ -375,6 +463,10 @@ class DashboardSongWorkTests(unittest.TestCase):
                     "next_action": "Listen to latest (private-mix.wav) and rate: finish / rest."
                 }
             ),
+            "Listen to latest and rate: finish / rest.",
+        )
+        self.assertEqual(
+            safe_song_next_step({"next_action": "Listen to latest (private-arrangement.mid) and rate: finish / rest."}),
             "Listen to latest and rate: finish / rest.",
         )
         self.assertEqual(safe_song_next_step({"nx": ""}), "")
@@ -620,6 +712,324 @@ class DashboardSongFindTests(unittest.TestCase):
         self.assertEqual(projected, expected)
         self.assertIn("Candy Lane (2017)", projected["ST-0019"])
         self.assertNotIn("Speak Now", json.dumps(projected))
+
+
+WALK_ORIGINAL_LOGIC_READY = {
+    "closest_logic_dropin": [
+        "JS-0004", "SD-0006", "SD-0007", "ST-0001", "ST-0006",
+        "ST-0008", "ST-0018", "ST-0022", "ST-0032",
+    ],
+    "logic_project_plus_key": [
+        "JS-0003", "ST-0007", "ST-0015", "ST-0021", "ST-0031",
+    ],
+    "logic_project_no_key": [
+        "JS-0005", "JS-0006", "JS-0009", "JS-0012", "JS-0017", "JS-0022",
+        "JS-0047", "JS-0061", "JS-0101", "JS-0102", "JS-0103", "JS-0104",
+        "JS-0105", "JS-0106", "JS-0109", "ST-0023", "ST-0027", "ST-0028",
+        "ST-0110",
+    ],
+    "audio_plus_key_no_logic": [
+        "JS-0001", "JS-0002", "SD-0004", "ST-0003", "ST-0009", "ST-0010",
+        "ST-0012", "ST-0013", "ST-0014", "ST-0019",
+    ],
+    "audio_only": [
+        "JS-0007", "JS-0008", "JS-0011", "JS-0013", "JS-0014", "JS-0015",
+        "JS-0016", "JS-0018", "JS-0019", "JS-0020", "JS-0021", "JS-0023",
+        "JS-0108", "JS-0110", "JS-0122", "SD-0002", "SD-0003", "SD-0005",
+        "ST-0004", "ST-0011", "ST-0024", "ST-0025", "ST-0026", "ST-0101",
+        "ST-0102", "ST-0103", "ST-0104", "ST-0105", "ST-0106", "ST-0107",
+        "ST-0108",
+    ],
+    "key_only": [
+        "JS-0128", "JS-0130", "JS-0131", "JS-0132", "JS-0133", "JS-0134",
+        "JS-0135", "JS-0136", "JS-0137", "JS-0138", "SD-0008", "SD-0010",
+        "ST-0016", "ST-0017", "ST-0029", "ST-0030",
+    ],
+    "empty_logic_ready": [
+        "JS-0010", "JS-0048", "JS-0049", "JS-0050", "JS-0051", "JS-0053",
+        "JS-0055", "JS-0056", "JS-0057", "JS-0058", "JS-0059", "JS-0060",
+        "JS-0062", "JS-0063", "JS-0064", "JS-0065", "JS-0066", "JS-0067",
+        "JS-0068", "JS-0070", "JS-0100", "JS-0111", "JS-0112", "JS-0120",
+        "JS-0121", "JS-0123", "JS-0124", "JS-0125", "JS-0126", "JS-0127",
+        "JS-0129", "JS-0139", "JS-0140", "SD-0001", "SD-0009", "SD-0011",
+    ],
+}
+
+
+class DashboardLogicReadyTests(unittest.TestCase):
+    def test_canned_logic_ready_next_never_leaks_locators(self):
+        self.assertFalse(logic_ready_next_leaks_private_locators())
+        for cluster in LOGIC_READY_CLUSTERS:
+            nxt = song_logic_ready_next(cluster)
+            self.assertTrue(nxt, cluster)
+            self.assertFalse(work_card_leaks_private_locators(nxt), nxt)
+            self.assertNotIn(".logicx", nxt.lower())
+            self.assertNotIn(".wav", nxt.lower())
+            self.assertNotIn("exported", nxt.lower())
+            self.assertNotIn("upload", nxt.lower())
+
+    def test_evidence_tags_read_logic_native_asset_types_only(self):
+        self.assertEqual(
+            song_logic_ready_evidence_tags(
+                {"key": "Am", "sources": ["song v1.0.logicx", "mix.wav"]}
+            ),
+            ["Logic Pro project", "WAV/AIFF", "Key on file"],
+        )
+        self.assertEqual(
+            song_logic_ready_evidence_tags(
+                {"sources": ["stems bounce"]}
+            ),
+            ["Stems"],
+        )
+        self.assertEqual(
+            song_logic_ready_evidence_tags(
+                {"key": "Am"}, {"files": [{"title": "take 1", "kind": "studio-take"}]}
+            ),
+            ["Recorded take", "Key on file"],
+        )
+        self.assertEqual(song_logic_ready_evidence_tags({}), [])
+        self.assertEqual(song_logic_ready_evidence_tags(None), [])
+        self.assertEqual(
+            song_logic_ready_evidence_label({"key": "Am"}),
+            "Key on file",
+        )
+        self.assertEqual(song_logic_ready_evidence_label({}), "")
+
+    def test_evidence_tags_never_carry_a_filename_or_path(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "data", "version_chains.json"), encoding="utf-8"
+        ) as handle:
+            chains = json.load(handle)
+        seen_any = False
+        for song in catalog["songs"]:
+            tags = song_logic_ready_evidence_tags(
+                song, chains.get(song["song_id"])
+            )
+            if tags:
+                seen_any = True
+            label = " · ".join(tags)
+            self.assertFalse(work_card_leaks_private_locators(label), label)
+            self.assertNotIn(".", label, label)
+        self.assertTrue(seen_any)
+
+    def test_evidence_tags_agree_with_the_cluster_they_explain(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "data", "version_chains.json"), encoding="utf-8"
+        ) as handle:
+            chains = json.load(handle)
+        for song in catalog["songs"]:
+            chain = chains.get(song["song_id"])
+            cluster = song_logic_ready_cluster(song, chain)
+            tags = song_logic_ready_evidence_tags(song, chain)
+            if cluster == "closest_logic_dropin":
+                self.assertIn("Logic Pro project", tags, song["song_id"])
+                self.assertTrue(
+                    "WAV/AIFF" in tags or "Stems" in tags, song["song_id"]
+                )
+                self.assertIn("Key on file", tags, song["song_id"])
+            if cluster == "empty_logic_ready":
+                self.assertEqual(tags, [], song["song_id"])
+            if cluster == "key_only":
+                self.assertEqual(tags, ["Key on file"], song["song_id"])
+
+    def test_work_card_carries_asset_tags_from_precomputed_lrf(self):
+        card = song_work_card(
+            {
+                "id": "ST-0001",
+                "t": "Turn Over The Flag",
+                "nx": "Track overdubs",
+                "lr": "closest_logic_dropin",
+                "lrf": ["Logic Pro project", "WAV/AIFF", "Key on file"],
+            }
+        )
+        self.assertIn(
+            "Assets on file: Logic Pro project · WAV/AIFF · Key on file", card
+        )
+        self.assertNotIn(".logicx", card)
+        self.assertNotIn(".wav", card)
+        no_tags_card = song_work_card(
+            {
+                "id": "JS-9999",
+                "t": "No Evidence",
+                "nx": "Track overdubs",
+                "lr": "empty_logic_ready",
+                "lrf": [],
+            }
+        )
+        self.assertNotIn("Assets on file", no_tags_card)
+
+    def test_system_and_midi_horns_are_not_stems_or_keys(self):
+        row = {
+            "song_id": "ST-0004",
+            "key": "",
+            "notes": (
+                "first aesthetic evaluation in the system; "
+                "possible future MIDI horns"
+            ),
+            "sources": ["band bounce"],
+        }
+        self.assertEqual(song_logic_ready_cluster(row), "empty_logic_ready")
+        self.assertEqual(
+            song_logic_ready_cluster(
+                {"song_id": "X", "key": "Am", "sources": ["demo.m4a"]}
+            ),
+            "key_only",
+        )
+        self.assertEqual(
+            song_logic_ready_cluster(
+                {
+                    "song_id": "X",
+                    "key": "C",
+                    "sources": ["song v1.0.logicx", "mix.wav"],
+                }
+            ),
+            "closest_logic_dropin",
+        )
+
+    def test_originals_match_the_logic_ready_walk(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "data", "version_chains.json"), encoding="utf-8"
+        ) as handle:
+            chains = json.load(handle)
+        expected = {
+            song_id: cluster
+            for cluster, ids in WALK_ORIGINAL_LOGIC_READY.items()
+            for song_id in ids
+        }
+        self.assertEqual(len(expected), 126)
+        got = {}
+        for song in catalog["songs"]:
+            if song.get("classification") != "original":
+                continue
+            cluster = song_logic_ready_cluster(
+                song, chains.get(song["song_id"])
+            )
+            got[song["song_id"]] = cluster
+        self.assertEqual(got, expected)
+        self.assertEqual(got["ST-0004"], "audio_only")
+        self.assertFalse(str(next(
+            song for song in catalog["songs"] if song["song_id"] == "ST-0004"
+        ).get("key") or "").strip())
+
+    def test_work_card_includes_sanitized_logic_ready_next(self):
+        card = song_work_card(
+            {
+                "id": "ST-0001",
+                "t": "Turn Over The Flag",
+                "nx": "Track the remaining overdubs",
+                "lr": "closest_logic_dropin",
+            }
+        )
+        self.assertIn("Logic-ready: Closest Logic Pro drop-in", card)
+        self.assertIn(
+            "Logic next: Open the existing Logic Pro project on your Mac",
+            card,
+        )
+        self.assertNotIn(".logicx", card)
+        self.assertNotIn(".wav", card)
+
+    def test_committed_dashboard_projects_logic_ready_clusters_only(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "data", "version_chains.json"), encoding="utf-8"
+        ) as handle:
+            chains = json.load(handle)
+        expected = {
+            song["song_id"]: song_logic_ready_cluster(
+                song, chains.get(song["song_id"])
+            )
+            for song in catalog["songs"]
+        }
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        payloads = embedded_dashboard_payloads(dashboard)
+        rows = json.loads(payloads["DATA"])
+        projected = {row["id"]: row.get("lr") for row in rows}
+        self.assertEqual(projected, expected)
+        self.assertIn("const LOGIC_READY = ", dashboard)
+        self.assertEqual(
+            json.loads(dashboard.split("const LOGIC_READY = ", 1)[1].split(";\n", 1)[0]),
+            logic_ready_maps(),
+        )
+        self.assertTrue(dashboard_exposes_logic_ready(dashboard))
+        self.assertNotIn("folder", json.dumps(logic_ready_maps()))
+
+    def test_committed_dashboard_projects_logic_native_asset_tags_only(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "data", "version_chains.json"), encoding="utf-8"
+        ) as handle:
+            chains = json.load(handle)
+        expected = {
+            song["song_id"]: song_logic_ready_evidence_tags(
+                song, chains.get(song["song_id"])
+            )
+            for song in catalog["songs"]
+        }
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        payloads = embedded_dashboard_payloads(dashboard)
+        rows = json.loads(payloads["DATA"])
+        projected = {row["id"]: row.get("lrf") or [] for row in rows}
+        self.assertEqual(projected, expected)
+        self.assertGreater(sum(1 for tags in expected.values() if tags), 0)
+        for tags in expected.values():
+            for tag in tags:
+                self.assertNotIn(".", tag)
+                self.assertNotIn("/Users", tag)
+                self.assertNotIn("file://", tag)
+        self.assertIn("function logicReadyFormats(", dashboard)
+        self.assertIn("Assets on file", dashboard)
+
+
+class DashboardPhoneA11yTests(unittest.TestCase):
+    def test_committed_dashboard_is_usable_at_375px(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
+        self.assertIn("Skip to catalog", dashboard)
+        self.assertIn("<header>", dashboard)
+        self.assertIn('<main id="main"', dashboard)
+        self.assertIn("<footer", dashboard)
+        self.assertIn('aria-label="Sort songs"', dashboard)
+        self.assertIn('aria-label="Search memo transcripts"', dashboard)
+        self.assertIn("@media(max-width:375px)", dashboard)
+        self.assertIn("min-height:44px", dashboard)
+        self.assertIn("overflow-x:hidden", dashboard)
+        self.assertIn(":focus-visible", dashboard)
+        self.assertIn('class="score-lab"', dashboard)
+        self.assertIn('role="columnheader"', dashboard)
+        self.assertNotIn("grid-template-columns:1fr 90px 90px", dashboard)
+
+    def test_phone_gate_fails_closed_without_landmarks(self):
+        self.assertFalse(dashboard_phone_and_a11y_ready("<html></html>"))
 
 
 if __name__ == "__main__":

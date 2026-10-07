@@ -17,8 +17,9 @@ Success output is roles and counts only — no published ids.
 
 Run:  python3 scripts/validate_catalog.py
 Exit: 0 if clean, 1 if any error (local validate fails closed).
-Hosted catalog-validate on this private repo may be a 0-step
-empty-runner — that red is not a catalog fail.
+Hosted catalog-validate may occasionally show infra-only red
+(including historical private-repo empty-runner behavior). Local
+validate is the catalog gate.
 """
 from __future__ import annotations
 
@@ -32,9 +33,11 @@ from catalog_surface import (
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
+    dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
     readme_documents_session_click_test,
 )
@@ -218,6 +221,21 @@ def latest_session_log_section(text: str) -> str:
 def latest_session_log_has_continuation(text: str) -> bool:
     """Latest H2 must name where a later session continues."""
     return bool(SESSION_LOG_CONTINUATION_RE.search(latest_session_log_section(text)))
+
+
+def latest_session_log_has_logic_export_handoff(text: str) -> bool:
+    """Latest H2 must restate Logic-first sit-down export honesty handoff."""
+    section = latest_session_log_section(text).lower()
+    return (
+        "session log" in section
+        and "sit-down" in section
+        and "copy next step" in section
+        and "intake name" in section
+        and "logic" in section
+        and "export honesty" in section
+        and "wavs/aiff/midi" in section
+        and "no ableton-first" in section
+    )
 
 
 def apps_md_claims_hosted_ci(text: str) -> bool:
@@ -1867,6 +1885,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "latest Session Log H2 pass has no Next continuation point — "
                 "resume must not fall back to Session 1"
             )
+        elif not latest_session_log_has_logic_export_handoff(session_log):
+            errors.append(
+                "latest Session Log H2 pass must restate sit-down handoff in "
+                "Session Log plus Logic export honesty "
+                "(WAVs/AIFF/MIDI preference, no Ableton-first)"
+            )
 
     producer = extras.get("producer_readme")
     if isinstance(producer, str) and producer.strip():
@@ -1961,7 +1985,10 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "README.md must document the private session click-test: "
                 "Click Write, Produce, or Listen; Refresh; Resume; Forget; "
-                "stores only work kind and catalog ID"
+                "stores only work kind and catalog ID; "
+                "Logic export honesty (WAVs/AIFF/MIDI preference, no Ableton-first); "
+                "sit-down handoff belongs in Session Log; "
+                "Logic-ready next / Copy Logic-ready next"
             )
 
     dash = extras.get("dashboard_html")
@@ -2011,6 +2038,18 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must find songs by existing aliases, fold "
                 "punctuation, rank the closest name first, and allow Enter "
                 "to open that row"
+            )
+        if not dashboard_exposes_logic_ready(dash):
+            errors.append(
+                "dashboard must name a sanitized Logic-ready next from "
+                "existing catalog evidence — cluster, assets on file, "
+                "and Copy Logic-ready next without filenames or paths"
+            )
+        if not dashboard_phone_and_a11y_ready(dash):
+            errors.append(
+                "dashboard must stay usable at 375px with landmarks, "
+                "labeled controls, 44px tap targets, visible focus, "
+                "and no horizontal scroll"
             )
 
     audio_hits = extras.get("audio_files")

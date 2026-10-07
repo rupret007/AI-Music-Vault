@@ -1,167 +1,131 @@
-# AI Music Vault — Jeff Story
+# AI Music Vault
 
-**27 years of songwriting, organized, scored, and moving toward finished.**
+A songwriting catalog, local browser dashboard, and Python tools for finding song
+ideas, tracking evidence, and choosing the next writing or production step.
+`data/master_catalog.json` is the source of truth; generated views are indexes,
+not audio players or finished exports.
 
-This is the working brain of the Jeff Story catalog: 150 song entities spanning 1999–2026 across Stalemate, Something Dirty, Trailer Swift, Rad Dad, and solo work — plus the tooling that found, matched, scored, and keeps track of all of it.
+**This repository is PUBLIC.** Committed metadata, lyrics, transcripts, and the
+dashboard are publicly readable and include sensitive historical material.
+“Private session” or “private sit-down” means browser-local navigation and resume
+state, not private repository contents. Audio masters and Logic projects stay
+outside this repo. Do not commit audio, personal data, or local session notes.
 
-> ⚠️ **Private repository.** Contains unreleased album material, personal lyrics, collaborators' compositions, and home-address strings inside voice-memo titles. Not for public distribution. Audio masters are deliberately **not** stored here — they live in the local vault and Google Drive.
+## Features
 
----
+- Search songs by title, existing aliases, punctuation-folded names, or searchable
+  matched memo lyrics; Enter opens the closest result. Navigate between a song
+  and its matched memo evidence, with date sorting and scoped search.
+- Start Write / Produce / Listen on the highest-momentum matching song, move
+  through a bounded queue, and resume the exact song after refresh. Copy a
+  sanitized work card or next step; unsafe or missing actions fail closed.
+- **Recent changes (September–October 2026):** Logic-ready sit-down shows
+  **Assets on file**, **Logic-ready next**, and **Copy Logic-ready next** from
+  catalog evidence. Memo intake names and work actions reject owner-audio
+  locators; session, memo, and handoff copy preserve export honesty.
+- Keep potential, readiness, momentum, rights gates, and next actions separate.
+  Work stays capped at three active lanes: Flagship, Quick win, Experimental.
+  On deck and the protected Opus remain separate.
+- Generate a StoryBoard import as local `data/app_api.json`, plus a catalog CSV
+  and a self-contained HTML dashboard. Nothing auto-posts.
 
-## Start here
+## Quick start
 
-| If you want to… | Open |
-|---|---|
-| Know what to work on next | [`00_control_room/Priority Queue.md`](00_control_room/Priority%20Queue.md) |
-| See the whole plan | [`00_control_room/THE PLAN.md`](00_control_room/THE%20PLAN.md) |
-| Know what's *alive* vs. sleeping | [`00_control_room/What's Alive — Momentum Index.md`](00_control_room/What's%20Alive%20—%20Momentum%20Index.md) |
-| Browse every song interactively | `Jeff Story Song Vault Dashboard.html` (open in any browser; catalog rows are not the official set) |
-| Understand the songs as a body of work | [`00_control_room/Song Map.md`](00_control_room/Song%20Map.md) |
-| Co-write with an AI without it sounding like AI | [`00_control_room/Jeff Story Style Guide.md`](00_control_room/Jeff%20Story%20Style%20Guide.md) |
-| See what needs Jeff's answer | [`00_control_room/Needs Jeff.md`](00_control_room/Needs%20Jeff.md) |
-| Know why any decision was made | [`00_control_room/Decision Log.md`](00_control_room/Decision%20Log.md) |
-| Feed StoryBoard (band OS) | [`data/app_api.json`](data/app_api.json) — mapping in [`APPS.md`](APPS.md) and [`00_control_room/Vault to StoryBoard.md`](00_control_room/Vault%20to%20StoryBoard.md) |
-| Confirm the catalog isn't broken | `python3 scripts/validate_catalog.py` |
+Open [Jeff Story Song Vault Dashboard.html](Jeff%20Story%20Song%20Vault%20Dashboard.html)
+locally in a browser. No server, account, API key, or package install is needed
+to browse the committed dashboard. Clipboard and resume storage depend on browser
+permissions; blocked storage soft-fails.
 
-## Verify safely
+For development, use **Python 3.12** (the CI version) and **Node.js** for the
+navigation smoke test (verified locally with Node 22). The core build and checks
+use the standard libraries only. Where older docs use `python3`, ensure it selects
+the same Python version. There is no npm project, Makefile, required
+environment variable, `.env` file, or desktop packaging step.
 
-Run the same offline gates used by catalog validation:
+## Build and test
+
+From the repository root, regenerate derived files after catalog or dashboard
+changes:
 
 ```bash
-python3 scripts/validate_catalog.py
-python3 -m unittest discover -s tests -v
+python3.12 scripts/export_app_api.py
+python3.12 scripts/export_catalog_csv.py
+python3.12 scripts/build_dashboard.py
+```
+
+Run the full [catalog-validate workflow](.github/workflows/catalog-validate.yml)
+gate locally (CI uses `python` after selecting 3.12):
+
+```bash
+python3.12 scripts/validate_catalog.py
+python3.12 -m unittest discover -s tests -v
 node tests/test_dashboard_navigation.js
-python3 scripts/export_app_api.py --check
-python3 scripts/export_catalog_csv.py --check
+python3.12 scripts/export_app_api.py --check
+python3.12 scripts/export_catalog_csv.py --check
 ```
 
-These checks read the committed catalog metadata, StoryBoard export, and local
-generated dashboard only.
-They do not open or upload audio, modify originals, or contact an AI service.
-Keep the repository and its test output private because catalog metadata can
-still contain unreleased, personal, collaborator, or location information.
-The private dashboard links catalog songs that have searchable matched voice
-memos to that evidence, and each matched memo back to its song. Songs with
-searchable matches can be scanned, filtered, and sorted by latest memo date;
-the scoped set is newest-first and can copy the local intake filename. Songs
-search finds existing aliases, folds punctuation, ranks the closest name
-first, and Enter opens that row; a long enough query can also surface a song
-from a searchable matched memo lyric. The
-same song brain can filter write / produce / listen work from the existing
-next action, open a resumable work session, sit down on a lane song, and copy
-a sanitized work card (hook, next action, open questions, memo count/date)
-without owner-audio or street locators. Expanded sit-down uses the sanitized
-next action and latest memo intake name — it does not reprint Logic / WAV /
-best_source paths. The primary work buttons open the highest-momentum matching
-song immediately, name its position in a bounded queue, and keep secondary
-catalog filters collapsed until they are needed. The session header puts the
-sanitized catalog next step in front of Jeff with **Copy next step** and, when
-searchable matched memos exist, **Review memo evidence**. After Escape, the
-Resume strip keeps that same **Do this now** line and copy action for the exact
-stored song. Sit-down and memo scope reuse the same fail-closed step — they do
-not reprint leftover listen verbs. Missing evidence is labeled plainly; an empty
-or unsafe next step produces no copy action. After a song is opened, the
-dashboard can resume that exact local session after a refresh. The browser
-stores only a schema version, work kind, and catalog ID; **Forget** clears it,
-and invalid, stale, or mismatched records are discarded. No title, note,
-transcript, next action, filename, or audio locator is stored. These are local
-navigation links over the existing index;
-they do not open, upload, or modify audio. Logic projects, keys, and WAVs
-stay owner-only.
+These commands read committed metadata and generated files; they do not open or
+upload audio or contact an AI service. Local validation is the catalog gate;
+a hosted empty-runner is not a catalog fail or a successful validation.
 
-### Click-test the private session
+Optional: `python3.12 scripts/build_xlsx.py` needs `openpyxl` and writes
+`data/Jeff Story Master Song Catalog.xlsx`. It is untracked, not gitignored, and
+contains historical work-plan/read-me text; it is not the current handoff.
+Do not commit the workbook. `build_catalog.py`, `build_organized_vault.py`, and
+`patch_catalog_v*.py` are historical one-shot scripts, not current build steps.
+Owner-local audio tools and their separate dependencies are described in the
+[Workbench Plan](00_control_room/Workbench%20Plan.md); they are not CI prerequisites.
 
-Open `Jeff Story Song Vault Dashboard.html` locally. Do not upload it.
+## Click-test the private session
 
-1. Click Write, Produce, or Listen. Note the song name and `N of M` position.
-2. Click Next once if you want a non-first song. Note the new name and position.
-3. Read **Do this now** on the session strip, then click **Copy next step**. The clipboard text must match the visible sanitized action and contain no audio filename or location. Sit-down **Next** must match that same text, or say there is no safe catalog next step.
-4. If **Review memo evidence** appears, click it. It opens the existing scoped memo search; it never opens audio. If no matched memo exists, the session says so instead of inventing evidence.
-5. Refresh. The same kind and song should reopen. **Resume** still names that song and repeats the same **Do this now** line.
-6. Press Escape (or Clear filters). The Resume strip still names that song and keeps **Copy next step** when the action is safe. Click **Copy next step** there if it is visible, then click **Resume**. The same song returns.
-7. If **Do this now** is absent, **Copy next step** stays hidden. That is fail-closed, not a missing song.
-8. Click **Forget**. Resume disappears and the status says the browser record was forgotten. Forget also drops the leftover work hash so a later refresh cannot mint a new record. A blocked browser store soft-fails instead of crashing.
-9. Refresh again. Resume stays gone.
-10. In this browser's storage for the page, the record may only hold a schema version, work kind, and catalog ID. Extra fields, a stale schema, an unknown id, or a kind that no longer matches the catalog next action are rejected and removed.
-11. On Songs, type a remembered alias or a title without apostrophes. The closest name is first. Press Enter to open that row. Escape clears the search. A long enough query may also list a song from a searchable matched memo lyric — that is a lead, not a listen.
+Open the dashboard locally. This manual browser check complements the Node smoke
+test; it does not establish that any audio has been heard or exported.
 
-StoryBoard consumes a local `data/app_api.json` — the spine is rejected as
-an import, remote catalog URLs are rejected, and this is not a public
-catalog dump. Nothing auto-posts.
+1. Click Write, Produce, or Listen. Note the song and `N of M` position; use Next
+   to check a non-first song.
+2. Read **Do this now** and use **Copy next step**. The clipboard must match the
+   sanitized action without audio filenames or locations. Sit-down Next matches
+   it or reports no safe catalog next step; unsafe actions have no copy button.
+3. Use **Review memo evidence** when present. It opens scoped memo search, never
+   audio. Missing evidence is labeled plainly.
+4. Refresh: the exact song and work kind reopen. Escape / Clear filters leaves
+   the same song and safe next step in Resume; **Resume** returns to that song.
+5. Click **Forget**, then refresh. Resume stays gone and the work hash is cleared.
+   Browser storage holds only schema version, work kind, and catalog ID. Extra
+   fields, stale schemas, unknown IDs, and mismatched kinds are rejected.
+6. Search Songs by an alias or a title without apostrophes; Enter opens the
+   closest result and Escape clears search. Memo lyric matches are leads, not listens.
+7. Check **Logic-ready next**, **Assets on file**, and **Copy Logic-ready next**
+   when shown. Pair Voice Memo Intake name + **Copy next step** in your local
+   Session Log handoff. Work in Logic (export honesty, WAVs/AIFF/MIDI preference,
+   no Ableton-first). This page does not open audio — export to WAV/AIFF/MIDI
+   from Logic on Jeff's Mac. Logic / WAV / AIFF / MIDI export stays **not done
+   until a real file exists**. Asset labels are catalog evidence, not completed exports.
 
-## The three lanes (+ on deck)
+## Status and limits
 
-- **Flagship** — mix v1.6, two overdubs left
-- **Quick win** — one overdub: lead guitar on choruses + solos
-- **Experimental** — Suno arrangement test queued
-- **On deck** — catalog, not the official set, lyric ~85% recovered, unrecorded
-- **The Opus** — its own protected lane
+Catalog v1.6: **150 entities / 126 originals / 59 scored**; 916 transcribed memos,
+372 matched, 807 searchable transcripts. Searchable evidence excludes short,
+collapsed transcripts, so search totals differ from source totals.
+StoryBoard feed: **40 setlist-ready keyed originals; 20-row Vault default-live
+slice**. Catalog rows are not the official set; Show Night owns official sets.
+StoryBoard consumes local JSON, rejects the spine and remote catalog URLs, and
+owns band operations. StoryLiner is promo only. See [APPS.md](APPS.md) for the
+recorded integration contract; this repo does not run those apps or an event ingester.
 
-Work is capped at three active songs. That cap is the point.
+Transcription is not listening. Logic-ready is not an export. The rights validator
+checks catalog gates (128 YES / 20 NO / 2 NEEDS-CONSENT); it does not grant upload
+permission or control external services. Originals stay untouched, lyric edits
+require approval, and voice cloning requires separate explicit permission.
 
----
+## Working docs
 
-## What's in here
-
-```
-00_control_room/    The docs that drive decisions — plan, queue, scores, rules, logs
-02_song_records/    Per-song deep workups
-04_suno_experiments/  AI experiment briefs (what's allowed, what's being tested, results)
-05_producer_briefs/ Track-by-track production plans
-01_source_manifests/  Where everything came from — Drive inventory, memo DB, lyric texts
-data/               master_catalog.json (the spine) + CSV + transcripts + version chains
-scripts/            The tooling (see below)
-```
-
-### The catalog is the spine
-`data/master_catalog.json` — 150 entities, each carrying: IDs and alt-titles, writers and rights confidence, stage, lyric/audio status, **potential** and **readiness** scores (deliberately never merged), **momentum** and last-activity, live-set presence, resolved latest source file, machine-readable **AI-upload gate**, next action, and an open-questions list.
-
-### Scoring, in brief
-- **Potential /100** — hook 25, lyric 20, emotional truth 20, structure 15, identity fit 10, replay 10
-- **Readiness /100** — completeness 25, clarity 20, source usability 15, remaining work 25, feasibility 15
-- **Momentum /100** — recency 55%, number of returns 30%, years carried 15%
-
-Potential says how good it is. Readiness says how close it is. Momentum says how alive it is in Jeff's hands. Crossing them is where the answers live.
-
----
-
-## The Workbench (local, free, private)
-
-Everything runs on Jeff's own Mac — no audio ever leaves the machine.
-
-| Tool | Job |
-|---|---|
-| **Whisper** | Transcribed all 916 voice memos → songs findable by lyric |
-| **Demucs** | Stem separation (protected-opus restoration path) |
-| **Basic Pitch** | Memo melodies → MIDI for Logic (`scripts/basic_pitch_pass.py`) |
-| **Chromaprint** | Fingerprint clustering → version families (`scripts/chromaprint_pass.py`) |
-| **Matchering** | Album-wide level match + true-peak fix |
-| **librosa / ffmpeg** | Key, tempo, loudness analysis |
-
-Run order and rationale: [`00_control_room/Workbench Plan.md`](00_control_room/Workbench%20Plan.md).
-
----
-
-## House rules (non-negotiable)
-
-1. **Originals are never modified, renamed, moved, or deleted.** Everything here is an index layered on top.
-2. **Transcription ≠ listening.** Every audio claim states exactly what was done. Signal analysis is not an opinion about a song.
-3. **Rights walls are machine-enforced.** Every entity carries `ai_upload_ok` — currently 128 YES (Jeff-written, solo recordings only) / 20 NO / 2 NEEDS-CONSENT. Covers, co-writes, and collaborators' songs never go to an AI service.
-4. **AI output is a decision aid, never a release.** Sketches inform arrangement choices; finished Jeff Story songs are 100% human.
-5. **Never silently replace Jeff's words.** Every lyric suggestion is shown as ORIGINAL → PROPOSED → WHY, and Jeff approves or it doesn't happen.
-6. **No voice cloning** without separate, explicit, per-case permission.
-7. **Max three active songs.** Interesting ideas get parked, not promoted.
-
-See [`00_control_room/Rights and AI Provenance.md`](00_control_room/Rights%20and%20AI%20Provenance.md) and [`00_control_room/AI Music Services — Field Guide 2026.md`](00_control_room/AI%20Music%20Services%20—%20Field%20Guide%202026.md).
-
----
-
-## Related projects
-
-The vault is the **song brain**. **StoryBoard** is the band-management OS that consumes it (`data/app_api.json` — schema 3; local JSON only after StoryBoard #12 — Band operations → Music & setlists; remote catalog URLs are rejected; StoryBoard #16 rejects the spine as an import; StoryBoard reads `id` / `title` / `project` / `is_original` / `key` / `bpm` / `bpm_int` / `vault_id` / `vault_ref` / `played_live` / `import_scope`; default live is the published `setlist_ready_default_import` **Vault default-live** slice, including parked-named rows as current-artist repertoire, not an empty list and not a fourth live band; catalog rows are not the official set; Show Night owns official sets; Show Night binds planned Vault titles only; Show Night official set is owner-only; StoryBoard #19 binds a local official-set dump as **Rad Dad — official set**; guest/parked slugs stay opt-in; Show Night is the live set surface; Travis is `travis_books`; nothing auto-posts; not a second catalog, not StoryDesk/StoryOps, StoryLiner is promo only). See [`APPS.md`](APPS.md).
-
-## Current state
-
-Catalog v1.6 · 150 entities (126 originals) · 916 memos transcribed, 372 matched · 59 songs scored · 6-track Stalemate album ~16 small items from done. StoryBoard import: `data/app_api.json` (40 setlist-ready keyed originals; 20-row Vault default-live slice). Validate: `python3 scripts/validate_catalog.py`.
-
-*Maintained with Claude in the "2026 Song Organization" project. Sessions append to the Decision Log and Session Log — read those first to pick up where the last one left off.*
+- [Producer README](00_control_room/Producer%20README.md): resume from the latest
+  [Session Log](00_control_room/Session%20Log.md) entry.
+- [Priority Queue](00_control_room/Priority%20Queue.md),
+  [The Plan](00_control_room/THE%20PLAN.md), and
+  [Needs Jeff](00_control_room/Needs%20Jeff.md): current work and open decisions.
+- [Rights and AI Provenance](00_control_room/Rights%20and%20AI%20Provenance.md):
+  rights boundaries and experiment records.
+- `01_source_manifests/`: source inventories; `02_song_records/`: song workups;
+  `04_suno_experiments/` and `05_producer_briefs/`: experiment and production plans.

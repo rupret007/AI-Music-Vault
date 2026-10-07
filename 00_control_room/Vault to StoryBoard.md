@@ -54,7 +54,7 @@ StoryBoard may *display* the whole library after an opt-in import. It must not p
 
 - **Library seed:** `songs[]` (StoryBoard merge key = `vault:catalog_import_v1:{id}`).
 - **Setlist seed:** default import prefers `setlist_ready_default_import` and writes **Vault default-live**. Opt-in parked/all still uses `setlist_ready` and writes **Vault setlist-ready**. Those counts stay distinct and fail closed if a hand-edit conflates them. Published catalog tallies stay catalog-true and fail closed if omitted or collapsed into a setlist count. Vault default-live is a catalog slice, not the official live set. Catalog rows are not the official set. StoryBoard `SetlistItem.itemType` = `song`. Do **not** invent breaks, durations, or running order. Show Night does not expand this catalog. Official set writes stay owner-only. Show Night owns official sets.
-- **Ops write-back:** drop `show_played` / `bounce` JSON into `events/` citing vault ids. Lanes in the feed are WIP slots, not a setlist. Remote catalog URLs are rejected on the StoryBoard side. Official-set dumps bind as **Rad Dad — official set**; guest/parked slugs stay opt-in.
+- **Proposed ops write-back:** `show_played` / `bounce` JSON would cite vault ids; see `events/README.md`. No ingestion or archival script ships here. Keep real event files outside this public checkout and reconcile manually. Lanes in the feed are WIP slots, not a setlist. Remote catalog URLs are rejected on the StoryBoard side. Official-set dumps bind as **Rad Dad — official set**; guest/parked slugs stay opt-in.
 
 ## What StoryBoard should not do
 

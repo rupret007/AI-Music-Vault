@@ -3,6 +3,10 @@
 *Vault is the song brain. StoryBoard is the band-management OS that consumes it.
 Updated 2026-08-27 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. StoryBoard rejects the spine as an import. Show Night official set is owner-only. StoryBoard binds a local official-set dump as **Rad Dad — official set**. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Remote catalog URLs are rejected. Jeff-facing wording here is roles and counts only.*
 
+This is the recorded integration contract from the inspections dated below, not
+a fresh verification of other repositories. This repository is public. Importing
+a local JSON file does not make committed catalog contents private.
+
 ## The consolidated path (read this first)
 
 ```
@@ -71,9 +75,9 @@ Seed keyed originals from `setlist_ready`. Default import keeps `setlist_ready_d
 
 **Setlists:** StoryBoard `Setlist` items are `song | break | note`. Vault only supplies songs. Default import writes **Vault default-live**; opt-in parked/all writes **Vault setlist-ready**. Those two drafts stay distinct, and the published catalog tallies stay catalog-true — fail closed if omitted or conflated. Vault default-live is a catalog slice, not the official live set. Catalog rows are not the official set. Do not invent breaks, a running order, or who sings what — Jeff owns that. `lanes` are the three WIP slots, not a setlist. Show Night is the live set surface, not a second catalog. StoryBoard binds a local official-set dump as **Rad Dad — official set**. Guest/parked slugs stay opt-in. Show Night official set is owner-only. Show Night owns official sets.
 
-**Ops:** StoryBoard show/booking events write back to `events/` (`show_played` with vault ids). That is the ops loop. No second catalog.
+**Ops (proposed):** StoryBoard show/booking events would write back to `events/` (`show_played` with vault ids). This repo has no event ingestion or archival script; reconciliation is manual. No second catalog.
 
-Regenerate after catalog edits: `python3 scripts/export_app_api.py`. Local `python3 scripts/validate_catalog.py` fails closed if this file drifts from the catalog or the three-lane cap. Hosted `catalog-validate` on this private repo may be a 0-step empty-runner — that red is not a catalog fail. Do not claim hosted green. Do not change billing.
+Regenerate after catalog edits: `python3 scripts/export_app_api.py`. Local `python3 scripts/validate_catalog.py` fails closed if this file drifts from the catalog or the three-lane cap. Historical hosted `catalog-validate` runs could show a 0-step empty-runner; that is not a catalog fail or a successful validation. The repo is now public for Actions; if an empty-runner reappears, treat it as infra noise — that red is still not a catalog fail. Local validate is the catalog gate. Do not change billing.
 
 ---
 
@@ -97,7 +101,7 @@ Regenerate after catalog edits: `python3 scripts/export_app_api.py`. Local `pyth
 ### 🏢 Band-business layer
 | Repo | What it is | Vault relevance |
 |---|---|---|
-| **StoryBoard** | **The band OS — "the manager."** Venue CRM, booking, 90-day planning, setlists, invoicing. Next.js 16 / NestJS 11 / Prisma 7 / Postgres 16. | **THE consumer.** Song library + setlists import `data/app_api.json`. Show/booking events write back to `events/`. |
+| **StoryBoard** | **The band OS — "the manager."** Venue CRM, booking, 90-day planning, setlists, invoicing. Next.js 16 / NestJS 11 / Prisma 7 / Postgres 16. | **THE consumer.** Song library + setlists import `data/app_api.json`. Show/booking write-back to `events/` is proposed; no ingester ships here. |
 | **StoryLiner** | **Promo only.** Social content, voice-profile guardrails, review-before-publish. | Facts (dates, credits, story) come from the catalog. Not a song library. Not a band OS. |
 
 **Not the band OS:** StoryDesk, StoryOps, or any new manager app. If those names show up elsewhere, they do not get a second catalog and they do not replace StoryBoard.
@@ -107,16 +111,16 @@ Regenerate after catalog edits: `python3 scripts/export_app_api.py`. Local `pyth
 
 ---
 
-## Write-back (apps → vault)
+## Proposed write-back (apps → vault)
 
-The highest-value return path is **live-set truth**. Momentum is still inferred from file dates; a played-setlist event per gig makes `live_presence` a fact. Drop JSON into `events/` (see that folder's README):
+The proposed return path is **live-set truth**: verified played-set events could supplement existing setlist evidence and file dates. Events do not automatically update `live_presence` or momentum. Keep real event JSON outside this public checkout; see `events/README.md` for the proposed shape:
 
 ```json
 {"event": "show_played", "date": "…", "band": "…",
  "venue": "…", "songs": ["<vault-id>", "..."]}
 ```
 
-Prefer vault ids. Titles work as a fallback. Same shape for WebJam bounces (`{"event":"bounce", "song":"<vault-id>", "version":"…", "path":"…", "sha256":"…"}`). Do not paste published ids into this document.
+Proposed convention: prefer vault ids; title fallback is not implemented here. Same shape for WebJam bounces (`{"event":"bounce", "song":"<vault-id>", "version":"…", "path":"…", "sha256":"…"}`). Do not paste published ids into this document.
 
 ---
 

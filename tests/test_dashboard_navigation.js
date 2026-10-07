@@ -63,6 +63,32 @@ for (const marker of [
   "function allowedExactWorkSongId(",
   "function copyExactSongNextStep(",
   "function copyResumeWorkNext(",
+  "function logicReadyNext(",
+  "function logicReadyLabel(",
+  "function copyExactSongLogicNext(",
+  "function copyCurrentWorkLogic(",
+  "function copyResumeLogicNext(",
+  "function copySongLogicNext(",
+  "Copy Logic-ready next",
+  "id=\"logicReady\"",
+  "id=\"workSessionLogic\"",
+  "id=\"copyWorkLogic\"",
+  "id=\"resumeWorkLogic\"",
+  "id=\"copyResumeLogic\"",
+  "sit-logic",
+  "Sort: Logic-ready",
+  "class=\"skip-link\"",
+  "href=\"#main\"",
+  "<header>",
+  "<main id=\"main\"",
+  "aria-label=\"Sort songs\"",
+  "aria-label=\"Search memo transcripts\"",
+  "@media(max-width:375px)",
+  "min-height:44px",
+  "overflow-x:hidden",
+  ":focus-visible",
+  "class=\"score-lab\"",
+  "role=\"columnheader\"",
   "safeWorkNextStep(d)",
   "function openWork(",
   "function updateWorkSessionState(",
@@ -112,6 +138,20 @@ if (html.includes("onclick=")) fail("generated dashboard must use delegated even
 if (html.includes("<audio")) fail("generated dashboard must not open audio");
 if (html.includes("Latest source (auto-resolved)") || html.includes("<h4>Known assets</h4>")) {
   fail("generated dashboard must not display owner-audio locators");
+}
+if (!html.includes("const LOGIC_READY = ")) {
+  fail("generated dashboard must embed sanitized Logic-ready maps");
+}
+const logicReadyMaps = JSON.parse(html.split("const LOGIC_READY = ")[1].split(";\n")[0]);
+for (const cluster of Object.keys(logicReadyMaps.next || {})) {
+  const next = String(logicReadyMaps.next[cluster] || "");
+  if (!next) fail("Logic-ready next missing for " + cluster);
+  if (/\.(wav|aiff|aif|logicx|mid|midi|m4a|mp3|flac|band)\b/i.test(next) || /file:\/\//i.test(next)) {
+    fail("Logic-ready next leaked a locator for " + cluster);
+  }
+  if (/exported|upload/i.test(next)) {
+    fail("Logic-ready next must not claim an export or upload happened for " + cluster);
+  }
 }
 
 const names = { "JS-0001": "First Song", "JS-0002": "Second Song" };
@@ -241,6 +281,35 @@ if (!extractFunction(script, "copyVaultText").includes("execCommand")) {
 if (!extractFunction(script, "copyMemoFile").includes("copyVaultText")) {
   fail("intake-name copy must reuse the shared clipboard helper");
 }
+const safeIntakeName = new Function(
+  "return (" + extractFunction(script, "safeIntakeName") + ");",
+)();
+if (safeIntakeName("file:///Users/jeff/Voice Memos/Raw Take 1.m4a?download=1") !== "Raw Take 1.m4a") {
+  fail("intake-name sanitizing must keep only the copy-safe basename");
+}
+if (safeIntakeName("(unknown intake)") !== "" || safeIntakeName("unknown intake") !== "") {
+  fail("placeholder intake labels must not become copyable values");
+}
+if (safeIntakeName("file:///Users/jeff/Voice Memos/private-mix.wav") !== "") {
+  fail("intake-name sanitizing must fail closed for owner-audio WAV basenames");
+}
+if (safeIntakeName("proof.aiff") !== "" || safeIntakeName("line.mid") !== "") {
+  fail("intake-name sanitizing must fail closed for AIFF and MIDI basenames");
+}
+const copyMemoFile = new Function(
+  "safeIntakeName",
+  "copyVaultText",
+  "return (" + extractFunction(script, "copyMemoFile") + ");",
+)(safeIntakeName, (value) => !!value);
+if (copyMemoFile("(unknown intake)", null)) {
+  fail("copy intake name must fail closed when the memo row has no safe intake basename");
+}
+if (copyMemoFile("file:///tmp/private.logicx", null)) {
+  fail("copy intake name must fail closed for owner Logic project basenames");
+}
+if (!copyMemoFile("file:///tmp/Clip.m4a", null)) {
+  fail("copy intake name must still work for a sanitized real memo intake filename");
+}
 
 const songWorkKind = new Function(
   "return (" + extractFunction(script, "songWorkKind") + ");",
@@ -348,6 +417,9 @@ const stripPrivateLocators = new Function(
 if (stripPrivateLocators("Listen to latest (mix.wav) and rate") !== "Listen to latest and rate") {
   fail("work preview must strip owner-audio filenames");
 }
+if (stripPrivateLocators("Listen to latest (arrangement.mid) and rate") !== "Listen to latest and rate") {
+  fail("work preview must strip MIDI filenames");
+}
 if (stripPrivateLocators("LISTEN: play Maxwell Dr 99 (latest take). Verdict.") !== "LISTEN: play. Verdict.") {
   fail("work preview must strip known street fragments");
 }
@@ -372,6 +444,9 @@ const safeWorkNextStep = new Function(
 if (safeWorkNextStep({ nx: "Listen to latest (mix.wav) and rate: finish / rest." }) !== "Listen to latest and rate: finish / rest.") {
   fail("session next step must reuse sanitized catalog action text");
 }
+if (safeWorkNextStep({ nx: "Listen to latest (arrangement.midi) and rate: finish / rest." }) !== "Listen to latest and rate: finish / rest.") {
+  fail("session next step must strip MIDI owner locators");
+}
 if (safeWorkNextStep(null) !== "" || safeWorkNextStep({ nx: "" }) !== "") {
   fail("session next step must fail closed without a usable catalog action");
 }
@@ -380,6 +455,18 @@ if (safeWorkNextStep({ nx: "Open mix.wav" }) !== "") {
 }
 if (safeWorkNextStep({ nx: "LISTEN: Crescent Dr 21." }) !== "") {
   fail("session next step must fail closed when a leftover listen verb is all that remains");
+}
+
+const logicReadyNext = new Function(
+  "LOGIC_READY",
+  "workCardLeaks",
+  "return (" + extractFunction(script, "logicReadyNext") + ");",
+)(logicReadyMaps, workCardLeaks);
+if (!logicReadyNext("closest_logic_dropin").startsWith("Open the existing Logic Pro project on your Mac")) {
+  fail("Logic-ready next must name the owner-only Logic Pro drop-in");
+}
+if (logicReadyNext("missing") !== "") {
+  fail("unknown Logic-ready clusters must fail closed");
 }
 
 const buildSongWorkCard = new Function(
@@ -422,6 +509,47 @@ if (!memoCard.includes("Memos: 3 searchable · latest 2025-10-14")) {
   fail("work card may include memo count and date");
 }
 if (memoCard.includes("take.wav")) fail("work card must omit intake filenames");
+const logicReadyFormats = new Function(
+  "return (" + extractFunction(script, "logicReadyFormats") + ");",
+)();
+const logicCard = new Function(
+  "flattenWorkField",
+  "songWorkKind",
+  "stripPrivateLocators",
+  "workCardLeaks",
+  "safeWorkNextStep",
+  "logicReadyLabel",
+  "logicReadyNext",
+  "logicReadyFormats",
+  "return (" + extractFunction(script, "buildSongWorkCard") + ");",
+)(
+  new Function("return (" + extractFunction(script, "flattenWorkField") + ");")(),
+  songWorkKind,
+  stripPrivateLocators,
+  workCardLeaks,
+  safeWorkNextStep,
+  new Function("LOGIC_READY", "return (" + extractFunction(script, "logicReadyLabel") + ");")(logicReadyMaps),
+  logicReadyNext,
+  logicReadyFormats,
+)({
+  id: "ST-0001",
+  t: "Flagship",
+  nx: "Track the remaining overdubs",
+  lr: "closest_logic_dropin",
+  lrf: ["Logic Pro project", "WAV/AIFF", "Key on file"],
+});
+if (
+  !logicCard.includes("Logic-ready: Closest Logic Pro drop-in") ||
+  !logicCard.includes("Logic next: Open the existing Logic Pro project on your Mac")
+) {
+  fail("work card must carry the sanitized Logic-ready next");
+}
+if (!logicCard.includes("Assets on file: Logic Pro project · WAV/AIFF · Key on file")) {
+  fail("work card must carry the Logic-native asset tags");
+}
+if (logicCard.includes(".logicx") || logicCard.includes(".wav")) {
+  fail("Logic-ready work card must not reprint project or bounce filenames");
+}
 
 const latestMemoForSong = new Function(
   "return (" + extractFunction(script, "latestMemoForSong") + ");",
@@ -543,6 +671,37 @@ if (sessionUi.review.hidden || sessionUi.review.disabled || !sessionUi.evidence.
   fail("matched evidence must enable review and name its honest receipt count");
 }
 
+const noMemoUi = {
+  panel: { hidden: true }, text: { textContent: "" },
+  action: { hidden: true, textContent: "" }, evidence: { textContent: "" },
+  copy: { hidden: true, disabled: true, dataset: {}, setAttribute(name, value) { this[name] = value; } },
+  review: { hidden: true, disabled: true, dataset: {}, setAttribute(name, value) { this[name] = value; } },
+  prev: {}, next: {},
+};
+const updateNoMemoWorkSessionState = new Function(
+  "workSession", "work", "workSessionText", "workSessionNext", "workSessionEvidence",
+  "copyWorkNext", "openWorkEvidence", "workPrev", "workNext",
+  "visibleSongIds", "activeWorkSongId", "sname", "DATA", "safeWorkNextStep", "memoEvidenceBySong",
+  "return (" + extractFunction(script, "updateWorkSessionState") + ");",
+)(
+  noMemoUi.panel, { value: "listen" }, noMemoUi.text, noMemoUi.action, noMemoUi.evidence,
+  noMemoUi.copy, noMemoUi.review, noMemoUi.prev, noMemoUi.next,
+  ["JS-0001"], "JS-0001", names,
+  [{ id: "JS-0001", nx: "Listen to latest (mix.wav) and rate: finish / rest." }],
+  safeWorkNextStep,
+  {},
+);
+updateNoMemoWorkSessionState();
+if (!noMemoUi.evidence.textContent.includes("Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first).")) {
+  fail("no-memo work session evidence must still carry Logic export honesty guidance");
+}
+if (!noMemoUi.evidence.textContent.includes("This page does not open audio.")) {
+  fail("no-memo work session evidence must retain the no-audio reminder");
+}
+if (!noMemoUi.review.hidden || !noMemoUi.review.disabled) {
+  fail("no-memo work session must not enable memo evidence review");
+}
+
 const copiedNext = [];
 const copyExactSongNextStep = new Function(
   "DATA", "safeWorkNextStep", "copyVaultText", "allowedExactWorkSongId", "songWorkKind", "work",
@@ -575,6 +734,25 @@ const wrongKindCopy = new Function(
 );
 if (wrongKindCopy("JS-0002", copyButton)) {
   fail("copy next step must fail closed when the stored kind no longer matches");
+}
+
+const copiedLogic = [];
+const copyExactSongLogicNext = new Function(
+  "DATA", "logicReadyNext", "copyVaultText", "allowedExactWorkSongId", "songWorkKind", "work",
+  "return (" + extractFunction(script, "copyExactSongLogicNext") + ");",
+)(
+  [{ id: "JS-0002", nx: "Record lead guitar over choruses + solos", lr: "audio_only" }],
+  logicReadyNext,
+  (value, button, label) => { copiedLogic.push({ value, button, label }); return !!value; },
+  (id) => id === "JS-0002" ? id : "",
+  songWorkKind,
+  { value: "produce" },
+);
+if (!copyExactSongLogicNext("JS-0002", { dataset: { songId: "JS-0002" } }) || copiedLogic[0].value !== logicReadyNext("audio_only") || copiedLogic[0].label !== "Copy Logic-ready next") {
+  fail("copy Logic-ready next must copy only the canned owner-only sentence");
+}
+if (copyExactSongLogicNext("missing", { dataset: { songId: "missing" } })) {
+  fail("copy Logic-ready next must fail closed for a missing song");
 }
 
 const reviewedEvidence = [];
@@ -778,6 +956,26 @@ if (ranked[0].row.id !== "ST-0019" || ranked[0].hit.via !== "name") {
 }
 if (ranked[1].row.id !== "JS-9998" || ranked[2].row.id !== "JS-9999") {
   fail("field hits must outrank memo-lyric-only hits");
+}
+const logicReadyRank = new Function(
+  "LOGIC_READY",
+  "return (" + extractFunction(script, "logicReadyRank") + ");",
+)(logicReadyMaps);
+const logicSorted = new Function(
+  "songSearchHit",
+  "logicReadyRank",
+  "return (" + extractFunction(script, "sortSongRows") + ");",
+)(songSearchHit, logicReadyRank)(
+  [
+    { id: "JS-EMPTY", t: "Empty", lr: "empty_logic_ready", mom: 90 },
+    { id: "ST-DROP", t: "Drop-in", lr: "closest_logic_dropin", mom: 10 },
+    { id: "JS-KEY", t: "Keyed", lr: "key_only", mom: 80 },
+  ],
+  "",
+  "logic",
+);
+if (logicSorted[0].row.id !== "ST-DROP" || logicSorted[1].row.id !== "JS-KEY" || logicSorted[2].row.id !== "JS-EMPTY") {
+  fail("Logic-ready sort must put closest drop-in first without inventing keys");
 }
 const markNormalized = new Function(
   "esc",
