@@ -259,7 +259,7 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 
 ## Local validate is the catalog gate — 2026-08-26 (Cloud Agent, no audio)
 ### Done
-1. After Vault #14, resume uses the latest Session Log H2, but APPS.md and the validator docstring still said CI fails closed. Hosted catalog-validate on this private repo may be a 0-step empty-runner, so that claim treats a red empty-runner as the catalog gate.
+1. After Vault #14, resume uses the latest Session Log H2, but APPS.md and the validator docstring still said CI fails closed. Hosted catalog-validate may show a 0-step empty-runner, so that claim treats a red empty-runner as the catalog gate. The repository is now public.
 2. Validator now fails closed if APPS.md or the validator docstring still claims CI fails closed, and APPS.md must admit the hosted empty-runner is not a catalog fail. Local `python3 scripts/validate_catalog.py` is the gate. #11/#12/#13/#14 locks are unchanged. No second catalog surface. Do not change billing.
 
 ### Honesty ledger
@@ -464,7 +464,7 @@ Standing Jeff-owned items unchanged: Manic guitar · EXP-001 when Chrome connect
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
 - No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, DATA/TX payloads, or app feed changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
-- Work buttons navigate the existing private local index only. Next actions remain sanitized; Logic/WAV/best_source paths and known street fragments stay out of the work card. The repository stays private.
+- Work buttons navigate the existing private local index only. Next actions remain sanitized; Logic/WAV/best_source paths and known street fragments stay out of the work card. The repository is public; only the browser session state is local.
 - No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
 - Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
 
@@ -479,7 +479,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
-- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository is public; only the browser session state is local.
 - No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, DATA/TX payloads, or app feed changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
 - No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
 - Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
@@ -495,7 +495,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
-- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository is public; only the browser session state is local.
 - No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, DATA/TX payloads, or app feed changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
 - No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
 - Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
@@ -511,7 +511,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
-- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository is public; only the browser session state is local.
 - No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, DATA/TX payloads, or app feed changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
 - No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
 - Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
@@ -527,7 +527,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
-- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository is public; only the browser session state is local.
 - No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
 - No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
 - Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
@@ -543,7 +543,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
-- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository is public; only the browser session state is local.
 - No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
 - No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
 - Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
@@ -560,7 +560,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
-- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository is public; only the browser session state is local.
 - No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
 - No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
 - Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
@@ -576,7 +576,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
-- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository is public; only the browser session state is local.
 - No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
 - No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
 - Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
@@ -592,7 +592,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Honesty ledger
 - **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified.
-- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository remains private.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage. The repository is public; only the browser session state is local.
 - No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
 - No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
 - Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.

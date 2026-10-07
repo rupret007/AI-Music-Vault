@@ -1,6 +1,10 @@
 # Jeff Story Song Vault — Producer README
 *How this system works, and how a future session resumes. Last updated: 2026-09-04 (usable catalog: local app_api.json after StoryBoard #20, spine rejected as an import, not a remote URL. Show Night official set is owner-only. Official-set dump binds as Rad Dad — official set. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Derived master_catalog.csv must match the spine. Song-level Logic-ready discovery is a control-room walk, not a second catalog. Cover-book leftover is the 93-cover walk (Trailer Swift originals stay 0; official-set originals stay 0). Private dashboard find-and-act on searchable matched memos; Songs search finds existing aliases, folds punctuation, ranks closest name first, and Enter opens that row; write/produce/listen starts on one highest-momentum match with bounded progress and collapsed secondary filters; browser-local resume stores only work kind + catalog ID, refresh reopens the exact validated song, Resume shows the sanitized next step, Copy next step fails closed, and Forget soft-fails; Logic keys/WAV/AIFF/MIDI exports stay owner-only and Logic-first (no Ableton-first). Session Log #12 heading listed once. Resume from the latest Session Log H2, not Session 1. Local validate is the catalog gate; hosted empty-runner is not a catalog fail. Jeff-facing README/APPS.md are roles and counts only. Catalog-gate success output is roles and counts only).*
 
+This repository is public. “Private dashboard” describes local use and browser
+resume state, not confidential repository contents. Keep new local session notes
+and audio outside the checkout. See the root README for current build/test commands.
+
 ## Mission
 Jeff does not need more songs. He needs the strongest songs he already wrote to be recognized, organized, protected, and FINISHED. Max 3 active songs (flagship / quick win / experimental). Every active song has one clear next action at three energy levels.
 
@@ -21,7 +25,7 @@ Jeff does not need more songs. He needs the strongest songs he already wrote to 
 05_producer_briefs/   ST-0001, ST-0004, …
 data/               master_catalog.json (spine) + app_api.json (StoryBoard import)
 scripts/            validate_catalog.py · export_app_api.py · Mac-local workbench
-events/             drop-file inbox for StoryBoard / Show Night / WebJam
+events/             proposed event formats; no ingester or archiver ships here
 ```
 Mac-local organized vault (00–99, working copies, intake audio) stays on Jeff's machine — never in this repo.
 

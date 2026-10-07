@@ -1,29 +1,35 @@
-# events/ — what the apps write back to the vault
+# events/ — proposed write-back inbox
 
-StoryBoard is the band OS that should emit these. Drop files here; do not
-invent a second song catalog — song ids come from `data/app_api.json`.
+StoryBoard is the band OS that could emit these. Do not invent a second song
+catalog — song ids come from `data/app_api.json`.
 
-Drop-file inbox. Apps (or Jeff) write small JSON events here; the next Claude
-session folds them into the catalog and then archives them.
+These are illustrative formats, not an implemented API. This repo has no event
+consumer, validator, automatic catalog merge, or archiver. Reconciliation would
+be manual, followed by export regeneration and the normal catalog gate.
+
+This repository is public. Keep real event files, local paths, venue details, and
+session notes outside it; do not commit them to this proposed inbox. Placeholders
+below describe the intended shape, not current catalog records.
 
 **Show played** (Rad Dad Show Night / any gig):
 ```json
-{"event":"show_played","date":"2026-09-14","band":"Rad Dad","venue":"...",
- "songs":["Drinking Song","Everyday","The Way I Love You"]}
+{"event":"show_played","date":"YYYY-MM-DD","band":"<band>","venue":"<venue>",
+ "songs":["<vault-id>"]}
 ```
 
 **New bounce/version** (WebJam Reference Studio, Logic, anywhere):
 ```json
-{"event":"bounce","song":"Manic","version":"v1.5","date":"2026-09-01",
- "path":"...","sha256":"..."}
+{"event":"bounce","song":"<vault-id>","version":"<version>","date":"YYYY-MM-DD",
+ "path":"<local-only-path>","sha256":"<checksum>"}
 ```
 
 **Jeff's verdict on a memo** (the listen queue):
 ```json
-{"event":"verdict","memo":"Crescent Dr 56","song_id":"JS-0131",
- "verdict":"gem","note":"that's actually the one I was humming all fall"}
+{"event":"verdict","memo":"<local-intake-name>","song_id":"<vault-id>",
+ "verdict":"gem","note":"<local-only-note>"}
 ```
 
-Why this matters: live-set history and version history are currently *inferred*
-from file dates. Events make them **facts** — which makes the momentum score
-real rather than estimated. One file per event, any filename.
+Why this matters: a verified played-set event or bounce checksum could supplement
+the existing catalog's setlist evidence and file dates. An unverified event does
+not establish a fact or automatically update momentum. Proposed convention: one
+file per event, any filename.
