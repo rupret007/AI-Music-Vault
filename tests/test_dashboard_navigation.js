@@ -114,6 +114,13 @@ for (const marker of [
   "id=\"resumeWorkNext\"",
   "id=\"copyResumeNext\"",
   "id=\"workStarts\"",
+  "id=\"statsFold\"",
+  "id=\"statsLine\"",
+  "const COVER_COUNT",
+  "const RECOVERED_COUNT",
+  "no audio in this repo",
+  "catalog rows are not the live set",
+  "<details",
   "id=\"resumeWork\"",
   "id=\"resumeWorkButton\"",
   "id=\"forgetWorkSession\"",
@@ -133,6 +140,29 @@ for (const marker of [
   "aria-expanded",
 ]) {
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
+}
+function idAt(source, value) {
+  const needle = 'id="' + value + '"';
+  let start = 0;
+  while (start < source.length) {
+    const at = source.indexOf(needle, start);
+    if (at < 0) return -1;
+    const end = at + needle.length;
+    const next = source[end] || "";
+    if (!next || " >\n\t'".includes(next)) return at;
+    start = end;
+  }
+  return -1;
+}
+const workAt = idAt(html, "workStarts");
+const foldAt = idAt(html, "statsFold");
+const statsAt = idAt(html, "stats");
+if (workAt < 0 || foldAt < 0 || statsAt < 0 || workAt > foldAt || foldAt > statsAt) {
+  fail("first paint must keep Write / Produce / Listen above collapsed catalog counts");
+}
+if (html.includes("<b>9</b>")) fail("recovered count must be derived, not hardcoded");
+if (!/const COVER_COUNT = \d+;/.test(html) || !/const RECOVERED_COUNT = \d+;/.test(html)) {
+  fail("cover and recovered counts must be derived at build time");
 }
 if (html.includes("onclick=")) fail("generated dashboard must use delegated events, not inline clicks");
 if (html.includes("<audio")) fail("generated dashboard must not open audio");
