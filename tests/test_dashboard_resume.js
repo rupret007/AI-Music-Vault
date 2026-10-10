@@ -96,6 +96,7 @@ assert.equal(context.resumeWorkNext.textContent, "");
 assert.equal(context.copyResumeNext.hidden, true);
 assert.equal(context.copyResumeNext.disabled, true);
 assert.equal(context.copyResumeNext.dataset.songId, "");
+assert.match(extractFunction("forgetLastWorkSession"), /requestAnimationFrame/);
 assert.equal(context.forgetLastWorkSession(), true);
 assert.equal(memory.size, 0);
 assert.equal(context.resumeWork.hidden, true);

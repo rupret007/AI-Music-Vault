@@ -485,7 +485,10 @@ function forgetLastWorkSession(){
  announceWorkSession(result.message);
  if(result.ok&&typeof workStarts!=='undefined'&&workStarts){
   const first=workStarts.querySelector('button');
-  if(first)first.focus();
+  if(first){
+    first.focus();
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(function(){first.focus();});
+  }
  }
  return result.ok;
 }

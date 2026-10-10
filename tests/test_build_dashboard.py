@@ -1031,6 +1031,23 @@ class DashboardPhoneA11yTests(unittest.TestCase):
     def test_phone_gate_fails_closed_without_landmarks(self):
         self.assertFalse(dashboard_phone_and_a11y_ready("<html></html>"))
 
+    def test_resume_browser_check_still_rejects_offscreen_fold(self):
+        with open(
+            os.path.join(ROOT, "tests", "test_dashboard_resume_browser.js"),
+            encoding="utf-8",
+        ) as handle:
+            source = handle.read()
+        self.assertIn("{ name: \"phone\", width: 390, height: 844", source)
+        self.assertIn("{ name: \"desktop\", width: 1280, height: 800", source)
+        self.assertIn("must fit above the fold", source)
+        self.assertIn(".resume-work{margin-top:2000px!important}", source)
+        self.assertIn("resumeWorkButton", source)
+        self.assertIn("resumeWorkNext", source)
+        self.assertIn("copyResumeNext", source)
+        self.assertIn("forgetWorkSession", source)
+        self.assertIn("Do this now:", source)
+        self.assertIn("will not download a browser", source)
+
 
 if __name__ == "__main__":
     unittest.main()
