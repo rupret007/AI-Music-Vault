@@ -118,7 +118,7 @@ for (const marker of [
   "id=\"statsLine\"",
   "const COVER_COUNT",
   "const RECOVERED_COUNT",
-  "no audio in this repo",
+  "No audio in this repo",
   "catalog rows are not the live set",
   "<details",
   "id=\"resumeWork\"",
