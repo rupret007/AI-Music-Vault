@@ -59,6 +59,7 @@ const context = vm.createContext({
 });
 for (const name of ["songWorkKind", "parseStoredWorkSession", "readStoredWorkSession", "storeWorkSession",
   "clearStoredWorkSession", "vaultStorage", "announceWorkSession", "forgetWorkSessionResult",
+  "flattenWorkField", "stripPrivateLocators", "workCardLeaks", "nextStepIsIncomplete", "safeWorkNextStep",
   "updateResumeWork", "forgetLastWorkSession"]) {
   vm.runInContext(extractFunction(name), context);
 }
@@ -71,12 +72,30 @@ assert.deepEqual(Object.keys(JSON.parse(memory.get("resume-test"))).sort(), ["id
 context.updateResumeWork();
 assert.equal(context.resumeWork.hidden, false);
 assert.equal(context.resumeWorkText.textContent, "Write · Test Song");
+assert.equal(context.resumeWorkNext.hidden, false);
+assert.equal(context.resumeWorkNext.textContent, "Do this now: Confirm the chorus lines");
+assert.equal(context.copyResumeNext.hidden, false);
+assert.equal(context.copyResumeNext.disabled, false);
+assert.equal(context.copyResumeNext.dataset.songId, "TEST-1");
 assert.equal(context.catalogOverview.open, false, "Saved session must collapse subtitle and counts");
 assert.equal(context.catalogOverviewSummary.hidden, false, "Counts must still be discoverable");
 // Explicitly opening the details must survive a refresh of the resume text.
 context.catalogOverview.open = true;
 context.updateResumeWork();
 assert.equal(context.catalogOverview.open, true);
+// A valid session with an unsafe next step must clear previously visible copy.
+context.DATA[0].nx = "Confirm the chorus lines file:///private/demo.wav";
+context.updateResumeWork();
+assert.equal(context.resumeWorkNext.textContent, "Do this now: Confirm the chorus lines");
+context.DATA[0].nx = "Listen: Crescent Dr 21.";
+assert.equal(context.storeWorkSession(storage, "listen", "TEST-1", context.sname, context.DATA), true);
+context.updateResumeWork();
+assert.equal(context.resumeWork.hidden, false);
+assert.equal(context.resumeWorkNext.hidden, true);
+assert.equal(context.resumeWorkNext.textContent, "");
+assert.equal(context.copyResumeNext.hidden, true);
+assert.equal(context.copyResumeNext.disabled, true);
+assert.equal(context.copyResumeNext.dataset.songId, "");
 assert.equal(context.forgetLastWorkSession(), true);
 assert.equal(memory.size, 0);
 assert.equal(context.resumeWork.hidden, true);
@@ -84,6 +103,7 @@ assert.equal(context.catalogOverview.open, true);
 assert.equal(context.catalogOverviewSummary.hidden, true);
 assert.equal(focused, true, "Forget must move keyboard focus to a visible start choice");
 assert.equal(context.resumeWorkStatus.textContent, "Forgot this browser record.");
+context.DATA[0].nx = "Confirm the chorus lines";
 for (const raw of ['{"v":1,"kind":"write","id":"missing"}',
   '{"v":1,"kind":"write","id":"TEST-1","title":"extra"}', "bad JSON"]) {
   memory.set("resume-test", raw);
