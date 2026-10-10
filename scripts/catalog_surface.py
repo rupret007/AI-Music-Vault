@@ -1324,8 +1324,10 @@ def dashboard_work_next_stays_in_view(html: str) -> bool:
         "scrollIntoView({block:'nearest'})" in chrome
         and 'id="workSession"' in chrome
         and "#workSession{position:sticky" in chrome
+        and "overflow-x:clip" in chrome
         and "function focusWorkSong(" in chrome
         and "toggleSong(head,true)" in chrome
+        and "sessionEl.scrollIntoView({block:'nearest'})" in chrome
     )
 
 

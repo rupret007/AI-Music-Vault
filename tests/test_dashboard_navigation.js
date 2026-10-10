@@ -122,7 +122,9 @@ for (const marker of [
   "function workKindLabel(",
   "Listen in Logic",
   "scrollIntoView({block:'nearest'})",
+  "sessionEl.scrollIntoView({block:'nearest'})",
   "#workSession{position:sticky",
+  "overflow-x:clip",
   "id=\"statsFold\"",
   "id=\"statsLine\"",
   "const COVER_COUNT",
@@ -476,6 +478,9 @@ if (extractFunction(script, "focusWorkSong").includes("scrollIntoView({block:'ce
 }
 if (!extractFunction(script, "focusWorkSong").includes("scrollIntoView({block:'nearest'})")) {
   fail("work-session song focus must use nearest so Do this now stays in view");
+}
+if (!extractFunction(script, "focusWorkSong").includes("sessionEl.scrollIntoView({block:'nearest'})")) {
+  fail("work-session strip must stay nearest after the song expands");
 }
 if (!extractFunction(script, "focusWorkSong").includes("toggleSong(head,true)")) {
   fail("work-session song must still expand");

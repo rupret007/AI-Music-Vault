@@ -279,7 +279,9 @@ def extras_ok(cat=None):
             'Start a work session More filters Sit-down '
             'function workKindLabel( Listen in Logic '
             "scrollIntoView({block:'nearest'}) "
-            '#workSession{position:sticky function focusWorkSong( '
+            '#workSession{position:sticky overflow-x:clip '
+            'sessionEl.scrollIntoView({block:\'nearest\'}) '
+            'function focusWorkSong( '
             'toggleSong(head,true) '
             'id="resumeWork" id="resumeWorkButton" id="forgetWorkSession" '
             "const WORK_SESSION_KEY='vault:last-work:v1' "
@@ -1189,7 +1191,9 @@ class ValidateCatalogTests(unittest.TestCase):
         extra = extras_ok()
         extra["dashboard_html"] = extra["dashboard_html"].replace(
             "scrollIntoView({block:'nearest'})", ""
-        ).replace("#workSession{position:sticky", "")
+        ).replace("#workSession{position:sticky", "").replace(
+            "sessionEl.scrollIntoView({block:'nearest'})", ""
+        )
         errors = validate(fixture(), extra)
         self.assertTrue(
             any("keep Do this now and Copy next" in e for e in errors),

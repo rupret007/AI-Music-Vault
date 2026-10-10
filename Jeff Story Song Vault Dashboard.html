@@ -8,7 +8,7 @@
 @media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;
  --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--rdy:#eb6834;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{overflow-x:hidden}
+html,body{overflow-x:hidden;overflow-x:clip}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
 .skip-link{position:absolute;left:-999px;top:8px;z-index:20;background:var(--pot);color:#fff;padding:8px 12px;border-radius:8px}
 .skip-link:focus,.skip-link:focus-visible{left:8px}
@@ -83,7 +83,8 @@ input{flex:1;min-width:0;width:100%}
 .mhint{color:var(--ink3);font-size:13px;padding:16px;text-align:center;overflow-wrap:anywhere}
 .resultbar,.memo-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink3);font-size:13px;margin:0 0 10px;flex-wrap:wrap}
 .memo-scope{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink2)}
-#workSession{position:sticky;top:0;z-index:6}
+#workSession{position:sticky;top:0;z-index:6;background:var(--card)}
+[data-song-id]{scroll-margin-top:var(--work-session-gap,0px)}
 .subtle-btn,.memo-link,.song-link{cursor:pointer;font-weight:600}
 .subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:8px 10px;color:var(--pot)}
 .song-link{border:0;background:transparent;padding:8px 4px;font-size:inherit;text-decoration:underline;text-underline-offset:2px;min-height:44px}
@@ -825,7 +826,16 @@ function focusWorkSong(id,moveFocus){
  const kind=typeof work!=='undefined'&&work?String(work.value||''):'';
  if(kind&&typeof rememberWorkSession==='function')rememberWorkSession(kind,activeWorkSongId);
  updateWorkSessionState();
- if(moveFocus!==false)requestAnimationFrame(()=>{head.focus();head.scrollIntoView({block:'nearest'});});
+ if(moveFocus!==false)requestAnimationFrame(()=>{
+  const sessionEl=typeof workSession!=='undefined'?workSession:null;
+  const gap=(sessionEl&&!sessionEl.hidden)?sessionEl.offsetHeight:0;
+  if(typeof document!=='undefined'&&document.documentElement){
+   document.documentElement.style.setProperty('--work-session-gap',gap+'px');
+  }
+  head.focus();
+  head.scrollIntoView({block:'nearest'});
+  if(sessionEl&&!sessionEl.hidden)sessionEl.scrollIntoView({block:'nearest'});
+ });
  return true;
 }
 function stepWork(delta){

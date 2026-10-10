@@ -635,7 +635,7 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 ## Dashboard resume lead, in-view next, Listen in Logic — 2026-10-10 (Cloud Agent, no audio)
 ### Done
 1. Branched from A01 first-paint (#38). A stored session now leads the first screen with Resume {kind} · {title}, Do this now, Copy next step, and Forget. Stats stay a collapsed `<details>`; the subtitle and start-session copy hide while a resume is present so the phone shows Resume without scrolling. Browser storage is still only `v | kind | id`.
-2. After `#work=write` or `#work=listen`, song focus uses `scrollIntoView({block:'nearest'})` and `#workSession` is sticky, so Do this now and Copy next step stay in view at 390x844 while the song still expands.
+2. After `#work=write` or `#work=listen`, song focus uses `scrollIntoView({block:'nearest'})` on the song and the session strip. `#workSession` is sticky; `overflow-x:clip` keeps that sticky from being killed by the phone overflow rule. Do this now and Copy next step stay in view at 390x844 while the song still expands.
 3. The Listen start button, filter, resume, and session labels now say **Listen in Logic** plus the count. No `<audio>` element. "this page does not open audio" stays. Validator and navigation markers fail closed.
 
 ### Honesty ledger

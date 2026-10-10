@@ -1152,8 +1152,10 @@ class DashboardFirstPaintTests(unittest.TestCase):
         self.assertTrue(dashboard_work_next_stays_in_view(dashboard))
         focus = dashboard[dashboard.find("function focusWorkSong("):dashboard.find("function stepWork(")]
         self.assertIn("scrollIntoView({block:'nearest'})", focus)
+        self.assertIn("sessionEl.scrollIntoView({block:'nearest'})", focus)
         self.assertIn("toggleSong(head,true)", focus)
         self.assertIn("#workSession{position:sticky", dashboard)
+        self.assertIn("overflow-x:clip", dashboard)
 
     def test_listen_button_cannot_mean_playback(self):
         with open(
