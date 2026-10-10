@@ -1167,6 +1167,8 @@ def dashboard_resumes_song_work_privately(html: str) -> bool:
         'id="copyResumeNext"',
         "function copyResumeWorkNext(",
         "function updateResumeWork(",
+        "function workKindLabel(",
+        "has-resume",
     )
     return all(marker in chrome for marker in required)
 
@@ -1279,9 +1281,68 @@ def dashboard_first_paint_ready(html: str) -> bool:
     work_at = _html_id_at(chrome, "workStarts")
     fold_at = _html_id_at(chrome, "statsFold")
     stats_at = _html_id_at(chrome, "stats")
+    resume_at = _html_id_at(chrome, "resumeWork")
     if min(work_at, fold_at, stats_at) < 0:
         return False
+    if resume_at >= 0 and resume_at > work_at:
+        return False
     return work_at < fold_at < stats_at
+
+
+def dashboard_resume_leads_first_paint(html: str) -> bool:
+    """A stored session must lead with Resume, Do this now, Copy, and Forget."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        'id="resumeWork"',
+        'id="resumeWorkButton"',
+        'id="resumeWorkNext"',
+        'id="copyResumeNext"',
+        'id="forgetWorkSession"',
+        "Resume ",
+        "Do this now",
+        "Copy next step",
+        "Forget",
+        "has-resume",
+        "Object.keys(value).sort().join('|')!=='id|kind|v'",
+    )
+    if not all(marker in chrome for marker in required):
+        return False
+    resume_at = _html_id_at(chrome, "resumeWork")
+    next_at = _html_id_at(chrome, "resumeWorkNext")
+    copy_at = _html_id_at(chrome, "copyResumeNext")
+    forget_at = _html_id_at(chrome, "forgetWorkSession")
+    work_at = _html_id_at(chrome, "workStarts")
+    if min(resume_at, next_at, copy_at, forget_at, work_at) < 0:
+        return False
+    return resume_at < next_at < copy_at < forget_at < work_at
+
+
+def dashboard_work_next_stays_in_view(html: str) -> bool:
+    """Work-session next step must stay on screen while the song expands."""
+    chrome = dashboard_markup_chrome(html)
+    return (
+        "scrollIntoView({block:'nearest'})" in chrome
+        and 'id="workSession"' in chrome
+        and "#workSession{position:sticky" in chrome
+        and "function focusWorkSong(" in chrome
+        and "toggleSong(head,true)" in chrome
+    )
+
+
+def dashboard_listen_is_not_playback(html: str) -> bool:
+    """Listen is a Logic sit-down, not in-page audio playback."""
+    chrome = dashboard_markup_chrome(html)
+    lowered = chrome.lower()
+    return (
+        "Listen in Logic" in chrome
+        and "function workKindLabel(" in chrome
+        and "this page does not open audio" in lowered
+        and "<audio" not in lowered
+        and (
+            'data-open-work="listen"' in chrome
+            or 'data-open-work="${kind}"' in chrome
+        )
+    )
 
 
 def readme_documents_session_click_test(text: str) -> bool:

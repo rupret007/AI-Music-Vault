@@ -23,7 +23,10 @@ from catalog_surface import (  # noqa: E402
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_first_paint_ready,
+    dashboard_listen_is_not_playback,
     dashboard_opens_owner_audio,
+    dashboard_resume_leads_first_paint,
+    dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
     embedded_dashboard_payloads,
@@ -288,6 +291,9 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertTrue(dashboard_exposes_logic_ready(dashboard))
         self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
         self.assertTrue(dashboard_first_paint_ready(dashboard))
+        self.assertTrue(dashboard_resume_leads_first_paint(dashboard))
+        self.assertTrue(dashboard_work_next_stays_in_view(dashboard))
+        self.assertTrue(dashboard_listen_is_not_playback(dashboard))
         self.assertFalse(dashboard_displays_owner_audio_index(dashboard))
         self.assertIn('id="work"', dashboard)
         self.assertIn('id="workSession"', dashboard)
@@ -1117,6 +1123,50 @@ class DashboardFirstPaintTests(unittest.TestCase):
                 'const COVER_COUNT const RECOVERED_COUNT data-open-work='
             )
         )
+
+    def test_resume_leads_first_paint_without_extra_storage_fields(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_resume_leads_first_paint(dashboard))
+        chrome = dashboard.split("<script>", 1)[0]
+        self.assertLess(chrome.find('id="resumeWork"'), chrome.find('id="resumeWorkNext"'))
+        self.assertLess(chrome.find('id="resumeWorkNext"'), chrome.find('id="copyResumeNext"'))
+        self.assertLess(chrome.find('id="copyResumeNext"'), chrome.find('id="forgetWorkSession"'))
+        self.assertLess(chrome.find('id="forgetWorkSession"'), chrome.find('id="workStarts"'))
+        self.assertIn("has-resume", dashboard)
+        self.assertIn("Object.keys(value).sort().join('|')!=='id|kind|v'", dashboard)
+        store = dashboard[dashboard.find("function storeWorkSession("):dashboard.find("function clearStoredWorkSession(")]
+        self.assertIn("JSON.stringify(parsed)", store)
+        self.assertNotIn("title", store)
+        self.assertNotIn("next", store)
+
+    def test_work_next_stays_in_view_while_song_expands(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_work_next_stays_in_view(dashboard))
+        focus = dashboard[dashboard.find("function focusWorkSong("):dashboard.find("function stepWork(")]
+        self.assertIn("scrollIntoView({block:'nearest'})", focus)
+        self.assertIn("toggleSong(head,true)", focus)
+        self.assertIn("#workSession{position:sticky", dashboard)
+
+    def test_listen_button_cannot_mean_playback(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_listen_is_not_playback(dashboard))
+        self.assertIn("if(k==='listen')return 'Listen in Logic';", dashboard)
+        self.assertIn("${workKindLabel(kind)} <span>${workCounts[kind]} songs</span>", dashboard)
+        self.assertIn('option value="listen">Listen in Logic</option>', dashboard)
+        self.assertNotIn("<audio", dashboard)
+        self.assertIn("this page does not open audio", dashboard)
 
 
 if __name__ == "__main__":

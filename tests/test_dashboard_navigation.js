@@ -114,6 +114,15 @@ for (const marker of [
   "id=\"resumeWorkNext\"",
   "id=\"copyResumeNext\"",
   "id=\"workStarts\"",
+  "id=\"resumeWork\"",
+  "id=\"resumeWorkNext\"",
+  "id=\"copyResumeNext\"",
+  "id=\"forgetWorkSession\"",
+  "has-resume",
+  "function workKindLabel(",
+  "Listen in Logic",
+  "scrollIntoView({block:'nearest'})",
+  "#workSession{position:sticky",
   "id=\"statsFold\"",
   "id=\"statsLine\"",
   "const COVER_COUNT",
@@ -157,8 +166,23 @@ function idAt(source, value) {
 const workAt = idAt(html, "workStarts");
 const foldAt = idAt(html, "statsFold");
 const statsAt = idAt(html, "stats");
+const resumeAt = idAt(html, "resumeWork");
+const resumeNextAt = idAt(html, "resumeWorkNext");
+const copyResumeAt = idAt(html, "copyResumeNext");
+const forgetAt = idAt(html, "forgetWorkSession");
 if (workAt < 0 || foldAt < 0 || statsAt < 0 || workAt > foldAt || foldAt > statsAt) {
   fail("first paint must keep Write / Produce / Listen above collapsed catalog counts");
+}
+if (resumeAt < 0 || resumeNextAt < 0 || copyResumeAt < 0 || forgetAt < 0 ||
+    resumeAt > resumeNextAt || resumeNextAt > copyResumeAt || copyResumeAt > forgetAt || forgetAt > workAt) {
+  fail("stored-session first paint must lead with Resume, Do this now, Copy next step, and Forget");
+}
+if (!html.includes("Listen in Logic")) fail("Listen must be labeled Listen in Logic");
+if (!html.includes("scrollIntoView({block:'nearest'})")) {
+  fail("work-session focus must keep Do this now in view with nearest scroll");
+}
+if (!html.includes("#workSession{position:sticky")) {
+  fail("work session strip must stay sticky while the song expands");
 }
 if (html.includes("<b>9</b>")) fail("recovered count must be derived, not hardcoded");
 if (!/const COVER_COUNT = \d+;/.test(html) || !/const RECOVERED_COUNT = \d+;/.test(html)) {
@@ -440,6 +464,22 @@ if (songWorkKind("Listen to latest (take.logicx) and rate: finish / rest.") !== 
   fail("listen-to-latest next action must classify as listen");
 }
 if (songWorkKind("") !== "unknown") fail("empty next action must stay unknown");
+const workKindLabel = new Function(
+  "return (" + extractFunction(script, "workKindLabel") + ");",
+)();
+if (workKindLabel("listen") !== "Listen in Logic") fail("Listen must be labeled Listen in Logic");
+if (workKindLabel("write") !== "Write" || workKindLabel("produce") !== "Produce") {
+  fail("write and produce labels must stay human work kinds");
+}
+if (extractFunction(script, "focusWorkSong").includes("scrollIntoView({block:'center'})")) {
+  fail("work-session song focus must not center-scroll the next step away");
+}
+if (!extractFunction(script, "focusWorkSong").includes("scrollIntoView({block:'nearest'})")) {
+  fail("work-session song focus must use nearest so Do this now stays in view");
+}
+if (!extractFunction(script, "focusWorkSong").includes("toggleSong(head,true)")) {
+  fail("work-session song must still expand");
+}
 
 const stripPrivateLocators = new Function(
   "return (" + extractFunction(script, "stripPrivateLocators") + ");",
