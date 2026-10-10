@@ -1129,8 +1129,23 @@ def dashboard_resumes_song_work_privately(html: str) -> bool:
         'id="copyResumeNext"',
         "function copyResumeWorkNext(",
         "function updateResumeWork(",
+        'id="catalogOverview"',
+        'id="catalogOverviewSummary"',
+        'class="resume-actions"',
     )
-    return all(marker in chrome for marker in required)
+    if not all(marker in chrome for marker in required):
+        return False
+    resume_at = chrome.find('id="resumeWork"')
+    overview_at = chrome.find('id="catalogOverview"')
+    starts_at = chrome.find('id="workStarts"')
+    button_at = chrome.find('id="resumeWorkButton"')
+    next_at = chrome.find('id="resumeWorkNext"')
+    copy_at = chrome.find('id="copyResumeNext"')
+    forget_at = chrome.find('id="forgetWorkSession"')
+    return (
+        0 <= resume_at < overview_at < starts_at
+        and 0 <= button_at < next_at < copy_at < forget_at
+    )
 
 
 def dashboard_finds_remembered_song_names(html: str) -> bool:

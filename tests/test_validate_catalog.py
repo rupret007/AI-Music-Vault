@@ -260,6 +260,9 @@ def extras_ok(cat=None):
             'id="work" Copy work card function songWorkKind( '
             'function buildSongWorkCard( data-copy-work '
             'data-open-song="ST-0001" id="workSession" '
+            'id="resumeWork" id="resumeWorkButton" '
+            'id="resumeWorkNext" id="copyResumeNext" id="forgetWorkSession" '
+            'class="resume-actions" id="catalogOverview" id="catalogOverviewSummary" '
             'id="workStarts" id="advancedFilters" '
             'function openWork( function updateWorkSessionState( '
             'function safeWorkNextStep( function copyCurrentWorkNext( '
@@ -269,7 +272,6 @@ def extras_ok(cat=None):
             'id="copyWorkNext" id="openWorkEvidence" '
             'function latestMemoForSong( data-open-work= '
             'Start a work session More filters Sit-down '
-            'id="resumeWork" id="resumeWorkButton" id="forgetWorkSession" '
             "const WORK_SESSION_KEY='vault:last-work:v1' "
             'function parseStoredWorkSession( function readStoredWorkSession( '
             'function storeWorkSession( function clearStoredWorkSession( '
@@ -277,7 +279,6 @@ def extras_ok(cat=None):
             "function applyWorkHash( function forgetWorkSessionResult( "
             "function announceWorkSession( writeVaultHash('','') "
             'id="resumeWorkHint" id="resumeWorkStatus" aria-live="polite" '
-            'id="resumeWorkNext" id="copyResumeNext" '
             'function copyResumeWorkNext( function updateResumeWork( '
             'Forgot this browser record. Could not clear this browser record. '
             'JSON.stringify(parsed) '
@@ -1109,6 +1110,17 @@ class ValidateCatalogTests(unittest.TestCase):
         extra["dashboard_html"] = extra["dashboard_html"].replace(
             'id="resumeWork"', ""
         ).replace("function parseStoredWorkSession(", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("resume one validated local work session" in e for e in errors), errors)
+        self.assertFalse(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
+
+    def test_dashboard_resume_buried_after_work_starts_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="resumeWork"', 'id="workStartsX"', 1
+        ).replace('id="workStarts"', 'id="resumeWork"', 1).replace(
+            'id="workStartsX"', 'id="workStarts"', 1
+        )
         errors = validate(fixture(), extra)
         self.assertTrue(any("resume one validated local work session" in e for e in errors), errors)
         self.assertFalse(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
