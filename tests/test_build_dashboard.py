@@ -15,14 +15,18 @@ from catalog_surface import (  # noqa: E402
     EMBEDDED_DATA_SHA256,
     EMBEDDED_TX_SHA256,
     LOGIC_READY_CLUSTERS,
+    WCAG_AA_NORMAL_TEXT,
     build_memo_search_index,
+    contrast_ratio,
     dashboard_displays_owner_audio_index,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_opens_owner_audio,
     dashboard_phone_and_a11y_ready,
+    dashboard_rdy_contrast_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_theme_tokens,
     embedded_dashboard_payloads,
     latest_memo_for_song,
     logic_ready_maps,
@@ -1030,6 +1034,90 @@ class DashboardPhoneA11yTests(unittest.TestCase):
 
     def test_phone_gate_fails_closed_without_landmarks(self):
         self.assertFalse(dashboard_phone_and_a11y_ready("<html></html>"))
+
+
+# Pre-A06 oranges from the UX audit. Kept here so the contrast gate
+# stays red if someone restores them. Light-scheme PNGs were NOT RUN.
+_OLD_RDY_DARK = "#d95926"
+_OLD_RDY_LIGHT = "#eb6834"
+_AUDIT_RDY_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--rdy:#d95926;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--rdy:#eb6834;}}
+.pill.wk-produce{color:var(--rdy)}.bar-n{color:var(--ink)}
+</style><span class="bar-n">74</span><span class="pill wk-produce">produce</span>"""
+_FIXED_RDY_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--rdy:#ee7a3a;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--rdy:#b84414;}}
+.pill.wk-produce{color:var(--rdy)}.bar-n{color:var(--ink)}
+</style><span class="bar-n">74</span><span class="pill wk-produce">produce</span>"""
+
+
+class DashboardRdyContrastTests(unittest.TestCase):
+    def test_audit_oranges_miss_aa_on_bg_and_card(self):
+        self.assertLess(contrast_ratio(_OLD_RDY_DARK, "#1a1a19"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_RDY_DARK, "#242423"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_RDY_LIGHT, "#fcfcfb"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_RDY_LIGHT, "#ffffff"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio(_OLD_RDY_DARK, "#1a1a19"), 4.48, places=2)
+        self.assertAlmostEqual(contrast_ratio(_OLD_RDY_LIGHT, "#fcfcfb"), 3.12, places=2)
+        self.assertFalse(dashboard_rdy_contrast_ready(_AUDIT_RDY_SNIPPET))
+
+    def test_gate_fails_closed_without_light_scheme_or_ink_labels(self):
+        self.assertFalse(dashboard_rdy_contrast_ready("<html></html>"))
+        no_light = _FIXED_RDY_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_rdy_contrast_ready(no_light))
+        no_ink = _FIXED_RDY_SNIPPET.replace(".bar-n{color:var(--ink)}", "")
+        self.assertFalse(dashboard_rdy_contrast_ready(no_ink))
+        no_produce = _FIXED_RDY_SNIPPET.replace(
+            ".pill.wk-produce{color:var(--rdy)}", ".pill.wk-produce{color:var(--pot)}"
+        )
+        self.assertFalse(dashboard_rdy_contrast_ready(no_produce))
+
+    def test_fixed_tokens_meet_aa_and_keep_light_scheme(self):
+        self.assertTrue(dashboard_rdy_contrast_ready(_FIXED_RDY_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_RDY_SNIPPET)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["rdy"], theme["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["rdy"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["rdy"], theme["card2"]), WCAG_AA_NORMAL_TEXT
+            )
+
+    def test_committed_dashboard_produce_and_readiness_meet_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_rdy_contrast_ready(dashboard))
+        self.assertIn("@media (prefers-color-scheme: light)", dashboard)
+        self.assertIn(".pill.wk-produce{color:var(--rdy)}", dashboard)
+        self.assertIn(".bar-n{color:var(--ink)}", dashboard)
+        self.assertIn('class="bar-n"', dashboard)
+        self.assertNotIn("--rdy:#d95926", dashboard)
+        self.assertNotIn("--rdy:#eb6834", dashboard)
+        dark, light = dashboard_theme_tokens(dashboard)
+        self.assertEqual(dark.get("ink"), "#ffffff")
+        self.assertEqual(light.get("ink"), "#1a1a19")
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["rdy"], theme["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["rdy"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["ink"], theme["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["ink"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
 
 
 if __name__ == "__main__":
