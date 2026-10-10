@@ -37,7 +37,10 @@ from catalog_surface import (
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_first_paint_ready,
+    dashboard_listen_is_not_playback,
     dashboard_opens_owner_audio,
+    dashboard_resume_leads_first_paint,
+    dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
     readme_documents_session_click_test,
@@ -2056,6 +2059,21 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard first paint must show the honesty sentence and "
                 "Write / Produce / Listen before collapsed catalog counts"
+            )
+        if not dashboard_resume_leads_first_paint(dash):
+            errors.append(
+                "dashboard first paint must lead with Resume, Do this now, "
+                "Copy next step, and Forget when a stored session exists"
+            )
+        if not dashboard_work_next_stays_in_view(dash):
+            errors.append(
+                "dashboard work session must keep Do this now and Copy next "
+                "step in view while the song expands"
+            )
+        if not dashboard_listen_is_not_playback(dash):
+            errors.append(
+                "dashboard Listen control must say Listen in Logic and "
+                "must not open audio"
             )
 
     audio_hits = extras.get("audio_files")
