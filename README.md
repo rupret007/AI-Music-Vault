@@ -60,6 +60,7 @@ gate locally (CI uses `python` after selecting 3.12):
 python3.12 scripts/validate_catalog.py
 python3.12 -m unittest discover -s tests -v
 node tests/test_dashboard_navigation.js
+node tests/test_dashboard_resume.js
 python3.12 scripts/export_app_api.py --check
 python3.12 scripts/export_catalog_csv.py --check
 ```
@@ -67,6 +68,22 @@ python3.12 scripts/export_catalog_csv.py --check
 These commands read committed metadata and generated files; they do not open or
 upload audio or contact an AI service. Local validation is the catalog gate;
 a hosted empty-runner is not a catalog fail or a successful validation.
+
+Verify Resume's first screen with an already-installed Chrome or Chromium
+(set `CHROME` to the executable if it is not at the default macOS path). The
+check uses Chrome DevTools Protocol the same way the local screenshot helper
+does and never downloads a browser:
+
+```bash
+node tests/test_dashboard_resume_browser.js /absolute/path/to/resume-evidence
+```
+
+This additional browser check requires all Resume controls above the fold at
+390×844 and 1280×800, checks keyboard order and Resume/Forget, and saves viewport
+PNGs plus measured bounds. It serves the committed HTML on loopback with other
+paths rejected and uses isolated temporary browser storage. Missing Chrome or a
+failed launch exits non-zero; that is not viewport verification. No dependencies
+are downloaded by the test. This check is not part of hosted catalog-validate.
 
 Optional: `python3.12 scripts/build_xlsx.py` needs `openpyxl` and writes
 `data/Jeff Story Master Song Catalog.xlsx`. It is untracked, not gitignored, and
