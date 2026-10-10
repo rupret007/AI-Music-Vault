@@ -60,6 +60,7 @@ gate locally (CI uses `python` after selecting 3.12):
 python3.12 scripts/validate_catalog.py
 python3.12 -m unittest discover -s tests -v
 node tests/test_dashboard_navigation.js
+node tests/test_dashboard_resume.js
 python3.12 scripts/export_app_api.py --check
 python3.12 scripts/export_catalog_csv.py --check
 ```
