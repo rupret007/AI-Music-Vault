@@ -1014,7 +1014,7 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         ) as handle:
             dashboard = handle.read()
         self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
-        self.assertIn("Skip to catalog", dashboard)
+        self.assertIn("Skip to work session", dashboard)
         self.assertIn("<header>", dashboard)
         self.assertIn('<main id="main"', dashboard)
         self.assertIn("<footer", dashboard)
@@ -1025,11 +1025,24 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         self.assertIn("overflow-x:hidden", dashboard)
         self.assertIn(":focus-visible", dashboard)
         self.assertIn('class="score-lab"', dashboard)
-        self.assertIn('role="columnheader"', dashboard)
+        self.assertNotIn('role="columnheader"', dashboard)
+        self.assertIn('<h2 id="workNowTitle" tabindex="-1">', dashboard)
+        self.assertIn('class="row-heading"', dashboard)
+        self.assertIn('aria-controls="song-detail-', dashboard)
         self.assertNotIn("grid-template-columns:1fr 90px 90px", dashboard)
 
     def test_phone_gate_fails_closed_without_landmarks(self):
         self.assertFalse(dashboard_phone_and_a11y_ready("<html></html>"))
+
+    def test_phone_gate_rejects_table_roles_and_skip_past_work(self):
+        with open(os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"), encoding="utf-8") as handle:
+            dashboard = handle.read()
+        self.assertFalse(dashboard_phone_and_a11y_ready(
+            dashboard.replace('class="score-lab"', 'class="score-lab" role="columnheader"')
+        ))
+        self.assertFalse(dashboard_phone_and_a11y_ready(
+            dashboard.replace('href="#workNowTitle"', 'href="#main"')
+        ))
 
 
 if __name__ == "__main__":
