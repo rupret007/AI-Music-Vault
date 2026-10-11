@@ -1241,7 +1241,8 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
     chrome = dashboard_markup_chrome(html)
     required = (
         'class="skip-link"',
-        'href="#main"',
+        'href="#workNowTitle"',
+        '<h2 id="workNowTitle" tabindex="-1">',
         "<header>",
         '<main id="main"',
         "<footer",
@@ -1253,11 +1254,15 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
         "overflow-x:hidden",
         ":focus-visible",
         'class="score-lab"',
-        'role="columnheader"',
+        'class="row-heading"',
+        'aria-controls="song-detail-',
         "--ink3:#a8a79c",
         "--ink3:#5c5b54",
     )
-    return all(marker in chrome for marker in required)
+    return (
+        all(marker in chrome for marker in required)
+        and 'role="columnheader"' not in chrome
+    )
 
 
 def _html_id_at(html: str, value: str) -> int:

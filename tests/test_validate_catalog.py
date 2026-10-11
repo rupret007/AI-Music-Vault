@@ -308,11 +308,12 @@ def extras_ok(cat=None):
             'function copyResumeLogicNext( function copySongLogicNext( '
             'LOGIC_READY Do not invent one here This page does not open audio '
             'function logicReadyFormats( Assets on file '
-            'class="skip-link" href="#main" <header> <main id="main" <footer '
+            'class="skip-link" href="#workNowTitle" <header> <main id="main" <footer '
+            '<h2 id="workNowTitle" tabindex="-1"> class="row-heading" aria-controls="song-detail- '
             'role="tablist" aria-label="Sort songs" '
             'aria-label="Search memo transcripts" @media(max-width:375px) '
             'min-height:44px overflow-x:hidden :focus-visible class="score-lab" '
-            'role="columnheader" --ink3:#a8a79c --ink3:#5c5b54 '
+            '--ink3:#a8a79c --ink3:#5c5b54 '
         ),
         "audio_files": [],
     }

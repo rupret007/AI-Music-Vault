@@ -78,7 +78,8 @@ for (const marker of [
   "sit-logic",
   "Sort: Logic-ready",
   "class=\"skip-link\"",
-  "href=\"#main\"",
+  "href=\"#workNowTitle\"",
+  '<h2 id="workNowTitle" tabindex="-1">',
   "<header>",
   "<main id=\"main\"",
   "aria-label=\"Sort songs\"",
@@ -88,7 +89,8 @@ for (const marker of [
   "overflow-x:hidden",
   ":focus-visible",
   "class=\"score-lab\"",
-  "role=\"columnheader\"",
+  'class="row-heading"',
+  'aria-controls="song-detail-',
   "safeWorkNextStep(d)",
   "function openWork(",
   "function updateWorkSessionState(",
@@ -155,6 +157,7 @@ for (const marker of [
 ]) {
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
 }
+if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
 function idAt(source, value) {
   const needle = 'id="' + value + '"';
   let start = 0;
@@ -287,7 +290,9 @@ const toggleSong = new Function(
 const detail = { hidden: true, classList: { contains: (name) => name === "detail" } };
 const attrs = {};
 const head = {
-  nextElementSibling: detail,
+  closest: (selector) => selector === "[data-song-id]" ? {
+    querySelector: (selector) => selector === ".detail" ? detail : null,
+  } : null,
   setAttribute: (name, value) => { attrs[name] = value; },
 };
 toggleSong(head);
@@ -298,6 +303,46 @@ toggleSong(head, true);
 if (detail.hidden || attrs["aria-expanded"] !== "true") fail("force-open must expand a song");
 toggleSong(head, false);
 if (!detail.hidden || attrs["aria-expanded"] !== "false") fail("force-close must collapse a song");
+
+// Exercise the real delegated handlers, including non-header keyboard targets.
+const rowHandlers = {};
+const rowActions = [];
+const registration = script.slice(script.indexOf("list.addEventListener('click'"), script.indexOf("if(q)q.addEventListener('keydown'"));
+new Function("list", "toggleSong", "openSongMemos", "copySongWork", "copyMemoFile", "copySongLogicNext", registration)(
+  { addEventListener: (type, handler) => { rowHandlers[type] = handler; } },
+  toggleSong,
+  id => rowActions.push("memos:" + id),
+  id => rowActions.push("work:" + id),
+  id => rowActions.push("file:" + id),
+  id => rowActions.push("logic:" + id),
+);
+const headTarget = { closest: selector => selector === "[data-toggle-song]" ? head : null };
+for (const [key, expanded] of [["Enter", "true"], [" ", "false"]]) {
+  let prevented = false;
+  rowHandlers.keydown({ target: headTarget, key, preventDefault() { prevented = true; } });
+  if (!prevented || attrs["aria-expanded"] !== expanded || detail.hidden !== (expanded === "false")) {
+    fail("row keyboard activation must toggle expanded and hidden together: " + key);
+  }
+}
+rowHandlers.keydown({ target: headTarget, key: "Tab", preventDefault() { fail("Tab must retain native focus navigation"); } });
+if (attrs["aria-expanded"] !== "false") fail("Tab must not expand the row");
+rowHandlers.click({ target: headTarget });
+if (attrs["aria-expanded"] !== "true" || detail.hidden) fail("row click must still expand");
+for (const [attribute, dataKey, action] of [
+  ["data-open-memos", "openMemos", "memos"],
+  ["data-copy-work", "copyWork", "work"],
+  ["data-copy-file", "copyFile", "file"],
+  ["data-copy-logic", "copyLogic", "logic"],
+]) {
+  const button = { dataset: { [dataKey]: "TEST-1" } };
+  const target = { closest: selector => selector === `[${attribute}]` ? button : null };
+  for (const key of ["Enter", " ", "Tab"]) {
+    rowHandlers.keydown({ target, key, preventDefault() { fail("native memo/copy keys must not be intercepted"); } });
+  }
+  rowHandlers.click({ target });
+  if (rowActions.pop() !== action + ":TEST-1") fail("wrong sibling/copy action");
+  if (attrs["aria-expanded"] !== "true" || detail.hidden) fail("memo/copy controls must not toggle the row");
+}
 
 const parseVaultHash = new Function(
   "return (" + extractFunction(script, "parseVaultHash") + ");",
