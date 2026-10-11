@@ -27,6 +27,11 @@ assert.match(overview[1], /class="sub"/);
 assert.match(overview[1], /id="stats"/);
 assert.match(overview[1], /no audio in this repo/);
 assert.match(overview[1], /catalog rows are not the live set/);
+assert.ok(html.indexOf('id="workStarts"') < overview.index,
+  "New sessions must stay ahead of catalog details and counts");
+for (const id of ["resumeWork", "workStarts", "catalogOverview", "statsFold", "statsLine", "stats"]) {
+  assert.equal(html.split(`id="${id}"`).length - 1, 1, `${id} must occur exactly once`);
+}
 
 function extractFunction(name) {
   const start = script.indexOf("function " + name + "(");
@@ -57,7 +62,7 @@ const context = vm.createContext({
   catalogOverview: { open: true }, catalogOverviewSummary: { hidden: true },
   workStarts: { querySelector: () => ({ focus() { focused = true; } }) },
 });
-for (const name of ["songWorkKind", "parseStoredWorkSession", "readStoredWorkSession", "storeWorkSession",
+for (const name of ["songWorkKind", "workKindLabel", "parseStoredWorkSession", "readStoredWorkSession", "storeWorkSession",
   "clearStoredWorkSession", "vaultStorage", "announceWorkSession", "forgetWorkSessionResult",
   "flattenWorkField", "stripPrivateLocators", "workCardLeaks", "nextStepIsIncomplete", "safeWorkNextStep",
   "updateResumeWork", "forgetLastWorkSession"]) {
@@ -91,6 +96,7 @@ context.DATA[0].nx = "Listen: Crescent Dr 21.";
 assert.equal(context.storeWorkSession(storage, "listen", "TEST-1", context.sname, context.DATA), true);
 context.updateResumeWork();
 assert.equal(context.resumeWork.hidden, false);
+assert.equal(context.resumeWorkText.textContent, "Listen in Logic · Test Song");
 assert.equal(context.resumeWorkNext.hidden, true);
 assert.equal(context.resumeWorkNext.textContent, "");
 assert.equal(context.copyResumeNext.hidden, true);

@@ -169,7 +169,7 @@ function assertFirstScreen(state, viewport) {
     }
     boxes[id] = { x: box.x, y: box.y, width: box.width, height: box.height };
   }
-  assert.match(state.boxes.resumeWorkButton.text, /^Resume Listen · .+/);
+  assert.match(state.boxes.resumeWorkButton.text, /^Resume Listen in Logic · .+/);
   assert.match(state.boxes.resumeWorkNext.text, /^Do this now: .+/);
   return boxes;
 }

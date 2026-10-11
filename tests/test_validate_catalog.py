@@ -19,7 +19,11 @@ from catalog_surface import (  # noqa: E402
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_first_paint_ready,
+    dashboard_listen_is_not_playback,
     dashboard_opens_owner_audio,
+    dashboard_resume_leads_first_paint,
+    dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
     readme_documents_session_click_test,
@@ -260,18 +264,28 @@ def extras_ok(cat=None):
             'id="work" Copy work card function songWorkKind( '
             'function buildSongWorkCard( data-copy-work '
             'data-open-song="ST-0001" id="workSession" '
-            'id="resumeWork" id="resumeWorkButton" '
-            'id="resumeWorkNext" id="copyResumeNext" id="forgetWorkSession" '
-            'class="resume-actions" id="catalogOverview" id="catalogOverviewSummary" '
-            'id="workStarts" id="advancedFilters" '
+            'id="resumeWork" id="resumeWorkButton" Resume '
+            'id="resumeWorkNext" Do this now id="copyResumeNext" Copy next step '
+            'id="forgetWorkSession" Forget class="resume-actions" has-resume '
+            'id="workStarts" id="catalogOverview" id="catalogOverviewSummary" '
+            'id="statsFold" <details id="statsLine" id="stats" '
+            'const COVER_COUNT const RECOVERED_COUNT no audio in this repo '
+            'id="advancedFilters" '
             'function openWork( function updateWorkSessionState( '
             'function safeWorkNextStep( function copyCurrentWorkNext( '
             'function reviewCurrentWorkEvidence( function allowedExactWorkSongId( '
             'function copyExactSongNextStep( safeWorkNextStep(d) '
             'id="workSessionNext" '
             'id="copyWorkNext" id="openWorkEvidence" '
-            'function latestMemoForSong( data-open-work= '
+            'function latestMemoForSong( data-open-work="listen" '
             'Start a work session More filters Sit-down '
+            'function workKindLabel( Listen in Logic '
+            "scrollIntoView({block:'nearest'}) "
+            '#workSession{position:sticky overflow-x:clip '
+            'sessionEl.scrollIntoView({block:\'nearest\'}) '
+            'function focusWorkSong( '
+            'toggleSong(head,true) '
+            'id="resumeWork" id="resumeWorkButton" id="forgetWorkSession" '
             "const WORK_SESSION_KEY='vault:last-work:v1' "
             'function parseStoredWorkSession( function readStoredWorkSession( '
             'function storeWorkSession( function clearStoredWorkSession( '
@@ -1160,6 +1174,56 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_first_paint_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="statsFold"', ""
+        ).replace("no audio in this repo", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("first paint must show the honesty sentence" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_first_paint_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_resume_lead_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="resumeWork"', ""
+        ).replace("has-resume", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("lead with Resume, Do this now" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
+
+    def test_dashboard_without_in_view_work_next_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "scrollIntoView({block:'nearest'})", ""
+        ).replace("#workSession{position:sticky", "").replace(
+            "sessionEl.scrollIntoView({block:'nearest'})", ""
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("keep Do this now and Copy next" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_work_next_stays_in_view(extra["dashboard_html"]))
+
+    def test_dashboard_listen_playback_label_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "Listen in Logic", ""
+        ).replace("function workKindLabel(", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("Listen in Logic" in e and "must not open audio" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_listen_is_not_playback(extra["dashboard_html"]))
 
     def test_dashboard_owner_audio_index_fails_closed(self):
         extra = extras_ok()
@@ -2658,6 +2722,14 @@ class ValidateCatalogTests(unittest.TestCase):
             "Logic-ready sit-down port plus phone/a11y — 2026-10-06 "
             "(local Cursor, no audio)"
         )
+        product_first_paint = (
+            "Dashboard first paint work buttons — 2026-10-10 "
+            "(Cloud Agent, no audio)"
+        )
+        product_resume_listen_fold = (
+            "Dashboard resume lead, in-view next, Listen in Logic — 2026-10-10 "
+            "(Cloud Agent, no audio)"
+        )
         self.assertIn(leftover_docs, headings)
         self.assertIn(leftover_stdout, headings)
         self.assertIn(leftover_spine, headings)
@@ -2680,7 +2752,9 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertIn(product_session_log_export, headings)
         self.assertIn(product_latest_session_log_handoff, headings)
         self.assertIn(product_logic_ready_port, headings)
-        self.assertEqual(headings[-1], product_logic_ready_port)
+        self.assertIn(product_first_paint, headings)
+        self.assertIn(product_resume_listen_fold, headings)
+        self.assertEqual(headings[-1], product_resume_listen_fold)
         self.assertFalse(apps_md_claims_spine_still_accepted(extra["apps_md"]))
         self.assertTrue(apps_md_admits_spine_reject(extra["apps_md"]))
         self.assertTrue(apps_md_admits_show_night_owner_only(extra["apps_md"]))
@@ -2723,6 +2797,10 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
+        self.assertTrue(dashboard_work_next_stays_in_view(extra["dashboard_html"]))
+        self.assertTrue(dashboard_listen_is_not_playback(extra["dashboard_html"]))
         self.assertTrue(readme_documents_session_click_test(extra["readme"]))
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
