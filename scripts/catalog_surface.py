@@ -1367,6 +1367,99 @@ def dashboard_listen_is_not_playback(html: str) -> bool:
     )
 
 
+# WCAG 2 relative-luminance threshold for sRGB (not the older 0.03928 form).
+_SRGB_LINEAR_CUTOFF = 0.04045
+WCAG_AA_NORMAL_TEXT = 4.5
+_CSS_ROOT_RE = re.compile(r":root\{([^}]+)\}")
+_CSS_TOKEN_RE = re.compile(r"--([a-z0-9]+):#([0-9a-fA-F]{6})")
+_LIGHT_SCHEME_MQ_RE = re.compile(
+    r"@media\s*\(\s*prefers-color-scheme\s*:\s*light\s*\)",
+    re.IGNORECASE,
+)
+_LIGHT_SCHEME_ROOT_RE = re.compile(
+    r"@media\s*\(\s*prefers-color-scheme\s*:\s*light\s*\)\s*\{:root\{([^}]+)\}\}",
+    re.IGNORECASE,
+)
+_PRODUCE_PILL_COLOR_RE = re.compile(
+    r"\.pill\.wk-produce\s*\{\s*color\s*:\s*var\(\s*--rdy\s*\)",
+)
+_BAR_NUMBER_INK_RE = re.compile(
+    r"\.bar-n\s*\{\s*color\s*:\s*var\(\s*--ink\s*\)",
+)
+
+
+def hex_srgb_luminance(color: str) -> float:
+    """WCAG 2 relative luminance for a #RRGGBB token."""
+    raw = str(color or "").strip().lstrip("#")
+    if len(raw) != 6 or any(ch not in "0123456789abcdefABCDEF" for ch in raw):
+        raise ValueError(f"expected #RRGGBB, got {color!r}")
+    channels = (int(raw[0:2], 16), int(raw[2:4], 16), int(raw[4:6], 16))
+
+    def linear(channel: int) -> float:
+        srgb = channel / 255.0
+        if srgb <= _SRGB_LINEAR_CUTOFF:
+            return srgb / 12.92
+        return ((srgb + 0.055) / 1.055) ** 2.4
+
+    red, green, blue = (linear(channel) for channel in channels)
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def contrast_ratio(foreground: str, background: str) -> float:
+    """WCAG 2 contrast ratio between two #RRGGBB colors."""
+    lighter, darker = sorted(
+        (hex_srgb_luminance(foreground), hex_srgb_luminance(background)),
+        reverse=True,
+    )
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _css_root_tokens(block: str) -> dict[str, str]:
+    return {
+        name: f"#{value.lower()}" for name, value in _CSS_TOKEN_RE.findall(block or "")
+    }
+
+
+def dashboard_theme_tokens(html: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Default (dark) :root tokens, then the light-scheme :root override."""
+    chrome = dashboard_markup_chrome(html or "")
+    light_match = _LIGHT_SCHEME_ROOT_RE.search(chrome)
+    light = _css_root_tokens(light_match.group(1) if light_match else "")
+    without_light = _LIGHT_SCHEME_ROOT_RE.sub("", chrome)
+    dark_match = _CSS_ROOT_RE.search(without_light)
+    dark = _css_root_tokens(dark_match.group(1) if dark_match else "")
+    return dark, light
+
+
+def dashboard_rdy_contrast_ready(html: str) -> bool:
+    """Produce/readiness text meets WCAG AA 4.5:1 on --bg and --card.
+
+    Bar fills may stay colorful. Numeric labels must use --ink. The
+    light-scheme media query must stay. Produce pills keep --rdy.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    if not _PRODUCE_PILL_COLOR_RE.search(chrome):
+        return False
+    if not _BAR_NUMBER_INK_RE.search(chrome):
+        return False
+    if 'class="bar-n"' not in chrome:
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        ready = theme.get("rdy")
+        background = theme.get("bg")
+        card = theme.get("card")
+        if not ready or not background or not card:
+            return False
+        if contrast_ratio(ready, background) < WCAG_AA_NORMAL_TEXT:
+            return False
+        if contrast_ratio(ready, card) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return True
+
+
 def readme_documents_session_click_test(text: str) -> bool:
     """Jeff-facing README must match the real private-session click path."""
     body = (text or "").lower()

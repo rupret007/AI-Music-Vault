@@ -98,9 +98,9 @@ page = r'''<!DOCTYPE html>
 <title>Jeff Story Song Vault</title>
 <style>
 :root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;
- --pot:#3987e5;--rdy:#d95926;--mom:#199e70;--line:#3a3a38;--good:#199e70;}
+ --pot:#3987e5;--rdy:#ee7a3a;--mom:#199e70;--line:#3a3a38;--good:#199e70;}
 @media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;
- --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--rdy:#eb6834;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
+ --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--rdy:#b84414;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{overflow-x:hidden;overflow-x:clip}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
@@ -170,6 +170,7 @@ input{flex:1;min-width:0;width:100%}
 .rtitle,.rproj,.mrow,.msnip{overflow-wrap:anywhere;word-break:break-word}
 .rtitle{font-weight:600} .rproj{color:var(--ink3);font-size:12px}
 .barwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);min-width:0}
+.bar-n{color:var(--ink)}
 .bar{height:6px;border-radius:4px;background:var(--card2);flex:1;overflow:hidden;min-width:0}
 .bar i{display:block;height:100%;border-radius:4px}
 .detail{padding:4px 14px 14px;border-top:1px solid var(--line);color:var(--ink2);font-size:15px}
@@ -727,7 +728,7 @@ function bar(v,c){
  const n=Number(v);
  if(!Number.isFinite(n)||n<=0)return '<div class="barwrap"><span style="color:var(--ink3)">—</span></div>';
  const safe=Math.min(100,Math.max(0,n));
- return `<div class="barwrap"><div class="bar"><i style="width:${safe}%;background:var(--${c})"></i></div><span>${esc(n)}</span></div>`;
+ return `<div class="barwrap"><div class="bar"><i style="width:${safe}%;background:var(--${c})"></i></div><span class="bar-n">${esc(n)}</span></div>`;
 }
 function render(){
  const rawTerm=q.value, term=String(rawTerm||'').trim(), pv=proj.value, sv=scored.value, scv=scope.value,
