@@ -49,13 +49,19 @@ input{flex:1;min-width:0;width:100%}
 .advanced-menu{position:absolute;right:0;top:48px;display:grid;gap:8px;width:min(340px,calc(100vw - 24px));padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px #0008;z-index:8}
 .advanced-menu select{width:100%}
 .row{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;overflow:hidden;max-width:100%}
-.rhead{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;padding:10px 12px;cursor:pointer}
+.rhead{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;align-items:center;padding:10px 12px;cursor:pointer;
+ grid-template-areas:"title title title" "id proj proj" "scores scores scores" "next next next"}
 .rhead:hover,.rhead:focus-visible{background:var(--card2);outline:2px solid var(--pot);outline-offset:-2px}
-.scores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;grid-column:1/-1}
-.score{min-width:0}.score-lab{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3)}
-@media(min-width:641px){.rhead{grid-template-columns:64px minmax(0,1fr) 110px 110px 110px}.scores{display:contents;grid-column:auto}.score-lab{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}}
+.rtitle-wrap{grid-area:title}
+.rid{grid-area:id}.rproj{grid-area:proj}
+.rnext{grid-area:next;color:var(--ink2);font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.scores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;grid-area:scores}
+.score{min-width:0}.score-lab{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3)}
+@media(min-width:641px){.rhead{grid-template-columns:64px minmax(0,1fr) 110px 110px 110px;
+ grid-template-areas:"id title s1 s2 s3" "id proj s1 s2 s3" "id next s1 s2 s3";align-items:start;padding-top:12px;padding-bottom:12px}
+ .scores{display:contents;grid-area:auto}.score-pot{grid-area:s1}.score-rdy{grid-area:s2}.score-mom{grid-area:s3}}
 .rid{color:var(--ink3);font-size:11px;font-family:ui-monospace,Menlo,monospace}
-.rtitle,.rproj,.mrow,.msnip{overflow-wrap:anywhere;word-break:break-word}
+.rtitle,.rtitle-wrap,.rproj,.mrow,.msnip{overflow-wrap:anywhere;word-break:break-word}
 .rtitle{font-weight:600} .rproj{color:var(--ink3);font-size:12px}
 .barwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);min-width:0}
 .bar{height:6px;border-radius:4px;background:var(--card2);flex:1;overflow:hidden;min-width:0}
@@ -620,9 +626,11 @@ function render(){
   const scoreLabel=`${esc(d.t)} ${esc(d.id)}. Potential ${d.pot||'unscored'}, readiness ${d.rdy||'unscored'}, momentum ${d.mom||'unscored'}`;
   return `
  <div class="row" data-song-id="${esc(d.id)}"><div class="rhead" role="button" tabindex="0" aria-expanded="false" aria-label="${scoreLabel}" data-toggle-song>
+  <span class="rtitle-wrap"><span class="rtitle">${markNormalized(d.t,term)}</span>${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?` <span class="pill">${esc(lrPill)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span>
   <span class="rid">${esc(d.id)}</span>
-  <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?` <span class="pill">${esc(lrPill)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
-  <div class="scores" role="group" aria-label="Potential, readiness, and momentum scores"><div class="score"><span class="score-lab" role="columnheader">Potential</span>${bar(d.pot,'pot')}</div><div class="score"><span class="score-lab" role="columnheader">Readiness</span>${bar(d.rdy,'rdy')}</div><div class="score"><span class="score-lab" role="columnheader">Momentum</span>${bar(d.mom,'mom')}</div></div>
+  <span class="rproj">${esc(d.p)} · ${esc(d.st)}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span>
+  <div class="scores" role="group" aria-label="Potential, readiness, and momentum scores"><div class="score score-pot"><span class="score-lab" role="columnheader">Potential</span>${bar(d.pot,'pot')}</div><div class="score score-rdy"><span class="score-lab" role="columnheader">Readiness</span>${bar(d.rdy,'rdy')}</div><div class="score score-mom"><span class="score-lab" role="columnheader">Momentum</span>${bar(d.mom,'mom')}</div></div>
+  ${nxtShort?`<span class="rnext">${esc(nxtShort)}</span>`:''}
  </div><div class="detail" hidden>
   <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${lrFormats.length?`<div class="sit-logic-assets">Assets on file: ${lrFormats.map(t=>esc(t)).join(' · ')}</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)} <button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button></div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latestIntake.label)}</span>${latestIntake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}<div class="memo-next">${latestIntake.copy?'Copy the intake name only (sanitized);':'No copy-safe intake name on this memo row yet;'} write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div>`}</div>
   ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
