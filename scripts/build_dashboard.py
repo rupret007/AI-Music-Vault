@@ -14,6 +14,7 @@ from catalog_surface import (  # noqa: E402
     LOGIC_READY_CLUSTERS,
     LOGIC_READY_LABELS,
     ON_DECK_NOTE,
+    SURFACE_SUBTITLE,
     build_memo_search_index,
     catalog_cover_count,
     catalog_recovered_count,
@@ -107,7 +108,7 @@ body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI
 .skip-link:focus,.skip-link:focus-visible{left:8px}
 :focus-visible{outline:2px solid var(--pot);outline-offset:2px}
 h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
-.has-resume .sub,.work-now.has-resume .work-now-copy,.work-now.has-resume #workNowTitle{display:none}
+.has-resume header>.sub,.has-resume #startWork .work-now-copy,.has-resume #startWork #workNowTitle{display:none}
 .stats-fold{margin:0 0 16px}
 .stats-fold>summary{list-style:none;cursor:pointer;color:var(--ink2);font-size:13px;padding:8px 10px;min-height:44px;overflow-wrap:anywhere;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 .stats-fold>summary::-webkit-details-marker{display:none}
@@ -124,8 +125,14 @@ h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
 .work-start{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:700;min-height:44px}
 .work-start span{color:var(--ink3);font-weight:500;margin-left:4px}
 .work-start:hover,.work-start:focus-visible{border-color:var(--pot);outline:2px solid var(--pot);outline-offset:2px}
-.resume-work{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}
-.resume-work .work-start{flex:1 1 100%;text-align:left}
+.resume-work{margin-top:12px}
+.resume-work .work-start{width:100%;text-align:left;font:inherit;font-size:18px;overflow-wrap:anywhere}
+.resume-work .work-start span{color:var(--ink);font-weight:700;margin-left:0}
+.resume-work .resume-next{margin:10px 0}
+.resume-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.resume-details summary,.catalog-overview summary{cursor:pointer;min-height:44px;padding:10px 0;color:var(--ink2);font-size:14px}
+.catalog-overview{margin-bottom:12px}
+.resume-status:empty{display:none}
 .resume-next{flex:1 1 100%;font-weight:700;color:var(--ink);max-width:650px;overflow-wrap:anywhere}
 .resume-work .primary-action{border-color:var(--pot);color:var(--ink)}
 .resume-hint,.resume-status{color:var(--ink3);font-size:13px;margin:8px 0 0}
@@ -204,25 +211,33 @@ input{flex:1;min-width:0;width:100%}
 <h1><span aria-hidden="true">🎸 </span>Jeff Story Song Vault</h1>
 <p class="sub">No audio in this repo, and catalog rows are not the live set.</p>
 </header>
-<section class="work-now" aria-labelledby="workNowTitle">
- <div class="resume-work" id="resumeWork" hidden>
-  <button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button>
+<section class="work-now resume-work" id="resumeWork" aria-labelledby="resumeWorkButton" hidden>
+  <h2><button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button></h2>
   <div class="resume-next" id="resumeWorkNext" hidden></div>
+  <div class="resume-actions">
   <button type="button" class="subtle-btn primary-action" id="copyResumeNext" hidden>Copy next step</button>
   <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
+  </div>
+  <details class="resume-details"><summary>Logic-ready next and session details</summary>
   <div class="resume-next" id="resumeWorkLogic" hidden></div>
   <div class="resume-next" id="resumeWorkAssets" hidden></div>
   <button type="button" class="subtle-btn" id="copyResumeLogic" hidden>Copy Logic-ready next</button>
- </div>
+ <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
+  </details>
+</section>
+<p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
+<section class="work-now" id="startWork" aria-labelledby="workNowTitle">
  <h2 id="workNowTitle">Start a work session</h2>
  <div class="work-starts" id="workStarts"></div>
  <p class="work-now-copy">Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
- <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
- <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
 </section>
+<details class="catalog-overview" id="catalogOverview" open>
+ <summary id="catalogOverviewSummary" hidden>Catalog details and counts</summary>
+ <p class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</p>
 <details class="stats-fold" id="statsFold">
  <summary id="statsLine">Catalog counts</summary>
  <div class="stats" id="stats" role="region" aria-label="Catalog counts"></div>
+</details>
 </details>
 <section class="lanes" aria-labelledby="lanesTitle">
  <h2 id="lanesTitle">The three lanes (+ on deck)</h2>
@@ -297,6 +312,7 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  resumeWorkHint=document.getElementById('resumeWorkHint'),resumeWorkStatus=document.getElementById('resumeWorkStatus'),
  resumeWorkNext=document.getElementById('resumeWorkNext'),copyResumeNext=document.getElementById('copyResumeNext'),
  resumeWorkLogic=document.getElementById('resumeWorkLogic'),resumeWorkAssets=document.getElementById('resumeWorkAssets'),
+ catalogOverview=document.getElementById('catalogOverview'),catalogOverviewSummary=document.getElementById('catalogOverviewSummary'),
  copyResumeLogic=document.getElementById('copyResumeLogic'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
@@ -430,6 +446,11 @@ function updateResumeWork(){
  if(typeof resumeWork==='undefined'||!resumeWork)return null;
  const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
  resumeWork.hidden=!saved;
+ if(typeof catalogOverview!=='undefined'&&catalogOverview&&typeof catalogOverviewSummary!=='undefined'&&catalogOverviewSummary){
+  // Collapse on entering resume; preserve an explicit disclosure choice after that.
+  if(catalogOverviewSummary.hidden===!!saved)catalogOverview.open=!saved;
+  catalogOverviewSummary.hidden=!saved;
+ }
  if(typeof resumeWorkHint!=='undefined'&&resumeWorkHint)resumeWorkHint.hidden=!saved;
  if(typeof document!=='undefined'&&document.body&&document.body.classList){
   document.body.classList.toggle('has-resume',!!saved);
@@ -499,6 +520,13 @@ function forgetLastWorkSession(){
  }
  updateResumeWork();
  announceWorkSession(result.message);
+ if(result.ok&&typeof workStarts!=='undefined'&&workStarts){
+  const first=workStarts.querySelector('button');
+  if(first){
+    first.focus();
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(function(){first.focus();});
+  }
+ }
  return result.ok;
 }
 function stripPrivateLocators(text){

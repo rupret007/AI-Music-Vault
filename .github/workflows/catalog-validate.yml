@@ -33,6 +33,9 @@ jobs:
       - name: Dashboard song and memo navigation smoke
         run: node tests/test_dashboard_navigation.js
 
+      - name: Dashboard resume first-screen checks
+        run: node tests/test_dashboard_resume.js
+
       - name: StoryBoard export stays honest
         run: python scripts/export_app_api.py --check
 
