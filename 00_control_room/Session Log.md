@@ -631,3 +631,19 @@ Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 
 
 ### Next continuation point
 Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Sit-down handoff belongs in Session Log: pair intake name + **Copy next step**, then work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.
+
+## Dashboard resume lead, in-view next, Listen in Logic — 2026-10-10 (Cloud Agent, no audio)
+### Done
+1. Branched from A01 first-paint (#38). A stored session now leads the first screen with Resume {kind} · {title}, Do this now, Copy next step, and Forget. Stats stay a collapsed `<details>`; the subtitle and start-session copy hide while a resume is present so the phone shows Resume without scrolling. Browser storage is still only `v | kind | id`.
+2. After `#work=write` or `#work=listen`, song focus uses `scrollIntoView({block:'nearest'})` on the song and the session strip. `#workSession` is sticky; `overflow-x:clip` keeps that sticky from being killed by the phone overflow rule. Do this now and Copy next step stay in view at 390x844 while the song still expands.
+3. The Listen start button, filter, resume, and session labels now say **Listen in Logic** plus the count. No `<audio>` element. "this page does not open audio" stays. Validator and navigation markers fail closed.
+
+### Honesty ledger
+- **Audio listened to this pass: ZERO.** No Music.ai / Suno / Whisper / Demucs. No audio opened, uploaded, or modified. No Logic, WAV, AIFF, or MIDI export happened.
+- No title, note, transcript, next action, memo filename, path, or audio locator is placed in browser storage.
+- No new songs, priorities, scores, keys, IDs, catalog rows, transcript rows, app feed, or `data/*` changes. No Manic / Blasting Room work. Catalog v1.6 and version/build identifiers are unchanged.
+- No fourth live band. Three-active-song cap unchanged. Protected opus untouched. Catalog rows are not the official set; Show Night owns official sets.
+- Hosted validate may be a 0-step empty-runner — not a catalog fail. Do not change billing.
+
+### Next continuation point
+Standing Jeff-owned items remain unchanged: physical playing/listening, EXP-001 when Chrome connects, Needs Jeff #1–5, and the protected-opus file intake. Sit-down handoff belongs in Session Log: pair intake name + **Copy next step**, then work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). StoryBoard still imports local `data/app_api.json`; the spine stays rejected, catalog rows are not the official set, and Show Night owns official sets. Logic-ready field fill and recovering real unmatched/UnRecorded lists remain Mac/Drive evidence work—never invent keys, titles, IDs, or paths. Hosted validate may be a 0-step empty-runner. Do not change billing.

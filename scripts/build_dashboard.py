@@ -101,12 +101,13 @@ page = r'''<!DOCTYPE html>
 @media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;
  --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--rdy:#eb6834;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{overflow-x:hidden}
+html,body{overflow-x:hidden;overflow-x:clip}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
 .skip-link{position:absolute;left:-999px;top:8px;z-index:20;background:var(--pot);color:#fff;padding:8px 12px;border-radius:8px}
 .skip-link:focus,.skip-link:focus-visible{left:8px}
 :focus-visible{outline:2px solid var(--pot);outline-offset:2px}
 h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
+.has-resume .sub,.work-now.has-resume .work-now-copy,.work-now.has-resume #workNowTitle{display:none}
 .stats-fold{margin:0 0 16px}
 .stats-fold>summary{list-style:none;cursor:pointer;color:var(--ink2);font-size:13px;padding:8px 10px;min-height:44px;overflow-wrap:anywhere;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 .stats-fold>summary::-webkit-details-marker{display:none}
@@ -123,8 +124,8 @@ h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
 .work-start{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:700;min-height:44px}
 .work-start span{color:var(--ink3);font-weight:500;margin-left:4px}
 .work-start:hover,.work-start:focus-visible{border-color:var(--pot);outline:2px solid var(--pot);outline-offset:2px}
-.resume-work{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
-.resume-work .work-start{flex:1;text-align:left}
+.resume-work{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.resume-work .work-start{flex:1 1 100%;text-align:left}
 .resume-next{flex:1 1 100%;font-weight:700;color:var(--ink);max-width:650px;overflow-wrap:anywhere}
 .resume-work .primary-action{border-color:var(--pot);color:var(--ink)}
 .resume-hint,.resume-status{color:var(--ink3);font-size:13px;margin:8px 0 0}
@@ -175,6 +176,8 @@ input{flex:1;min-width:0;width:100%}
 .mhint{color:var(--ink3);font-size:13px;padding:16px;text-align:center;overflow-wrap:anywhere}
 .resultbar,.memo-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink3);font-size:13px;margin:0 0 10px;flex-wrap:wrap}
 .memo-scope{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink2)}
+#workSession{position:sticky;top:0;z-index:6;background:var(--card)}
+[data-song-id]{scroll-margin-top:var(--work-session-gap,0px)}
 .subtle-btn,.memo-link,.song-link{cursor:pointer;font-weight:600}
 .subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:8px 10px;color:var(--pot)}
 .song-link{border:0;background:transparent;padding:8px 4px;font-size:inherit;text-decoration:underline;text-underline-offset:2px;min-height:44px}
@@ -200,18 +203,18 @@ input{flex:1;min-width:0;width:100%}
 <p class="sub">No audio in this repo, and catalog rows are not the live set.</p>
 </header>
 <section class="work-now" aria-labelledby="workNowTitle">
- <h2 id="workNowTitle">Start a work session</h2>
- <div class="work-starts" id="workStarts"></div>
- <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
  <div class="resume-work" id="resumeWork" hidden>
   <button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button>
-  <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
   <div class="resume-next" id="resumeWorkNext" hidden></div>
   <button type="button" class="subtle-btn primary-action" id="copyResumeNext" hidden>Copy next step</button>
+  <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
   <div class="resume-next" id="resumeWorkLogic" hidden></div>
   <div class="resume-next" id="resumeWorkAssets" hidden></div>
   <button type="button" class="subtle-btn" id="copyResumeLogic" hidden>Copy Logic-ready next</button>
  </div>
+ <h2 id="workNowTitle">Start a work session</h2>
+ <div class="work-starts" id="workStarts"></div>
+ <p class="work-now-copy">Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
  <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
  <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
 </section>
@@ -246,7 +249,7 @@ input{flex:1;min-width:0;width:100%}
   <select id="scored" aria-label="Filter scored songs"><option value="">All songs</option><option value="1">Scored only</option><option value="0">Unscored / to explore</option></select>
   <select id="scope" aria-label="Filter StoryBoard scope"><option value="">All StoryBoard scopes</option></select>
   <select id="evidence" aria-label="Filter memo evidence"><option value="">Any memo evidence</option><option value="1">Has searchable memos</option><option value="0">No searchable memos</option></select>
-  <select id="work" aria-label="Filter work kind"><option value="">Any work</option><option value="write">Write</option><option value="produce">Produce</option><option value="listen">Listen</option><option value="rest">Rest</option><option value="inventory">Inventory</option><option value="decide">Decide</option></select>
+  <select id="work" aria-label="Filter work kind"><option value="">Any work</option><option value="write">Write</option><option value="produce">Produce</option><option value="listen">Listen in Logic</option><option value="rest">Rest</option><option value="inventory">Inventory</option><option value="decide">Decide</option></select>
   <select id="logicReady" aria-label="Filter Logic-ready cluster"><option value="">Any Logic-ready</option>__LOGIC_READY_FILTER__</select>
  </div></details>
 </div>
@@ -343,8 +346,13 @@ document.getElementById('stats').innerHTML=
  `<div class="stat"><b>${TX_MATCHED_TOTAL}</b><span>memos matched</span></div>`+
  `<div class="stat"><b>${TX_SEARCHABLE_TOTAL}</b><span>memos searchable</span></div>`+
  `<div class="stat"><b>${TX_TOTAL}</b><span>memos transcribed</span></div>`;
+function workKindLabel(kind){
+ const k=String(kind||'');
+ if(k==='listen')return 'Listen in Logic';
+ return k?k[0].toUpperCase()+k.slice(1):'';
+}
 workStarts.innerHTML=['write','produce','listen'].map(kind=>
- `<button type="button" class="work-start" data-open-work="${kind}">${kind[0].toUpperCase()+kind.slice(1)} <span>${workCounts[kind]} songs</span></button>`
+ `<button type="button" class="work-start" data-open-work="${kind}">${workKindLabel(kind)} <span>${workCounts[kind]} songs</span></button>`
 ).join('');
 function esc(s){return (s===null||s===undefined?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function flattenWorkField(value){
@@ -421,10 +429,15 @@ function updateResumeWork(){
  const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
  resumeWork.hidden=!saved;
  if(typeof resumeWorkHint!=='undefined'&&resumeWorkHint)resumeWorkHint.hidden=!saved;
+ if(typeof document!=='undefined'&&document.body&&document.body.classList){
+  document.body.classList.toggle('has-resume',!!saved);
+ }
+ const workNow=resumeWork.closest?resumeWork.closest('.work-now'):null;
+ if(workNow&&workNow.classList)workNow.classList.toggle('has-resume',!!saved);
  const song=saved&&typeof DATA!=='undefined'?DATA.find(row=>row&&row.id===saved.id):null;
  const next=typeof safeWorkNextStep==='function'?safeWorkNextStep(song):'';
  if(saved&&resumeWorkText){
-  const label=saved.kind[0].toUpperCase()+saved.kind.slice(1);
+  const label=typeof workKindLabel==='function'?workKindLabel(saved.kind):(saved.kind[0].toUpperCase()+saved.kind.slice(1));
   const title=sname[saved.id]||'';
   resumeWorkText.textContent=`${label} · ${title}`;
   if(resumeWorkButton)resumeWorkButton.setAttribute('aria-label',`Resume ${label} session for ${title}`);
@@ -842,7 +855,7 @@ function updateWorkSessionState(){
  const idx=typeof activeWorkSongId!=='undefined'?ids.indexOf(activeWorkSongId):-1;
  workSession.hidden=!kind;
  if(kind&&workSessionText){
-  const label=kind[0].toUpperCase()+kind.slice(1);
+  const label=typeof workKindLabel==='function'?workKindLabel(kind):(kind[0].toUpperCase()+kind.slice(1));
   workSessionText.textContent=!ids.length
    ?`${label} · no matching songs`
    :idx>=0
@@ -906,7 +919,16 @@ function focusWorkSong(id,moveFocus){
  const kind=typeof work!=='undefined'&&work?String(work.value||''):'';
  if(kind&&typeof rememberWorkSession==='function')rememberWorkSession(kind,activeWorkSongId);
  updateWorkSessionState();
- if(moveFocus!==false)requestAnimationFrame(()=>{head.focus();head.scrollIntoView({block:'center'});});
+ if(moveFocus!==false)requestAnimationFrame(()=>{
+  const sessionEl=typeof workSession!=='undefined'?workSession:null;
+  const gap=(sessionEl&&!sessionEl.hidden)?sessionEl.offsetHeight:0;
+  if(typeof document!=='undefined'&&document.documentElement){
+   document.documentElement.style.setProperty('--work-session-gap',gap+'px');
+  }
+  head.focus();
+  head.scrollIntoView({block:'nearest'});
+  if(sessionEl&&!sessionEl.hidden)sessionEl.scrollIntoView({block:'nearest'});
+ });
  return true;
 }
 function stepWork(delta){
