@@ -78,7 +78,8 @@ for (const marker of [
   "sit-logic",
   "Sort: Logic-ready",
   "class=\"skip-link\"",
-  "href=\"#main\"",
+  "href=\"#workNowTitle\"",
+  '<h2 id="workNowTitle" tabindex="-1">',
   "<header>",
   "<main id=\"main\"",
   "aria-label=\"Sort songs\"",
@@ -88,11 +89,12 @@ for (const marker of [
   "overflow-x:hidden",
   ":focus-visible",
   "class=\"score-lab\"",
-  "role=\"columnheader\"",
   "@media (prefers-color-scheme: light)",
   ".pill.wk-produce{color:var(--rdy)}",
   ".bar-n{color:var(--ink)}",
   "class=\"bar-n\"",
+  'class="row-heading"',
+  'aria-controls="song-detail-',
   "safeWorkNextStep(d)",
   "function openWork(",
   "function updateWorkSessionState(",
@@ -119,8 +121,29 @@ for (const marker of [
   "id=\"copyResumeNext\"",
   "id=\"workStarts\"",
   "id=\"resumeWork\"",
+  "id=\"resumeWorkNext\"",
+  "id=\"copyResumeNext\"",
+  "id=\"forgetWorkSession\"",
+  "has-resume",
+  "function workKindLabel(",
+  "Listen in Logic",
+  "scrollIntoView({block:'nearest'})",
+  "sessionEl.scrollIntoView({block:'nearest'})",
+  "#workSession{position:sticky",
+  "overflow-x:clip",
+  "id=\"statsFold\"",
+  "id=\"statsLine\"",
+  "const COVER_COUNT",
+  "const RECOVERED_COUNT",
+  "No audio in this repo",
+  "catalog rows are not the live set",
+  "<details",
+  "id=\"resumeWork\"",
   "id=\"resumeWorkButton\"",
   "id=\"forgetWorkSession\"",
+  "id=\"catalogOverview\"",
+  "id=\"catalogOverviewSummary\"",
+  "class=\"resume-actions\"",
   "id=\"advancedFilters\"",
   "Start a work session",
   "More filters",
@@ -137,6 +160,45 @@ for (const marker of [
   "aria-expanded",
 ]) {
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
+}
+if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
+function idAt(source, value) {
+  const needle = 'id="' + value + '"';
+  let start = 0;
+  while (start < source.length) {
+    const at = source.indexOf(needle, start);
+    if (at < 0) return -1;
+    const end = at + needle.length;
+    const next = source[end] || "";
+    if (!next || " >\n\t'".includes(next)) return at;
+    start = end;
+  }
+  return -1;
+}
+const workAt = idAt(html, "workStarts");
+const foldAt = idAt(html, "statsFold");
+const statsAt = idAt(html, "stats");
+const resumeAt = idAt(html, "resumeWork");
+const resumeNextAt = idAt(html, "resumeWorkNext");
+const copyResumeAt = idAt(html, "copyResumeNext");
+const forgetAt = idAt(html, "forgetWorkSession");
+if (workAt < 0 || foldAt < 0 || statsAt < 0 || workAt > foldAt || foldAt > statsAt) {
+  fail("first paint must keep Write / Produce / Listen above collapsed catalog counts");
+}
+if (resumeAt < 0 || resumeNextAt < 0 || copyResumeAt < 0 || forgetAt < 0 ||
+    resumeAt > resumeNextAt || resumeNextAt > copyResumeAt || copyResumeAt > forgetAt || forgetAt > workAt) {
+  fail("stored-session first paint must lead with Resume, Do this now, Copy next step, and Forget");
+}
+if (!html.includes("Listen in Logic")) fail("Listen must be labeled Listen in Logic");
+if (!html.includes("scrollIntoView({block:'nearest'})")) {
+  fail("work-session focus must keep Do this now in view with nearest scroll");
+}
+if (!html.includes("#workSession{position:sticky")) {
+  fail("work session strip must stay sticky while the song expands");
+}
+if (html.includes("<b>9</b>")) fail("recovered count must be derived, not hardcoded");
+if (!/const COVER_COUNT = \d+;/.test(html) || !/const RECOVERED_COUNT = \d+;/.test(html)) {
+  fail("cover and recovered counts must be derived at build time");
 }
 if (html.includes("onclick=")) fail("generated dashboard must use delegated events, not inline clicks");
 if (html.includes("<audio")) fail("generated dashboard must not open audio");
@@ -232,7 +294,9 @@ const toggleSong = new Function(
 const detail = { hidden: true, classList: { contains: (name) => name === "detail" } };
 const attrs = {};
 const head = {
-  nextElementSibling: detail,
+  closest: (selector) => selector === "[data-song-id]" ? {
+    querySelector: (selector) => selector === ".detail" ? detail : null,
+  } : null,
   setAttribute: (name, value) => { attrs[name] = value; },
 };
 toggleSong(head);
@@ -243,6 +307,46 @@ toggleSong(head, true);
 if (detail.hidden || attrs["aria-expanded"] !== "true") fail("force-open must expand a song");
 toggleSong(head, false);
 if (!detail.hidden || attrs["aria-expanded"] !== "false") fail("force-close must collapse a song");
+
+// Exercise the real delegated handlers, including non-header keyboard targets.
+const rowHandlers = {};
+const rowActions = [];
+const registration = script.slice(script.indexOf("list.addEventListener('click'"), script.indexOf("if(q)q.addEventListener('keydown'"));
+new Function("list", "toggleSong", "openSongMemos", "copySongWork", "copyMemoFile", "copySongLogicNext", registration)(
+  { addEventListener: (type, handler) => { rowHandlers[type] = handler; } },
+  toggleSong,
+  id => rowActions.push("memos:" + id),
+  id => rowActions.push("work:" + id),
+  id => rowActions.push("file:" + id),
+  id => rowActions.push("logic:" + id),
+);
+const headTarget = { closest: selector => selector === "[data-toggle-song]" ? head : null };
+for (const [key, expanded] of [["Enter", "true"], [" ", "false"]]) {
+  let prevented = false;
+  rowHandlers.keydown({ target: headTarget, key, preventDefault() { prevented = true; } });
+  if (!prevented || attrs["aria-expanded"] !== expanded || detail.hidden !== (expanded === "false")) {
+    fail("row keyboard activation must toggle expanded and hidden together: " + key);
+  }
+}
+rowHandlers.keydown({ target: headTarget, key: "Tab", preventDefault() { fail("Tab must retain native focus navigation"); } });
+if (attrs["aria-expanded"] !== "false") fail("Tab must not expand the row");
+rowHandlers.click({ target: headTarget });
+if (attrs["aria-expanded"] !== "true" || detail.hidden) fail("row click must still expand");
+for (const [attribute, dataKey, action] of [
+  ["data-open-memos", "openMemos", "memos"],
+  ["data-copy-work", "copyWork", "work"],
+  ["data-copy-file", "copyFile", "file"],
+  ["data-copy-logic", "copyLogic", "logic"],
+]) {
+  const button = { dataset: { [dataKey]: "TEST-1" } };
+  const target = { closest: selector => selector === `[${attribute}]` ? button : null };
+  for (const key of ["Enter", " ", "Tab"]) {
+    rowHandlers.keydown({ target, key, preventDefault() { fail("native memo/copy keys must not be intercepted"); } });
+  }
+  rowHandlers.click({ target });
+  if (rowActions.pop() !== action + ":TEST-1") fail("wrong sibling/copy action");
+  if (attrs["aria-expanded"] !== "true" || detail.hidden) fail("memo/copy controls must not toggle the row");
+}
 
 const parseVaultHash = new Function(
   "return (" + extractFunction(script, "parseVaultHash") + ");",
@@ -414,6 +518,25 @@ if (songWorkKind("Listen to latest (take.logicx) and rate: finish / rest.") !== 
   fail("listen-to-latest next action must classify as listen");
 }
 if (songWorkKind("") !== "unknown") fail("empty next action must stay unknown");
+const workKindLabel = new Function(
+  "return (" + extractFunction(script, "workKindLabel") + ");",
+)();
+if (workKindLabel("listen") !== "Listen in Logic") fail("Listen must be labeled Listen in Logic");
+if (workKindLabel("write") !== "Write" || workKindLabel("produce") !== "Produce") {
+  fail("write and produce labels must stay human work kinds");
+}
+if (extractFunction(script, "focusWorkSong").includes("scrollIntoView({block:'center'})")) {
+  fail("work-session song focus must not center-scroll the next step away");
+}
+if (!extractFunction(script, "focusWorkSong").includes("scrollIntoView({block:'nearest'})")) {
+  fail("work-session song focus must use nearest so Do this now stays in view");
+}
+if (!extractFunction(script, "focusWorkSong").includes("sessionEl.scrollIntoView({block:'nearest'})")) {
+  fail("work-session strip must stay nearest after the song expands");
+}
+if (!extractFunction(script, "focusWorkSong").includes("toggleSong(head,true)")) {
+  fail("work-session song must still expand");
+}
 
 const stripPrivateLocators = new Function(
   "return (" + extractFunction(script, "stripPrivateLocators") + ");",

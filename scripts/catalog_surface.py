@@ -242,6 +242,44 @@ def catalog_surface_admits_not_official_set(text: str) -> bool:
     return has_not and "app_api.json" in body and "show night" in body
 
 
+RECOVERED_STAGE_MARK = "recovered"
+
+
+def catalog_cover_count(catalog) -> int:
+    """Cover-book size from the spine covers table, not a hardcoded 93."""
+    if not isinstance(catalog, dict):
+        return 0
+    covers = catalog.get("covers")
+    if isinstance(covers, list):
+        return len(covers)
+    ref = catalog.get("covers_reference")
+    try:
+        return int(ref)
+    except (TypeError, ValueError):
+        return 0
+
+
+def catalog_recovered_count(catalog) -> int:
+    """Songs recovered from memos, from existing catalog text, not a hardcoded 9.
+
+    Stage usually carries 'recovered'. JS-0131 is the exception: its stage was
+    rewritten to the Oct 2025 writing receipt, so lyric_status still names the
+    memo recovery. Do not count later lyric reconstruction of already-known
+    songs (Blue Skies Fade, It's Alright).
+    """
+    if not isinstance(catalog, dict):
+        return 0
+    n = 0
+    for song in catalog.get("songs") or []:
+        if not isinstance(song, dict):
+            continue
+        stage = str(song.get("stage") or "").lower()
+        lyric = str(song.get("lyric_status") or "").lower()
+        if RECOVERED_STAGE_MARK in stage or "recovered from memo" in lyric:
+            n += 1
+    return n
+
+
 OWNER_AUDIO_OPEN_MARKERS = (
     "<audio",
     "file://",
@@ -1129,8 +1167,25 @@ def dashboard_resumes_song_work_privately(html: str) -> bool:
         'id="copyResumeNext"',
         "function copyResumeWorkNext(",
         "function updateResumeWork(",
+        'id="catalogOverview"',
+        'id="catalogOverviewSummary"',
+        'class="resume-actions"',
+        "function workKindLabel(",
+        "has-resume",
     )
-    return all(marker in chrome for marker in required)
+    if not all(marker in chrome for marker in required):
+        return False
+    resume_at = chrome.find('id="resumeWork"')
+    overview_at = chrome.find('id="catalogOverview"')
+    starts_at = chrome.find('id="workStarts"')
+    button_at = chrome.find('id="resumeWorkButton"')
+    next_at = chrome.find('id="resumeWorkNext"')
+    copy_at = chrome.find('id="copyResumeNext"')
+    forget_at = chrome.find('id="forgetWorkSession"')
+    return (
+        0 <= resume_at < starts_at < overview_at
+        and 0 <= button_at < next_at < copy_at < forget_at
+    )
 
 
 def dashboard_finds_remembered_song_names(html: str) -> bool:
@@ -1186,7 +1241,8 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
     chrome = dashboard_markup_chrome(html)
     required = (
         'class="skip-link"',
-        'href="#main"',
+        'href="#workNowTitle"',
+        '<h2 id="workNowTitle" tabindex="-1">',
         "<header>",
         '<main id="main"',
         "<footer",
@@ -1198,11 +1254,117 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
         "overflow-x:hidden",
         ":focus-visible",
         'class="score-lab"',
-        'role="columnheader"',
+        'class="row-heading"',
+        'aria-controls="song-detail-',
         "--ink3:#a8a79c",
         "--ink3:#5c5b54",
     )
-    return all(marker in chrome for marker in required)
+    return (
+        all(marker in chrome for marker in required)
+        and 'role="columnheader"' not in chrome
+    )
+
+
+def _html_id_at(html: str, value: str) -> int:
+    """Index of an exact id attribute, not a longer id that starts with the same letters."""
+    needle = f'id="{value}"'
+    start = 0
+    while True:
+        at = html.find(needle, start)
+        if at < 0:
+            return -1
+        end = at + len(needle)
+        if end >= len(html) or html[end] in " >\n\t'":
+            return at
+        start = end
+
+
+def dashboard_first_paint_ready(html: str) -> bool:
+    """First paint keeps H1, one honesty sentence, and Write/Produce/Listen above the fold."""
+    chrome = dashboard_markup_chrome(html)
+    lowered = chrome.lower()
+    if "no audio in this repo" not in lowered:
+        return False
+    if "catalog rows are not the live set" not in lowered:
+        return False
+    required = (
+        'id="workStarts"',
+        'id="statsFold"',
+        'id="statsLine"',
+        "const COVER_COUNT",
+        "const RECOVERED_COUNT",
+        "<details",
+        "data-open-work=",
+    )
+    if not all(marker in chrome for marker in required):
+        return False
+    work_at = _html_id_at(chrome, "workStarts")
+    fold_at = _html_id_at(chrome, "statsFold")
+    stats_at = _html_id_at(chrome, "stats")
+    resume_at = _html_id_at(chrome, "resumeWork")
+    if min(work_at, fold_at, stats_at) < 0:
+        return False
+    if resume_at >= 0 and resume_at > work_at:
+        return False
+    return work_at < fold_at < stats_at
+
+
+def dashboard_resume_leads_first_paint(html: str) -> bool:
+    """A stored session must lead with Resume, Do this now, Copy, and Forget."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        'id="resumeWork"',
+        'id="resumeWorkButton"',
+        'id="resumeWorkNext"',
+        'id="copyResumeNext"',
+        'id="forgetWorkSession"',
+        "Resume ",
+        "Do this now",
+        "Copy next step",
+        "Forget",
+        "has-resume",
+        "Object.keys(value).sort().join('|')!=='id|kind|v'",
+    )
+    if not all(marker in chrome for marker in required):
+        return False
+    resume_at = _html_id_at(chrome, "resumeWork")
+    next_at = _html_id_at(chrome, "resumeWorkNext")
+    copy_at = _html_id_at(chrome, "copyResumeNext")
+    forget_at = _html_id_at(chrome, "forgetWorkSession")
+    work_at = _html_id_at(chrome, "workStarts")
+    if min(resume_at, next_at, copy_at, forget_at, work_at) < 0:
+        return False
+    return resume_at < next_at < copy_at < forget_at < work_at
+
+
+def dashboard_work_next_stays_in_view(html: str) -> bool:
+    """Work-session next step must stay on screen while the song expands."""
+    chrome = dashboard_markup_chrome(html)
+    return (
+        "scrollIntoView({block:'nearest'})" in chrome
+        and 'id="workSession"' in chrome
+        and "#workSession{position:sticky" in chrome
+        and "overflow-x:clip" in chrome
+        and "function focusWorkSong(" in chrome
+        and "toggleSong(head,true)" in chrome
+        and "sessionEl.scrollIntoView({block:'nearest'})" in chrome
+    )
+
+
+def dashboard_listen_is_not_playback(html: str) -> bool:
+    """Listen is a Logic sit-down, not in-page audio playback."""
+    chrome = dashboard_markup_chrome(html)
+    lowered = chrome.lower()
+    return (
+        "Listen in Logic" in chrome
+        and "function workKindLabel(" in chrome
+        and "this page does not open audio" in lowered
+        and "<audio" not in lowered
+        and (
+            'data-open-work="listen"' in chrome
+            or 'data-open-work="${kind}"' in chrome
+        )
+    )
 
 
 # WCAG 2 relative-luminance threshold for sRGB (not the older 0.03928 form).

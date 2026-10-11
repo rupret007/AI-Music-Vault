@@ -17,12 +17,18 @@ from catalog_surface import (  # noqa: E402
     LOGIC_READY_CLUSTERS,
     WCAG_AA_NORMAL_TEXT,
     build_memo_search_index,
+    catalog_cover_count,
+    catalog_recovered_count,
     contrast_ratio,
     dashboard_displays_owner_audio_index,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_first_paint_ready,
+    dashboard_listen_is_not_playback,
     dashboard_opens_owner_audio,
+    dashboard_resume_leads_first_paint,
+    dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_rdy_contrast_ready,
     dashboard_resumes_song_work_privately,
@@ -170,7 +176,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
             ("TX_SEARCHABLE_MATCHED", "searchable_matched"),
         ):
             self.assertIn(f"const {name} = {counts[key]};", dashboard)
-        self.assertIn("807 usable-text transcripts searchable", dashboard)
+        self.assertIn("search 807 usable-text transcripts", dashboard)
         self.assertIn("916 transcribed and 372 matched", dashboard)
         self.assertIn("355 matched rows have enough text", dashboard)
         self.assertNotIn("all 916 memos searchable", dashboard)
@@ -288,6 +294,10 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertTrue(dashboard_finds_remembered_song_names(dashboard))
         self.assertTrue(dashboard_exposes_logic_ready(dashboard))
         self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
+        self.assertTrue(dashboard_first_paint_ready(dashboard))
+        self.assertTrue(dashboard_resume_leads_first_paint(dashboard))
+        self.assertTrue(dashboard_work_next_stays_in_view(dashboard))
+        self.assertTrue(dashboard_listen_is_not_playback(dashboard))
         self.assertFalse(dashboard_displays_owner_audio_index(dashboard))
         self.assertIn('id="work"', dashboard)
         self.assertIn('id="workSession"', dashboard)
@@ -1018,7 +1028,7 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         ) as handle:
             dashboard = handle.read()
         self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
-        self.assertIn("Skip to catalog", dashboard)
+        self.assertIn("Skip to work session", dashboard)
         self.assertIn("<header>", dashboard)
         self.assertIn('<main id="main"', dashboard)
         self.assertIn("<footer", dashboard)
@@ -1029,11 +1039,170 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         self.assertIn("overflow-x:hidden", dashboard)
         self.assertIn(":focus-visible", dashboard)
         self.assertIn('class="score-lab"', dashboard)
-        self.assertIn('role="columnheader"', dashboard)
+        self.assertNotIn('role="columnheader"', dashboard)
+        self.assertIn('<h2 id="workNowTitle" tabindex="-1">', dashboard)
+        self.assertIn('class="row-heading"', dashboard)
+        self.assertIn('aria-controls="song-detail-', dashboard)
         self.assertNotIn("grid-template-columns:1fr 90px 90px", dashboard)
 
     def test_phone_gate_fails_closed_without_landmarks(self):
         self.assertFalse(dashboard_phone_and_a11y_ready("<html></html>"))
+
+    def test_phone_gate_rejects_table_roles_and_skip_past_work(self):
+        with open(os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"), encoding="utf-8") as handle:
+            dashboard = handle.read()
+        self.assertFalse(dashboard_phone_and_a11y_ready(
+            dashboard.replace('class="score-lab"', 'class="score-lab" role="columnheader"')
+        ))
+        self.assertFalse(dashboard_phone_and_a11y_ready(
+            dashboard.replace('href="#workNowTitle"', 'href="#main"')
+        ))
+
+    def test_resume_browser_check_still_rejects_offscreen_fold(self):
+        with open(
+            os.path.join(ROOT, "tests", "test_dashboard_resume_browser.js"),
+            encoding="utf-8",
+        ) as handle:
+            source = handle.read()
+        self.assertIn("{ name: \"phone\", width: 390, height: 844", source)
+        self.assertIn("{ name: \"desktop\", width: 1280, height: 800", source)
+        self.assertIn("must fit above the fold", source)
+        self.assertIn(".resume-work{margin-top:2000px!important}", source)
+        self.assertIn("resumeWorkButton", source)
+        self.assertIn("resumeWorkNext", source)
+        self.assertIn("copyResumeNext", source)
+        self.assertIn("forgetWorkSession", source)
+        self.assertIn("Do this now:", source)
+        self.assertIn("will not download a browser", source)
+
+
+class DashboardFirstPaintTests(unittest.TestCase):
+    def test_cover_and_recovered_counts_come_from_catalog(self):
+        self.assertEqual(catalog_cover_count({"covers": ["a", "b"], "covers_reference": 99}), 2)
+        self.assertEqual(catalog_cover_count({"covers_reference": 4}), 4)
+        self.assertEqual(catalog_cover_count({"covers_reference": "nope"}), 0)
+        self.assertEqual(catalog_cover_count(None), 0)
+        self.assertEqual(
+            catalog_recovered_count(
+                {
+                    "songs": [
+                        {"stage": "voice memo only (recovered 2026-08 via transcript pass)"},
+                        {"stage": "mixing — album track 1"},
+                        {"stage": "voice memo only (recovered 2026-08, discovery pass)"},
+                        {"notes": "lyric 85% recovered"},
+                        {"lyric_status": "partial — recovered from memo transcript(s)"},
+                        {
+                            "lyric_status": (
+                                'OPENING MOVEMENT RECOVERED from "Blue skies beginning" '
+                                "memo transcript"
+                            )
+                        },
+                    ]
+                }
+            ),
+            3,
+        )
+        self.assertEqual(catalog_recovered_count({"songs": []}), 0)
+        self.assertEqual(catalog_recovered_count(None), 0)
+
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        self.assertEqual(catalog_cover_count(catalog), len(catalog.get("covers") or []))
+        self.assertEqual(catalog_recovered_count(catalog), 11)
+        recovered_ids = [
+            song["song_id"]
+            for song in catalog["songs"]
+            if "recovered" in str(song.get("stage") or "").lower()
+            or "recovered from memo" in str(song.get("lyric_status") or "").lower()
+        ]
+        self.assertEqual(len(recovered_ids), 11)
+        self.assertIn("JS-0131", recovered_ids)
+        self.assertNotIn("JS-0107", recovered_ids)
+        self.assertNotIn("JS-0128", recovered_ids)
+
+    def test_committed_dashboard_keeps_work_buttons_on_first_paint(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        with open(
+            os.path.join(ROOT, "scripts", "build_dashboard.py"), encoding="utf-8"
+        ) as handle:
+            builder = handle.read()
+        self.assertTrue(dashboard_first_paint_ready(dashboard))
+        self.assertIn("No audio in this repo, and catalog rows are not the live set.", dashboard)
+        self.assertIn(f"const COVER_COUNT = {catalog_cover_count(catalog)};", dashboard)
+        self.assertIn(f"const RECOVERED_COUNT = {catalog_recovered_count(catalog)};", dashboard)
+        self.assertIn("${RECOVERED_COUNT}", dashboard)
+        self.assertNotIn("<b>9</b>", dashboard)
+        self.assertNotIn("<b>9</b>", builder)
+        self.assertNotIn("93 covers cataloged", builder)
+        self.assertIn("id=\"statsFold\"", dashboard)
+        chrome_head = dashboard.split("<script>", 1)[0]
+        self.assertLess(chrome_head.find('id="workStarts"'), chrome_head.find('id="statsFold"'))
+
+    def test_first_paint_gate_fails_closed_without_collapsed_counts(self):
+        self.assertFalse(dashboard_first_paint_ready("<html></html>"))
+        self.assertFalse(
+            dashboard_first_paint_ready(
+                'No audio in this repo, and catalog rows are not the live set. '
+                'id="statsFold" <details id="statsLine" id="stats" '
+                'const COVER_COUNT const RECOVERED_COUNT data-open-work='
+            )
+        )
+
+    def test_resume_leads_first_paint_without_extra_storage_fields(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_resume_leads_first_paint(dashboard))
+        chrome = dashboard.split("<script>", 1)[0]
+        self.assertLess(chrome.find('id="resumeWork"'), chrome.find('id="resumeWorkNext"'))
+        self.assertLess(chrome.find('id="resumeWorkNext"'), chrome.find('id="copyResumeNext"'))
+        self.assertLess(chrome.find('id="copyResumeNext"'), chrome.find('id="forgetWorkSession"'))
+        self.assertLess(chrome.find('id="forgetWorkSession"'), chrome.find('id="workStarts"'))
+        self.assertIn("has-resume", dashboard)
+        self.assertIn("Object.keys(value).sort().join('|')!=='id|kind|v'", dashboard)
+        store = dashboard[dashboard.find("function storeWorkSession("):dashboard.find("function clearStoredWorkSession(")]
+        self.assertIn("JSON.stringify(parsed)", store)
+        self.assertNotIn("title", store)
+        self.assertNotIn("next", store)
+
+    def test_work_next_stays_in_view_while_song_expands(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_work_next_stays_in_view(dashboard))
+        focus = dashboard[dashboard.find("function focusWorkSong("):dashboard.find("function stepWork(")]
+        self.assertIn("scrollIntoView({block:'nearest'})", focus)
+        self.assertIn("sessionEl.scrollIntoView({block:'nearest'})", focus)
+        self.assertIn("toggleSong(head,true)", focus)
+        self.assertIn("#workSession{position:sticky", dashboard)
+        self.assertIn("overflow-x:clip", dashboard)
+
+    def test_listen_button_cannot_mean_playback(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_listen_is_not_playback(dashboard))
+        self.assertIn("if(k==='listen')return 'Listen in Logic';", dashboard)
+        self.assertIn("${workKindLabel(kind)} <span>${workCounts[kind]} songs</span>", dashboard)
+        self.assertIn('option value="listen">Listen in Logic</option>', dashboard)
+        self.assertNotIn("<audio", dashboard)
+        self.assertIn("this page does not open audio", dashboard)
 
 
 # Pre-A06 oranges from the UX audit. Kept here so the contrast gate
