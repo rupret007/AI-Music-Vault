@@ -128,15 +128,17 @@ h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 16px}
 .tab{padding:8px 16px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink2);cursor:pointer;font-size:15px;font-weight:600;min-height:44px}
 .tab.on{background:var(--card2);color:var(--ink);border-color:var(--ink3)}
 .controls{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
+.song-controls{position:static}
 input,select,.subtle-btn,.memo-link,.song-link{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px;min-height:44px}
 input{flex:1;min-width:0;width:100%}
 .advanced-filters{position:relative}
+.advanced-filters[open]{flex-basis:100%;min-width:0}
 .advanced-filters summary{list-style:none;background:var(--card);color:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px;cursor:pointer;font-weight:600;min-height:44px}
 .advanced-filters summary::-webkit-details-marker{display:none}
 .advanced-filters summary::after{content:' +';color:var(--ink3)}
 .advanced-filters[open] summary::after{content:' −'}
-.advanced-menu{position:absolute;right:0;top:48px;display:grid;gap:8px;width:min(340px,calc(100vw - 24px));padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px #0008;z-index:8}
-.advanced-menu select{width:100%}
+.advanced-menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;margin-top:8px;padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:10px}
+.advanced-menu select{width:100%;min-width:0}
 .row{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;overflow:hidden;max-width:100%}
 .rhead{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;padding:10px 12px;cursor:pointer}
 .rhead:hover,.rhead:focus-visible{background:var(--card2);outline:2px solid var(--pot);outline-offset:-2px}
@@ -180,7 +182,7 @@ input{flex:1;min-width:0;width:100%}
 .work-session-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .work-session-actions .primary-action{border-color:var(--pot);color:var(--ink)}
 .pill.memo-link{min-height:44px}
-@media(max-width:640px){.work-start{flex:1 1 100%}.resume-work{align-items:stretch}.controls>input,.controls>select{flex-basis:100%}.advanced-filters{margin-left:0;width:100%}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{right:auto;left:0;width:100%}.lane{align-items:flex-start}}
+@media(max-width:640px){.work-start{flex:1 1 100%}.resume-work{align-items:stretch}.controls>input,.controls>select{flex-basis:100%}.advanced-filters{margin-left:0;width:100%}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{grid-template-columns:minmax(0,1fr)}.lane{align-items:flex-start}}
 @media(max-width:375px){body{padding:12px;font-size:16px}.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}
 </style></head><body>
 <a class="skip-link" href="#main">Skip to catalog</a>
@@ -219,7 +221,7 @@ input{flex:1;min-width:0;width:100%}
 </nav>
 <main id="main">
 <div id="paneS" role="tabpanel" aria-labelledby="tabS">
-<div class="controls">
+<div class="controls song-controls">
  <input id="q" placeholder="Search titles, aliases, hooks… (try: candy lane, only 18, garden)" autocomplete="off" aria-label="Search songs by title, alias, hook, or memo lyric">
  <select id="sort" aria-label="Sort songs">
   <option value="mom">Sort: Momentum (what's alive)</option>
