@@ -36,6 +36,7 @@ from catalog_surface import (
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_first_paint_ready,
     dashboard_opens_owner_audio,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
@@ -2050,6 +2051,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must stay usable at 375px with landmarks, "
                 "labeled controls, 44px tap targets, visible focus, "
                 "and no horizontal scroll"
+            )
+        if not dashboard_first_paint_ready(dash):
+            errors.append(
+                "dashboard first paint must show the honesty sentence and "
+                "Write / Produce / Listen before collapsed catalog counts"
             )
 
     audio_hits = extras.get("audio_files")

@@ -14,8 +14,9 @@ from catalog_surface import (  # noqa: E402
     LOGIC_READY_CLUSTERS,
     LOGIC_READY_LABELS,
     ON_DECK_NOTE,
-    SURFACE_SUBTITLE,
     build_memo_search_index,
+    catalog_cover_count,
+    catalog_recovered_count,
     logic_ready_maps,
     overlay_feed_scopes,
     played_badge_label,
@@ -86,6 +87,9 @@ TX_MATCHED_TOTAL = memo_counts["matched"]
 TX_SEARCHABLE_TOTAL = memo_counts["searchable"]
 TX_SEARCHABLE_MATCHED = memo_counts["searchable_matched"]
 TX = json.dumps(tx, ensure_ascii=False).replace('</', '<\\/')
+COVER_COUNT = catalog_cover_count(cat)
+RECOVERED_COUNT = catalog_recovered_count(cat)
+CATALOG_VERSION = str(cat.get("version") or "")
 
 page = r'''<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
@@ -102,12 +106,19 @@ body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI
 .skip-link{position:absolute;left:-999px;top:8px;z-index:20;background:var(--pot);color:#fff;padding:8px 12px;border-radius:8px}
 .skip-link:focus,.skip-link:focus-visible{left:8px}
 :focus-visible{outline:2px solid var(--pot);outline-offset:2px}
-h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 16px}
-.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
+.stats-fold{margin:0 0 16px}
+.stats-fold>summary{list-style:none;cursor:pointer;color:var(--ink2);font-size:13px;padding:8px 10px;min-height:44px;overflow-wrap:anywhere;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.stats-fold>summary::-webkit-details-marker{display:none}
+.stats-fold>summary::after{content:' +';color:var(--ink3)}
+.stats-fold[open]>summary::after{content:' −'}
+.stats-fold[open]>summary{margin-bottom:10px}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:0}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:100px;flex:1 1 140px}
 .stat b{font-size:20px;display:block} .stat span{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
 .work-now{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
-.work-now h2{font-size:15px}.work-now p{color:var(--ink3);font-size:13px;margin:2px 0 10px}
+.work-now h2{font-size:15px;margin-bottom:6px}.work-now p{color:var(--ink3);font-size:13px;margin:8px 0 10px}
+.work-now .work-starts{margin:0 0 2px}
 .work-starts{display:flex;gap:8px;flex-wrap:wrap}
 .work-start{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:700;min-height:44px}
 .work-start span{color:var(--ink3);font-weight:500;margin-left:4px}
@@ -186,13 +197,12 @@ input{flex:1;min-width:0;width:100%}
 <a class="skip-link" href="#main">Skip to catalog</a>
 <header>
 <h1><span aria-hidden="true">🎸 </span>Jeff Story Song Vault</h1>
-<p class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</p>
+<p class="sub">No audio in this repo, and catalog rows are not the live set.</p>
 </header>
-<div class="stats" id="stats" role="region" aria-label="Catalog counts"></div>
 <section class="work-now" aria-labelledby="workNowTitle">
  <h2 id="workNowTitle">Start a work session</h2>
- <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
  <div class="work-starts" id="workStarts"></div>
+ <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
  <div class="resume-work" id="resumeWork" hidden>
   <button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button>
   <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
@@ -205,6 +215,10 @@ input{flex:1;min-width:0;width:100%}
  <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
  <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
 </section>
+<details class="stats-fold" id="statsFold">
+ <summary id="statsLine">Catalog counts</summary>
+ <div class="stats" id="stats" role="region" aria-label="Catalog counts"></div>
+</details>
 <section class="lanes" aria-labelledby="lanesTitle">
  <h2 id="lanesTitle">The three lanes (+ on deck)</h2>
  <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button> ''' + _lane_work_pill("ST-0001") + r'''<span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
@@ -242,7 +256,7 @@ input{flex:1;min-width:0;width:100%}
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
 <div id="list"></div>
-<div class="covers-note">93 covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
+<div class="covers-note">__COVER_COUNT__ covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
 <div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: alright, garden, better than now)" aria-label="Search memo transcripts"></div>
@@ -250,7 +264,7 @@ input{flex:1;min-width:0;width:100%}
 <div id="mlist"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
 </div>
 </main>
-<footer class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio. Logic-ready next is catalog evidence, not a completed export.</footer>
+<footer class="foot">Catalog v''' + CATALOG_VERSION + r'''. Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio. Logic-ready next is catalog evidence, not a completed export.</footer>
 <script>
 const DATA = __DATA__;
 const LOGIC_READY = __LOGIC_READY__;
@@ -259,6 +273,8 @@ const TX_TOTAL = __TX_TOTAL__;
 const TX_MATCHED_TOTAL = __TX_MATCHED_TOTAL__;
 const TX_SEARCHABLE_TOTAL = __TX_SEARCHABLE_TOTAL__;
 const TX_SEARCHABLE_MATCHED = __TX_SEARCHABLE_MATCHED__;
+const COVER_COUNT = __COVER_COUNT__;
+const RECOVERED_COUNT = __RECOVERED_COUNT__;
 const WORK_SESSION_KEY='vault:last-work:v1';
 const q=document.getElementById('q'),proj=document.getElementById('proj'),
  sort=document.getElementById('sort'),scored=document.getElementById('scored'),
@@ -315,11 +331,15 @@ const scoredCount=DATA.filter(d=>d.pot).length;
 const defaultLiveCount=DATA.filter(d=>d.scope==='default_live').length;
 const workCounts={write:0,produce:0,listen:0};
 DATA.forEach(d=>{const wk=songWorkKind(d.nx);if(workCounts[wk]!=null)workCounts[wk]+=1;});
+const statsLine=document.getElementById('statsLine');
+if(statsLine){
+ statsLine.textContent=`${DATA.length} songs · ${scoredCount} scored · ${defaultLiveCount} default-live · ${RECOVERED_COUNT} recovered · ${COVER_COUNT} covers · ${TX_MATCHED_TOTAL} matched · ${TX_SEARCHABLE_TOTAL} searchable · ${TX_TOTAL} transcribed`;
+}
 document.getElementById('stats').innerHTML=
  `<div class="stat"><b>${DATA.length}</b><span>songs cataloged</span></div>`+
  `<div class="stat"><b>${scoredCount}</b><span>scored</span></div>`+
  `<div class="stat"><b>${defaultLiveCount}</b><span>default-live catalog</span></div>`+
- `<div class="stat"><b>9</b><span>songs recovered from memos</span></div>`+
+ `<div class="stat"><b>${RECOVERED_COUNT}</b><span>songs recovered from memos</span></div>`+
  `<div class="stat"><b>${TX_MATCHED_TOTAL}</b><span>memos matched</span></div>`+
  `<div class="stat"><b>${TX_SEARCHABLE_TOTAL}</b><span>memos searchable</span></div>`+
  `<div class="stat"><b>${TX_TOTAL}</b><span>memos transcribed</span></div>`;
@@ -1208,7 +1228,9 @@ page = (page.replace('__DATA__', DATA)
     .replace('__TX_TOTAL__', str(TX_TOTAL))
     .replace('__TX_MATCHED_TOTAL__', str(TX_MATCHED_TOTAL))
     .replace('__TX_SEARCHABLE_TOTAL__', str(TX_SEARCHABLE_TOTAL))
-    .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED)))
+    .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED))
+    .replace('__COVER_COUNT__', str(COVER_COUNT))
+    .replace('__RECOVERED_COUNT__', str(RECOVERED_COUNT)))
 open(OUT_PATH,'w').write(page)
 print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,',
       TX_SEARCHABLE_TOTAL, 'searchable transcripts from', TX_TOTAL, 'transcribed')

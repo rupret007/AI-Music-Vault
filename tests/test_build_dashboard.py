@@ -16,10 +16,13 @@ from catalog_surface import (  # noqa: E402
     EMBEDDED_TX_SHA256,
     LOGIC_READY_CLUSTERS,
     build_memo_search_index,
+    catalog_cover_count,
+    catalog_recovered_count,
     dashboard_displays_owner_audio_index,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_first_paint_ready,
     dashboard_opens_owner_audio,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
@@ -166,7 +169,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
             ("TX_SEARCHABLE_MATCHED", "searchable_matched"),
         ):
             self.assertIn(f"const {name} = {counts[key]};", dashboard)
-        self.assertIn("807 usable-text transcripts searchable", dashboard)
+        self.assertIn("search 807 usable-text transcripts", dashboard)
         self.assertIn("916 transcribed and 372 matched", dashboard)
         self.assertIn("355 matched rows have enough text", dashboard)
         self.assertNotIn("all 916 memos searchable", dashboard)
@@ -284,6 +287,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertTrue(dashboard_finds_remembered_song_names(dashboard))
         self.assertTrue(dashboard_exposes_logic_ready(dashboard))
         self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
+        self.assertTrue(dashboard_first_paint_ready(dashboard))
         self.assertFalse(dashboard_displays_owner_audio_index(dashboard))
         self.assertIn('id="work"', dashboard)
         self.assertIn('id="workSession"', dashboard)
@@ -1030,6 +1034,89 @@ class DashboardPhoneA11yTests(unittest.TestCase):
 
     def test_phone_gate_fails_closed_without_landmarks(self):
         self.assertFalse(dashboard_phone_and_a11y_ready("<html></html>"))
+
+
+class DashboardFirstPaintTests(unittest.TestCase):
+    def test_cover_and_recovered_counts_come_from_catalog(self):
+        self.assertEqual(catalog_cover_count({"covers": ["a", "b"], "covers_reference": 99}), 2)
+        self.assertEqual(catalog_cover_count({"covers_reference": 4}), 4)
+        self.assertEqual(catalog_cover_count({"covers_reference": "nope"}), 0)
+        self.assertEqual(catalog_cover_count(None), 0)
+        self.assertEqual(
+            catalog_recovered_count(
+                {
+                    "songs": [
+                        {"stage": "voice memo only (recovered 2026-08 via transcript pass)"},
+                        {"stage": "mixing — album track 1"},
+                        {"stage": "voice memo only (recovered 2026-08, discovery pass)"},
+                        {"notes": "lyric 85% recovered"},
+                        {"lyric_status": "partial — recovered from memo transcript(s)"},
+                        {
+                            "lyric_status": (
+                                'OPENING MOVEMENT RECOVERED from "Blue skies beginning" '
+                                "memo transcript"
+                            )
+                        },
+                    ]
+                }
+            ),
+            3,
+        )
+        self.assertEqual(catalog_recovered_count({"songs": []}), 0)
+        self.assertEqual(catalog_recovered_count(None), 0)
+
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        self.assertEqual(catalog_cover_count(catalog), len(catalog.get("covers") or []))
+        self.assertEqual(catalog_recovered_count(catalog), 11)
+        recovered_ids = [
+            song["song_id"]
+            for song in catalog["songs"]
+            if "recovered" in str(song.get("stage") or "").lower()
+            or "recovered from memo" in str(song.get("lyric_status") or "").lower()
+        ]
+        self.assertEqual(len(recovered_ids), 11)
+        self.assertIn("JS-0131", recovered_ids)
+        self.assertNotIn("JS-0107", recovered_ids)
+        self.assertNotIn("JS-0128", recovered_ids)
+
+    def test_committed_dashboard_keeps_work_buttons_on_first_paint(self):
+        with open(
+            os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8"
+        ) as handle:
+            catalog = json.load(handle)
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        with open(
+            os.path.join(ROOT, "scripts", "build_dashboard.py"), encoding="utf-8"
+        ) as handle:
+            builder = handle.read()
+        self.assertTrue(dashboard_first_paint_ready(dashboard))
+        self.assertIn("No audio in this repo, and catalog rows are not the live set.", dashboard)
+        self.assertIn(f"const COVER_COUNT = {catalog_cover_count(catalog)};", dashboard)
+        self.assertIn(f"const RECOVERED_COUNT = {catalog_recovered_count(catalog)};", dashboard)
+        self.assertIn("${RECOVERED_COUNT}", dashboard)
+        self.assertNotIn("<b>9</b>", dashboard)
+        self.assertNotIn("<b>9</b>", builder)
+        self.assertNotIn("93 covers cataloged", builder)
+        self.assertIn("id=\"statsFold\"", dashboard)
+        chrome_head = dashboard.split("<script>", 1)[0]
+        self.assertLess(chrome_head.find('id="workStarts"'), chrome_head.find('id="statsFold"'))
+
+    def test_first_paint_gate_fails_closed_without_collapsed_counts(self):
+        self.assertFalse(dashboard_first_paint_ready("<html></html>"))
+        self.assertFalse(
+            dashboard_first_paint_ready(
+                'No audio in this repo, and catalog rows are not the live set. '
+                'id="statsFold" <details id="statsLine" id="stats" '
+                'const COVER_COUNT const RECOVERED_COUNT data-open-work='
+            )
+        )
 
 
 if __name__ == "__main__":
