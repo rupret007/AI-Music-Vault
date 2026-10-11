@@ -341,8 +341,25 @@ class DashboardMemoHonestyTests(unittest.TestCase):
             dashboard,
         )
         self.assertIn("sit-down-actions", dashboard)
+        self.assertIn('<div class="sit-down-actions">', dashboard)
+        self.assertIn(".sit-down-actions{display:flex", dashboard)
+        self.assertIn("@media(max-width:390px){.sit-down-actions{display:flex", dashboard)
+        self.assertIn("data-sit-next", dashboard)
+        self.assertIn("data-copy-sit-next", dashboard)
+        self.assertIn("function updateSitDownCatalogNext(", dashboard)
+        self.assertIn("function sessionShowsSongNext(", dashboard)
+        self.assertIn("function copySitDownNextStep(", dashboard)
         self.assertNotIn("Next: ${esc(nxt)}", dashboard)
+        self.assertNotIn("Next: <span>${esc(nxt)}</span>", dashboard)
+        self.assertNotIn("Catalog next step: see", dashboard)
         self.assertNotIn("Logic-ready next: ${esc(lrNext)} <button", dashboard)
+        self.assertEqual(
+            dashboard.lower().count(
+                "open in logic (export honesty: wavs/aiff/midi preference, "
+                "no ableton-first) — this page does not open audio"
+            ),
+            1,
+        )
         self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
         self.assertIn(
             "Transcripts are machine-made (Whisper, run locally on your Mac) — "
@@ -355,6 +372,32 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("no copy-safe intake name yet", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
         self.assertNotIn("<h4>Known assets</h4>", dashboard)
+
+    def test_committed_sit_down_layout_mutations_fail_closed(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            html = handle.read()
+        self.assertTrue(dashboard_sit_down_copy_actions_on_own_row(html))
+        span = html.replace(
+            '<div class="sit-down-actions">', '<span class="sit-down-actions">', 1
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(span))
+        inline = html.replace(
+            ".sit-down-actions{display:flex", ".sit-down-actions{display:inline", 1
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(inline))
+        nxt = html + "Next: <span>${esc(nxt)}</span>"
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(nxt))
+        dup = html + (
+            " open in Logic (export honesty: WAVs/AIFF/MIDI preference, "
+            "no Ableton-first) — this page does not open audio"
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(dup))
+        no_row = html.replace('<div class="sit-down-actions">', "<div>", 1)
+        self.assertIn(".sit-down-actions{display:flex", no_row)
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(no_row))
 
 
 class DashboardSongWorkTests(unittest.TestCase):

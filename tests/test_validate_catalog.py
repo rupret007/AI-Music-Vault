@@ -280,6 +280,17 @@ def extras_ok(cat=None):
             'id="copyWorkNext" id="openWorkEvidence" '
             'function latestMemoForSong( data-open-work="listen" '
             'Start a work session More filters Sit-down sit-down-actions '
+            '<div class="sit-down"><p class="memo-next sit-catalog-next" '
+            'data-sit-next="${esc(d.id)}" hidden></p>'
+            '<div class="sit-down-actions">'
+            '<button type="button" class="subtle-btn" data-copy-sit-next="${esc(d.id)}" hidden>Copy next step</button>'
+            '<button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button>'
+            '<button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>'
+            '</div></div><div class="work-copy">'
+            '.sit-down-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px} '
+            '@media(max-width:390px){.sit-down-actions{display:flex;flex-wrap:wrap}} '
+            'function updateSitDownCatalogNext( function sessionShowsSongNext( '
+            'function copySitDownNextStep( '
             'function workKindLabel( Listen in Logic '
             "scrollIntoView({block:'nearest'}) "
             '#workSession{position:sticky overflow-x:clip '
@@ -309,6 +320,7 @@ def extras_ok(cat=None):
             'function copyResumeLogicNext( function copySongLogicNext( '
             'LOGIC_READY Do not invent one here This page does not open audio '
             'open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) '
+            '— this page does not open audio '
             'function logicReadyFormats( Assets on file '
             'class="skip-link" href="#workNowTitle" <header> <main id="main" <footer '
             '<h2 id="workNowTitle" tabindex="-1"> class="row-heading" aria-controls="song-detail- '
@@ -1133,6 +1145,71 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(extra["dashboard_html"]))
+
+    def test_dashboard_sit_down_span_row_fails_closed(self):
+        extra = extras_ok()
+        mutated = extra["dashboard_html"].replace(
+            '<div class="sit-down-actions">', '<span class="sit-down-actions">'
+        )
+        extra["dashboard_html"] = mutated
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("sit-down must keep copy actions on their own row" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(mutated))
+
+    def test_dashboard_sit_down_inline_flex_fails_closed(self):
+        extra = extras_ok()
+        mutated = extra["dashboard_html"].replace(
+            ".sit-down-actions{display:flex", ".sit-down-actions{display:inline"
+        )
+        extra["dashboard_html"] = mutated
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("sit-down must keep copy actions on their own row" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(mutated))
+
+    def test_dashboard_sit_down_inline_next_markup_fails_closed(self):
+        extra = extras_ok()
+        mutated = extra["dashboard_html"] + "Next: <span>${esc(nxt)}</span>"
+        extra["dashboard_html"] = mutated
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("sit-down must keep copy actions on their own row" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(mutated))
+
+    def test_dashboard_sit_down_duplicate_honesty_fails_closed(self):
+        extra = extras_ok()
+        mutated = extra["dashboard_html"] + (
+            " open in Logic (export honesty: WAVs/AIFF/MIDI preference, "
+            "no Ableton-first) — this page does not open audio"
+        )
+        extra["dashboard_html"] = mutated
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("sit-down must keep copy actions on their own row" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(mutated))
+
+    def test_dashboard_sit_down_removed_row_keeps_css_fails_closed(self):
+        extra = extras_ok()
+        mutated = extra["dashboard_html"].replace(
+            '<div class="sit-down-actions">', "<div>", 1
+        )
+        extra["dashboard_html"] = mutated
+        self.assertIn(".sit-down-actions{display:flex", mutated)
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("sit-down must keep copy actions on their own row" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(mutated))
 
     def test_dashboard_without_private_resume_fails_closed(self):
         extra = extras_ok()

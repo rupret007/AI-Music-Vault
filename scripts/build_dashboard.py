@@ -199,6 +199,7 @@ input{flex:1;min-width:0;width:100%}
 .pill.wk-write{color:var(--pot)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--mom)}
 .work-copy,.sit-down{margin-top:8px}
 .sit-down-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+@media(max-width:390px){.sit-down-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}}
 .sit-memo{margin-top:4px}
 .sit-logic{margin-top:6px}
 .sit-logic-assets{margin-top:4px;color:var(--ink2);font-size:14px;overflow-wrap:anywhere}
@@ -781,7 +782,7 @@ function render(){
   <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?` <span class="pill">${esc(lrPill)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   <div class="scores" role="group" aria-label="Potential, readiness, and momentum scores"><div class="score"><span class="score-lab">Potential</span>${bar(d.pot,'pot')}</div><div class="score"><span class="score-lab">Readiness</span>${bar(d.rdy,'rdy')}</div><div class="score"><span class="score-lab">Momentum</span>${bar(d.mom,'mom')}</div></div>
  </div>${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</div><div class="detail" id="song-detail-${esc(d.id)}" hidden>
-  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}${!nxt&&rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}<p class="memo-next">Catalog next step: see <strong>Do this now</strong> in the work session above.</p>${lrFormats.length?`<div class="sit-logic-assets">Assets on file: ${lrFormats.map(t=>esc(t)).join(' · ')}</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)}</div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latestIntake.label)}</span><div class="memo-next">${latestIntake.copy?'Copy the intake name only (sanitized).':'No copy-safe intake name on this memo row yet.'} Pair intake name + Copy next step in Session Log before you leave.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence for this song.</div>`}${(lrNext||latestIntake.copy)?`<div class="sit-down-actions">${lrNext?`<button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button>`:''}${latestIntake.copy?`<button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}</div>`:''}</div>
+  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}<p class="memo-next sit-catalog-next" data-sit-next="${esc(d.id)}" hidden></p>${lrFormats.length?`<div class="sit-logic-assets">Assets on file: ${lrFormats.map(t=>esc(t)).join(' · ')}</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)}</div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latestIntake.label)}</span><div class="memo-next">${latestIntake.copy?'Copy the intake name only (sanitized).':'No copy-safe intake name on this memo row yet.'} Pair intake name + Copy next step in Session Log before you leave.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence for this song.</div>`}${(nxt||lrNext||latestIntake.copy)?`<div class="sit-down-actions">${nxt?`<button type="button" class="subtle-btn" data-copy-sit-next="${esc(d.id)}" hidden>Copy next step</button>`:''}${lrNext?`<button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button>`:''}${latestIntake.copy?`<button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}</div>`:''}</div>
   ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
   ${hook?`<h4>Hook</h4>${esc(hook)}`:''}
   <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${d.mom?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
@@ -832,6 +833,7 @@ function toggleSong(head,forceOpen){
  if(!detail||!detail.classList.contains('detail'))return;
  const open=forceOpen===true?true:forceOpen===false?false:detail.hidden;
  detail.hidden=!open;head.setAttribute('aria-expanded',String(open));
+ if(typeof updateSitDownCatalogNext==='function')updateSitDownCatalogNext();
 }
 function parseVaultHash(raw,names){
  const text=String(raw||'').replace(/^#/,'');
@@ -942,6 +944,41 @@ function updateWorkSessionState(){
  }
  if(workPrev)workPrev.disabled=idx<=0;
  if(workNext)workNext.disabled=!ids.length||(idx>=0&&idx>=ids.length-1);
+ if(typeof updateSitDownCatalogNext==='function')updateSitDownCatalogNext();
+}
+function sessionShowsSongNext(id){
+ const songId=String(id||'');
+ if(!songId)return false;
+ const kind=typeof work!=='undefined'&&work?String(work.value||''):'';
+ if(!kind)return false;
+ if(typeof workSession!=='undefined'&&workSession&&workSession.hidden)return false;
+ if(typeof activeWorkSongId==='undefined'||String(activeWorkSongId||'')!==songId)return false;
+ const song=typeof DATA!=='undefined'?DATA.find(row=>row&&row.id===songId):null;
+ return typeof safeWorkNextStep==='function'&&!!safeWorkNextStep(song);
+}
+function updateSitDownCatalogNext(){
+ if(typeof list==='undefined'||!list||!list.querySelectorAll)return;
+ list.querySelectorAll('[data-sit-next]').forEach(el=>{
+  const id=String((el.dataset&&el.dataset.sitNext)||'');
+  const row=el.closest?el.closest('[data-song-id]'):null;
+  const box=row&&row.querySelector?row.querySelector('.sit-down'):null;
+  const copyBtn=box&&box.querySelector?box.querySelector('[data-copy-sit-next]'):null;
+  const song=typeof DATA!=='undefined'?DATA.find(d=>d&&d.id===id):null;
+  const nxt=typeof safeWorkNextStep==='function'?safeWorkNextStep(song):'';
+  const rawNx=song&&typeof flattenWorkField==='function'?flattenWorkField(song.nx):'';
+  if(typeof sessionShowsSongNext==='function'&&sessionShowsSongNext(id)&&nxt){
+   el.hidden=true;el.textContent='';
+   if(copyBtn){copyBtn.hidden=true;copyBtn.disabled=true;}
+   return;
+  }
+  if(nxt){
+   el.hidden=false;el.textContent='Do this now: '+nxt;
+   if(copyBtn){copyBtn.hidden=false;copyBtn.disabled=false;}
+   return;
+  }
+  el.hidden=!rawNx;el.textContent=rawNx?'No safe catalog next step.':'';
+  if(copyBtn){copyBtn.hidden=true;copyBtn.disabled=true;}
+ });
 }
 function focusWorkSong(id,moveFocus){
  const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
@@ -1082,6 +1119,14 @@ function allowedExactWorkSongId(songId){
  const saved=typeof readStoredWorkSession==='function'?readStoredWorkSession(vaultStorage(),typeof sname!=='undefined'?sname:null,typeof DATA!=='undefined'?DATA:null):null;
  return saved&&String(saved.id||'')===id?id:'';
 }
+function copySitDownNextStep(songId,btn){
+ const id=String(songId||'');
+ if(!id||typeof DATA==='undefined')return false;
+ const song=DATA.find(d=>d&&d.id===id);
+ const next=typeof safeWorkNextStep==='function'?safeWorkNextStep(song):'';
+ if(!next)return false;
+ return copyVaultText(next,btn,'Copy next step');
+}
 function copyExactSongNextStep(songId,btn){
  const id=allowedExactWorkSongId(songId);
  if(!id||typeof DATA==='undefined')return false;
@@ -1135,6 +1180,8 @@ list.addEventListener('click',e=>{
  if(copyFile){copyMemoFile(copyFile.dataset.copyFile,copyFile);return;}
  const copyLogic=e.target.closest('[data-copy-logic]');
  if(copyLogic){copySongLogicNext(copyLogic.dataset.copyLogic,copyLogic);return;}
+ const copySit=e.target.closest('[data-copy-sit-next]');
+ if(copySit){copySitDownNextStep(copySit.dataset.copySitNext,copySit);return;}
  const copy=e.target.closest('[data-copy-work]');
  if(copy){copySongWork(copy.dataset.copyWork,copy);return;}
  const memos=e.target.closest('[data-open-memos]');
@@ -1142,7 +1189,7 @@ list.addEventListener('click',e=>{
  const head=e.target.closest('[data-toggle-song]');if(head)toggleSong(head);
 });
 list.addEventListener('keydown',e=>{
- if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]')||e.target.closest('[data-copy-file]')||e.target.closest('[data-copy-logic]'))return;
+ if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]')||e.target.closest('[data-copy-file]')||e.target.closest('[data-copy-logic]')||e.target.closest('[data-copy-sit-next]'))return;
  const head=e.target.closest('[data-toggle-song]');
  if(head&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleSong(head);}
 });

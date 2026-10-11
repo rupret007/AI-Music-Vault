@@ -148,6 +148,14 @@ for (const marker of [
   "Start a work session",
   "More filters",
   "Sit-down",
+  "data-sit-next",
+  "data-copy-sit-next",
+  "function updateSitDownCatalogNext(",
+  "function sessionShowsSongNext(",
+  "function copySitDownNextStep(",
+  '<div class="sit-down-actions">',
+  ".sit-down-actions{display:flex",
+  "@media(max-width:390px){.sit-down-actions{display:flex",
   "data-open-work=",
   "data-work-step",
   "Sort: Latest memo evidence",
@@ -312,13 +320,14 @@ if (!detail.hidden || attrs["aria-expanded"] !== "false") fail("force-close must
 const rowHandlers = {};
 const rowActions = [];
 const registration = script.slice(script.indexOf("list.addEventListener('click'"), script.indexOf("if(q)q.addEventListener('keydown'"));
-new Function("list", "toggleSong", "openSongMemos", "copySongWork", "copyMemoFile", "copySongLogicNext", registration)(
+new Function("list", "toggleSong", "openSongMemos", "copySongWork", "copyMemoFile", "copySongLogicNext", "copySitDownNextStep", registration)(
   { addEventListener: (type, handler) => { rowHandlers[type] = handler; } },
   toggleSong,
   id => rowActions.push("memos:" + id),
   id => rowActions.push("work:" + id),
   id => rowActions.push("file:" + id),
   id => rowActions.push("logic:" + id),
+  id => rowActions.push("sit-next:" + id),
 );
 const headTarget = { closest: selector => selector === "[data-toggle-song]" ? head : null };
 for (const [key, expanded] of [["Enter", "true"], [" ", "false"]]) {
@@ -337,6 +346,7 @@ for (const [attribute, dataKey, action] of [
   ["data-copy-work", "copyWork", "work"],
   ["data-copy-file", "copyFile", "file"],
   ["data-copy-logic", "copyLogic", "logic"],
+  ["data-copy-sit-next", "copySitNext", "sit-next"],
 ]) {
   const button = { dataset: { [dataKey]: "TEST-1" } };
   const target = { closest: selector => selector === `[${attribute}]` ? button : null };
@@ -825,8 +835,14 @@ if (!noMemoUi.evidence.textContent.includes("The next step comes from the catalo
 if (!html.toLowerCase().includes("this page does not open audio")) {
   fail("dashboard footer must retain the no-audio reminder");
 }
+if ((html.toLowerCase().match(/open in logic \(export honesty: wavs\/aiff\/midi preference, no ableton-first\) — this page does not open audio/g) || []).length !== 1) {
+  fail("export honesty must stay a single footer sentence");
+}
 if (!html.toLowerCase().includes("wavs/aiff/midi")) {
   fail("dashboard footer must retain WAV/AIFF/MIDI export honesty");
+}
+if (html.includes("Catalog next step: see")) {
+  fail("sit-down must not use an unconditional work-session pointer");
 }
 if (!noMemoUi.review.hidden || !noMemoUi.review.disabled) {
   fail("no-memo work session must not enable memo evidence review");
@@ -864,6 +880,92 @@ const wrongKindCopy = new Function(
 );
 if (wrongKindCopy("JS-0002", copyButton)) {
   fail("copy next step must fail closed when the stored kind no longer matches");
+}
+
+const flattenWorkField = new Function(
+  "return (" + extractFunction(script, "flattenWorkField") + ");",
+)();
+const sitRows = [
+  { id: "JS-0001", nx: "Confirm the chorus" },
+  { id: "JS-0002", nx: "LISTEN: Crescent Dr 21." },
+  { id: "JS-0003", nx: "" },
+];
+function makeSitNode(id) {
+  const copyBtn = { hidden: true, disabled: true };
+  const box = { querySelector(sel) { return sel === "[data-copy-sit-next]" ? copyBtn : null; } };
+  const row = { querySelector(sel) { return sel === ".sit-down" ? box : null; } };
+  const el = { dataset: { sitNext: id }, hidden: true, textContent: "", closest() { return row; } };
+  return { el, copyBtn };
+}
+function bindSessionShows(workValue, sessionHidden, activeId) {
+  return new Function(
+    "work", "workSession", "activeWorkSongId", "DATA", "safeWorkNextStep",
+    "return (" + extractFunction(script, "sessionShowsSongNext") + ");",
+  )({ value: workValue }, { hidden: sessionHidden }, activeId, sitRows, safeWorkNextStep);
+}
+function paintSitDown(sessionShows) {
+  const sitA = makeSitNode("JS-0001");
+  const sitB = makeSitNode("JS-0002");
+  const sitC = makeSitNode("JS-0003");
+  const updateSitDownCatalogNext = new Function(
+    "list", "DATA", "safeWorkNextStep", "flattenWorkField", "sessionShowsSongNext",
+    "return (" + extractFunction(script, "updateSitDownCatalogNext") + ");",
+  )(
+    { querySelectorAll() { return [sitA.el, sitB.el, sitC.el]; } },
+    sitRows,
+    safeWorkNextStep,
+    flattenWorkField,
+    sessionShows,
+  );
+  updateSitDownCatalogNext();
+  return { sitA, sitB, sitC };
+}
+const noSessionSit = paintSitDown(bindSessionShows("", true, ""));
+if (noSessionSit.sitA.el.hidden || noSessionSit.sitA.el.textContent !== "Do this now: Confirm the chorus") {
+  fail("no-session sit-down must show the expanded song's sanitized next");
+}
+if (noSessionSit.sitA.copyBtn.hidden || noSessionSit.sitA.copyBtn.disabled) {
+  fail("no-session sit-down must offer Copy next step for a safe action");
+}
+if (noSessionSit.sitB.el.hidden || noSessionSit.sitB.el.textContent !== "No safe catalog next step.") {
+  fail("no-session sit-down must fail closed on an unsafe next");
+}
+if (!noSessionSit.sitB.copyBtn.hidden || !noSessionSit.sitB.copyBtn.disabled) {
+  fail("unsafe sit-down next must not offer Copy next step");
+}
+if (!noSessionSit.sitC.el.hidden || noSessionSit.sitC.el.textContent !== "") {
+  fail("empty sit-down next must stay hidden");
+}
+const otherSongSit = paintSitDown(bindSessionShows("write", false, "JS-0001"));
+if (!otherSongSit.sitA.el.hidden || otherSongSit.sitA.el.textContent !== "") {
+  fail("same-song session must not duplicate Do this now in sit-down");
+}
+if (!otherSongSit.sitA.copyBtn.hidden || !otherSongSit.sitA.copyBtn.disabled) {
+  fail("same-song session must keep sit-down Copy next step hidden");
+}
+if (otherSongSit.sitB.el.hidden || otherSongSit.sitB.el.textContent !== "No safe catalog next step.") {
+  fail("a different expanded song must keep its own fail-closed next");
+}
+const copiedSit = [];
+const copySitDownNextStep = new Function(
+  "DATA", "safeWorkNextStep", "copyVaultText",
+  "return (" + extractFunction(script, "copySitDownNextStep") + ");",
+)(
+  sitRows,
+  safeWorkNextStep,
+  (value, button, label) => { copiedSit.push({ value, button, label }); return !!value; },
+);
+if (!copySitDownNextStep("JS-0001", { dataset: { copySitNext: "JS-0001" } }) || copiedSit[0].value !== "Confirm the chorus" || copiedSit[0].label !== "Copy next step") {
+  fail("sit-down copy must copy only the sanitized expanded-song action");
+}
+if (copySitDownNextStep("JS-0002", { dataset: { copySitNext: "JS-0002" } })) {
+  fail("sit-down copy must fail closed for an unsafe next");
+}
+if (copySitDownNextStep("JS-0003", { dataset: { copySitNext: "JS-0003" } })) {
+  fail("sit-down copy must fail closed for an empty next");
+}
+if (copySitDownNextStep("missing", { dataset: { copySitNext: "missing" } })) {
+  fail("sit-down copy must fail closed for a missing song");
 }
 
 const copiedLogic = [];

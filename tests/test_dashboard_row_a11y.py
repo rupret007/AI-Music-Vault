@@ -71,10 +71,13 @@ class DashboardRowA11yTests(unittest.TestCase):
         controls = [el for el in self.rows[0].descendants() if el.interactive()]
         self.assertIn("data-toggle-song", controls[0].attrs)
         self.assertIn("data-open-memos", controls[1].attrs)
-        for control, attr in zip(controls[2:5], ["data-copy-logic", "data-copy-file", "data-copy-work"]):
+        for control, attr in zip(
+            controls[2:6],
+            ["data-copy-sit-next", "data-copy-logic", "data-copy-file", "data-copy-work"],
+        ):
             self.assertEqual(control.tag, "button")
             self.assertIn(attr, control.attrs)
-        self.assertGreaterEqual(len(controls), 5)
+        self.assertGreaterEqual(len(controls), 6)
         self.assertTrue(all("disabled" not in el.attrs and el.attrs.get("tabindex") != "-1" for el in controls))
 
     def test_score_names_and_numbers_remain_without_table_roles(self):
