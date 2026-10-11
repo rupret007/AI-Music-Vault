@@ -819,11 +819,14 @@ const updateNoMemoWorkSessionState = new Function(
   {},
 );
 updateNoMemoWorkSessionState();
-if (!noMemoUi.evidence.textContent.includes("Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first).")) {
-  fail("no-memo work session evidence must still carry Logic export honesty guidance");
+if (!noMemoUi.evidence.textContent.includes("The next step comes from the catalog.")) {
+  fail("no-memo work session evidence must name the catalog next step without repeating export honesty");
 }
-if (!noMemoUi.evidence.textContent.includes("This page does not open audio.")) {
-  fail("no-memo work session evidence must retain the no-audio reminder");
+if (!html.toLowerCase().includes("this page does not open audio")) {
+  fail("dashboard footer must retain the no-audio reminder");
+}
+if (!html.toLowerCase().includes("wavs/aiff/midi")) {
+  fail("dashboard footer must retain WAV/AIFF/MIDI export honesty");
 }
 if (!noMemoUi.review.hidden || !noMemoUi.review.disabled) {
   fail("no-memo work session must not enable memo evidence review");

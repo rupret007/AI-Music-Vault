@@ -101,8 +101,9 @@ test; it does not establish that any audio has been heard or exported.
 1. Click Write, Produce, or Listen. Note the song and `N of M` position; use Next
    to check a non-first song.
 2. Read **Do this now** and use **Copy next step**. The clipboard must match the
-   sanitized action without audio filenames or locations. Sit-down Next matches
-   it or reports no safe catalog next step; unsafe actions have no copy button.
+   sanitized action without audio filenames or locations. Sit-down does not
+   repeat that catalog next step; it points you to the work session strip. Unsafe
+   actions have no copy button.
 3. Use **Review memo evidence** when present. It opens scoped memo search, never
    audio. Missing evidence is labeled plainly.
 4. Refresh: the exact song and work kind reopen. Escape / Clear filters leaves

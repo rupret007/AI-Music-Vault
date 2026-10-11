@@ -26,6 +26,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_sit_down_copy_actions_on_own_row,
     readme_documents_session_click_test,
     catalog_workspace_uses_vault_framing,
     overlay_feed_scopes,
@@ -278,7 +279,7 @@ def extras_ok(cat=None):
             'id="workSessionNext" '
             'id="copyWorkNext" id="openWorkEvidence" '
             'function latestMemoForSong( data-open-work="listen" '
-            'Start a work session More filters Sit-down '
+            'Start a work session More filters Sit-down sit-down-actions '
             'function workKindLabel( Listen in Logic '
             "scrollIntoView({block:'nearest'}) "
             '#workSession{position:sticky overflow-x:clip '
@@ -307,6 +308,7 @@ def extras_ok(cat=None):
             'function copyExactSongLogicNext( function copyCurrentWorkLogic( '
             'function copyResumeLogicNext( function copySongLogicNext( '
             'LOGIC_READY Do not invent one here This page does not open audio '
+            'open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) '
             'function logicReadyFormats( Assets on file '
             'class="skip-link" href="#workNowTitle" <header> <main id="main" <footer '
             '<h2 id="workNowTitle" tabindex="-1"> class="row-heading" aria-controls="song-detail- '
@@ -1119,6 +1121,18 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_exposes_song_work(extra["dashboard_html"]))
+
+    def test_dashboard_sit_down_inline_next_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "sit-down-actions", ""
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("sit-down must keep copy actions on their own row" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(extra["dashboard_html"]))
 
     def test_dashboard_without_private_resume_fails_closed(self):
         extra = extras_ok()

@@ -43,6 +43,7 @@ from catalog_surface import (
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_sit_down_copy_actions_on_own_row,
     readme_documents_session_click_test,
 )
 from export_catalog_csv import (
@@ -2030,6 +2031,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must expose write/produce/listen sit-down from "
                 "existing next actions — work session, sanitized next, "
                 "and memo evidence instead of owner-audio paths"
+            )
+        if not dashboard_sit_down_copy_actions_on_own_row(dash):
+            errors.append(
+                "dashboard sit-down must keep copy actions on their own row, "
+                "not repeat the work-session catalog next step, and keep "
+                "export honesty in the footer"
             )
         if not dashboard_resumes_song_work_privately(dash):
             errors.append(

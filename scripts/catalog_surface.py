@@ -1136,7 +1136,31 @@ def dashboard_exposes_song_work(html: str) -> bool:
         and "Start a work session" in chrome
         and "More filters" in chrome
         and "Sit-down" in chrome
+        and "sit-down-actions" in chrome
     )
+
+
+SIT_DOWN_INLINE_COPY_MARKERS = (
+    "Next: ${esc(nxt)}",
+    "Logic-ready next: ${esc(lrNext)} <button",
+    'data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}<div class="memo-next">',
+)
+
+
+def dashboard_sit_down_copy_actions_on_own_row(html: str) -> bool:
+    """Sit-down must not repeat catalog Next; copy controls sit on their own row."""
+    chrome = dashboard_markup_chrome(html)
+    if "sit-down-actions" not in chrome:
+        return False
+    if any(marker in chrome for marker in SIT_DOWN_INLINE_COPY_MARKERS):
+        return False
+    if "export honesty, WAVs/AIFF/MIDI preference, no Ableton-first" in chrome:
+        return False
+    if "this page does not open audio" not in chrome.lower():
+        return False
+    if "wavs/aiff/midi" not in chrome.lower():
+        return False
+    return True
 
 
 def dashboard_resumes_song_work_privately(html: str) -> bool:

@@ -60,9 +60,9 @@ class DashboardFilterLayoutTests(unittest.TestCase):
                 self.assertEqual(re.findall(r'<select id="([^"]+)"', details),
                                  ["proj", "scored", "scope", "evidence", "work", "logicReady"])
                 self.assertEqual(len(re.findall(r'<select[^>]+aria-label="[^"]+"', details)), 6)
-                for copy in ("Catalog rows are not the official set.",
-                             "This page does not open audio.", "WAVs/AIFF/MIDI"):
-                    self.assertTrue(copy in text, copy)
+                self.assertIn("Catalog rows are not the official set.", text)
+                self.assertIn("WAVs/AIFF/MIDI", text)
+                self.assertIn("this page does not open audio", text.lower())
 
 
 if __name__ == "__main__":
