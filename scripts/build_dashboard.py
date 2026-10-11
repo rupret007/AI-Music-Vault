@@ -16,6 +16,8 @@ from catalog_surface import (  # noqa: E402
     ON_DECK_NOTE,
     SURFACE_SUBTITLE,
     build_memo_search_index,
+    catalog_cover_count,
+    catalog_recovered_count,
     logic_ready_maps,
     overlay_feed_scopes,
     played_badge_label,
@@ -86,6 +88,9 @@ TX_MATCHED_TOTAL = memo_counts["matched"]
 TX_SEARCHABLE_TOTAL = memo_counts["searchable"]
 TX_SEARCHABLE_MATCHED = memo_counts["searchable_matched"]
 TX = json.dumps(tx, ensure_ascii=False).replace('</', '<\\/')
+COVER_COUNT = catalog_cover_count(cat)
+RECOVERED_COUNT = catalog_recovered_count(cat)
+CATALOG_VERSION = str(cat.get("version") or "")
 
 page = r'''<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
@@ -97,23 +102,37 @@ page = r'''<!DOCTYPE html>
 @media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;
  --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--rdy:#eb6834;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{overflow-x:hidden}
+html,body{overflow-x:hidden;overflow-x:clip}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
 .skip-link{position:absolute;left:-999px;top:8px;z-index:20;background:var(--pot);color:#fff;padding:8px 12px;border-radius:8px}
 .skip-link:focus,.skip-link:focus-visible{left:8px}
 :focus-visible{outline:2px solid var(--pot);outline-offset:2px}
-h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 16px}
-.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
+.has-resume header>.sub,.has-resume #startWork .work-now-copy,.has-resume #startWork #workNowTitle{display:none}
+.stats-fold{margin:0 0 16px}
+.stats-fold>summary{list-style:none;cursor:pointer;color:var(--ink2);font-size:13px;padding:8px 10px;min-height:44px;overflow-wrap:anywhere;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.stats-fold>summary::-webkit-details-marker{display:none}
+.stats-fold>summary::after{content:' +';color:var(--ink3)}
+.stats-fold[open]>summary::after{content:' −'}
+.stats-fold[open]>summary{margin-bottom:10px}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:0}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:100px;flex:1 1 140px}
 .stat b{font-size:20px;display:block} .stat span{color:var(--ink3);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
 .work-now{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
-.work-now h2{font-size:15px}.work-now p{color:var(--ink3);font-size:13px;margin:2px 0 10px}
+.work-now h2{font-size:15px;margin-bottom:6px}.work-now p{color:var(--ink3);font-size:13px;margin:8px 0 10px}
+.work-now .work-starts{margin:0 0 2px}
 .work-starts{display:flex;gap:8px;flex-wrap:wrap}
 .work-start{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:700;min-height:44px}
 .work-start span{color:var(--ink3);font-weight:500;margin-left:4px}
 .work-start:hover,.work-start:focus-visible{border-color:var(--pot);outline:2px solid var(--pot);outline-offset:2px}
-.resume-work{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
-.resume-work .work-start{flex:1;text-align:left}
+.resume-work{margin-top:12px}
+.resume-work .work-start{width:100%;text-align:left;font:inherit;font-size:18px;overflow-wrap:anywhere}
+.resume-work .work-start span{color:var(--ink);font-weight:700;margin-left:0}
+.resume-work .resume-next{margin:10px 0}
+.resume-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.resume-details summary,.catalog-overview summary{cursor:pointer;min-height:44px;padding:10px 0;color:var(--ink2);font-size:14px}
+.catalog-overview{margin-bottom:12px}
+.resume-status:empty{display:none}
 .resume-next{flex:1 1 100%;font-weight:700;color:var(--ink);max-width:650px;overflow-wrap:anywhere}
 .resume-work .primary-action{border-color:var(--pot);color:var(--ink)}
 .resume-hint,.resume-status{color:var(--ink3);font-size:13px;margin:8px 0 0}
@@ -128,15 +147,17 @@ h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 16px}
 .tab{padding:8px 16px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink2);cursor:pointer;font-size:15px;font-weight:600;min-height:44px}
 .tab.on{background:var(--card2);color:var(--ink);border-color:var(--ink3)}
 .controls{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
+.song-controls{position:static}
 input,select,.subtle-btn,.memo-link,.song-link{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px;min-height:44px}
 input{flex:1;min-width:0;width:100%}
 .advanced-filters{position:relative}
+.advanced-filters[open]{flex-basis:100%;min-width:0}
 .advanced-filters summary{list-style:none;background:var(--card);color:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px;cursor:pointer;font-weight:600;min-height:44px}
 .advanced-filters summary::-webkit-details-marker{display:none}
 .advanced-filters summary::after{content:' +';color:var(--ink3)}
 .advanced-filters[open] summary::after{content:' −'}
-.advanced-menu{position:absolute;right:0;top:48px;display:grid;gap:8px;width:min(340px,calc(100vw - 24px));padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px #0008;z-index:8}
-.advanced-menu select{width:100%}
+.advanced-menu{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;margin-top:8px;padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:10px}
+.advanced-menu select{width:100%;min-width:0}
 .row{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;overflow:hidden;max-width:100%}
 .row-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
 .row-heading>.memo-link{margin:8px 12px 8px 0}
@@ -166,6 +187,8 @@ input{flex:1;min-width:0;width:100%}
 .mhint{color:var(--ink3);font-size:13px;padding:16px;text-align:center;overflow-wrap:anywhere}
 .resultbar,.memo-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink3);font-size:13px;margin:0 0 10px;flex-wrap:wrap}
 .memo-scope{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink2)}
+#workSession{position:sticky;top:0;z-index:6;background:var(--card)}
+[data-song-id]{scroll-margin-top:var(--work-session-gap,0px)}
 .subtle-btn,.memo-link,.song-link{cursor:pointer;font-weight:600}
 .subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:8px 10px;color:var(--pot)}
 .song-link{border:0;background:transparent;padding:8px 4px;font-size:inherit;text-decoration:underline;text-underline-offset:2px;min-height:44px}
@@ -183,31 +206,42 @@ input{flex:1;min-width:0;width:100%}
 .work-session-actions .primary-action{border-color:var(--pot);color:var(--ink)}
 .pill.memo-link{min-height:44px}
 @media(max-width:800px){.row-heading{grid-template-columns:minmax(0,1fr)}.row-heading>.memo-link{justify-self:start;margin:0 12px 10px}}
-@media(max-width:640px){.work-start{flex:1 1 100%}.resume-work{align-items:stretch}.controls>input,.controls>select{flex-basis:100%}.advanced-filters{margin-left:0;width:100%}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{right:auto;left:0;width:100%}.lane{align-items:flex-start}}
+@media(max-width:640px){.work-start{flex:1 1 100%}.resume-work{align-items:stretch}.controls>input,.controls>select{flex-basis:100%}.advanced-filters{margin-left:0;width:100%}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{grid-template-columns:minmax(0,1fr)}.lane{align-items:flex-start}}
 @media(max-width:375px){body{padding:12px;font-size:16px}.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}
 </style></head><body>
 <a class="skip-link" href="#workNowTitle">Skip to work session</a>
 <header>
 <h1><span aria-hidden="true">🎸 </span>Jeff Story Song Vault</h1>
-<p class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</p>
+<p class="sub">No audio in this repo, and catalog rows are not the live set.</p>
 </header>
-<div class="stats" id="stats" role="region" aria-label="Catalog counts"></div>
-<section class="work-now" aria-labelledby="workNowTitle">
- <h2 id="workNowTitle" tabindex="-1">Start a work session</h2>
- <p>Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
- <div class="work-starts" id="workStarts"></div>
- <div class="resume-work" id="resumeWork" hidden>
-  <button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button>
-  <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
+<section class="work-now resume-work" id="resumeWork" aria-labelledby="resumeWorkButton" hidden>
+  <h2><button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button></h2>
   <div class="resume-next" id="resumeWorkNext" hidden></div>
+  <div class="resume-actions">
   <button type="button" class="subtle-btn primary-action" id="copyResumeNext" hidden>Copy next step</button>
+  <button type="button" class="subtle-btn" id="forgetWorkSession" aria-label="Forget this browser work session">Forget</button>
+  </div>
+  <details class="resume-details"><summary>Logic-ready next and session details</summary>
   <div class="resume-next" id="resumeWorkLogic" hidden></div>
   <div class="resume-next" id="resumeWorkAssets" hidden></div>
   <button type="button" class="subtle-btn" id="copyResumeLogic" hidden>Copy Logic-ready next</button>
- </div>
  <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
- <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
+  </details>
 </section>
+<p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
+<section class="work-now" id="startWork" aria-labelledby="workNowTitle">
+ <h2 id="workNowTitle" tabindex="-1">Start a work session</h2>
+ <div class="work-starts" id="workStarts"></div>
+ <p class="work-now-copy">Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
+</section>
+<details class="catalog-overview" id="catalogOverview" open>
+ <summary id="catalogOverviewSummary" hidden>Catalog details and counts</summary>
+ <p class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</p>
+<details class="stats-fold" id="statsFold">
+ <summary id="statsLine">Catalog counts</summary>
+ <div class="stats" id="stats" role="region" aria-label="Catalog counts"></div>
+</details>
+</details>
 <section class="lanes" aria-labelledby="lanesTitle">
  <h2 id="lanesTitle">The three lanes (+ on deck)</h2>
  <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button> ''' + _lane_work_pill("ST-0001") + r'''<span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
@@ -222,7 +256,7 @@ input{flex:1;min-width:0;width:100%}
 </nav>
 <main id="main">
 <div id="paneS" role="tabpanel" aria-labelledby="tabS">
-<div class="controls">
+<div class="controls song-controls">
  <input id="q" placeholder="Search titles, aliases, hooks… (try: candy lane, only 18, garden)" autocomplete="off" aria-label="Search songs by title, alias, hook, or memo lyric">
  <select id="sort" aria-label="Sort songs">
   <option value="mom">Sort: Momentum (what's alive)</option>
@@ -235,7 +269,7 @@ input{flex:1;min-width:0;width:100%}
   <select id="scored" aria-label="Filter scored songs"><option value="">All songs</option><option value="1">Scored only</option><option value="0">Unscored / to explore</option></select>
   <select id="scope" aria-label="Filter StoryBoard scope"><option value="">All StoryBoard scopes</option></select>
   <select id="evidence" aria-label="Filter memo evidence"><option value="">Any memo evidence</option><option value="1">Has searchable memos</option><option value="0">No searchable memos</option></select>
-  <select id="work" aria-label="Filter work kind"><option value="">Any work</option><option value="write">Write</option><option value="produce">Produce</option><option value="listen">Listen</option><option value="rest">Rest</option><option value="inventory">Inventory</option><option value="decide">Decide</option></select>
+  <select id="work" aria-label="Filter work kind"><option value="">Any work</option><option value="write">Write</option><option value="produce">Produce</option><option value="listen">Listen in Logic</option><option value="rest">Rest</option><option value="inventory">Inventory</option><option value="decide">Decide</option></select>
   <select id="logicReady" aria-label="Filter Logic-ready cluster"><option value="">Any Logic-ready</option>__LOGIC_READY_FILTER__</select>
  </div></details>
 </div>
@@ -245,7 +279,7 @@ input{flex:1;min-width:0;width:100%}
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
 <div id="list"></div>
-<div class="covers-note">93 covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
+<div class="covers-note">__COVER_COUNT__ covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
 <div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: alright, garden, better than now)" aria-label="Search memo transcripts"></div>
@@ -253,7 +287,7 @@ input{flex:1;min-width:0;width:100%}
 <div id="mlist"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
 </div>
 </main>
-<footer class="foot">Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio. Logic-ready next is catalog evidence, not a completed export.</footer>
+<footer class="foot">Catalog v''' + CATALOG_VERSION + r'''. Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio. Logic-ready next is catalog evidence, not a completed export.</footer>
 <script>
 const DATA = __DATA__;
 const LOGIC_READY = __LOGIC_READY__;
@@ -262,6 +296,8 @@ const TX_TOTAL = __TX_TOTAL__;
 const TX_MATCHED_TOTAL = __TX_MATCHED_TOTAL__;
 const TX_SEARCHABLE_TOTAL = __TX_SEARCHABLE_TOTAL__;
 const TX_SEARCHABLE_MATCHED = __TX_SEARCHABLE_MATCHED__;
+const COVER_COUNT = __COVER_COUNT__;
+const RECOVERED_COUNT = __RECOVERED_COUNT__;
 const WORK_SESSION_KEY='vault:last-work:v1';
 const q=document.getElementById('q'),proj=document.getElementById('proj'),
  sort=document.getElementById('sort'),scored=document.getElementById('scored'),
@@ -279,6 +315,7 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
  resumeWorkHint=document.getElementById('resumeWorkHint'),resumeWorkStatus=document.getElementById('resumeWorkStatus'),
  resumeWorkNext=document.getElementById('resumeWorkNext'),copyResumeNext=document.getElementById('copyResumeNext'),
  resumeWorkLogic=document.getElementById('resumeWorkLogic'),resumeWorkAssets=document.getElementById('resumeWorkAssets'),
+ catalogOverview=document.getElementById('catalogOverview'),catalogOverviewSummary=document.getElementById('catalogOverviewSummary'),
  copyResumeLogic=document.getElementById('copyResumeLogic'),
  tabS=document.getElementById('tabS'),tabM=document.getElementById('tabM'),
  paneS=document.getElementById('paneS'),paneM=document.getElementById('paneM'),
@@ -318,16 +355,25 @@ const scoredCount=DATA.filter(d=>d.pot).length;
 const defaultLiveCount=DATA.filter(d=>d.scope==='default_live').length;
 const workCounts={write:0,produce:0,listen:0};
 DATA.forEach(d=>{const wk=songWorkKind(d.nx);if(workCounts[wk]!=null)workCounts[wk]+=1;});
+const statsLine=document.getElementById('statsLine');
+if(statsLine){
+ statsLine.textContent=`${DATA.length} songs · ${scoredCount} scored · ${defaultLiveCount} default-live · ${RECOVERED_COUNT} recovered · ${COVER_COUNT} covers · ${TX_MATCHED_TOTAL} matched · ${TX_SEARCHABLE_TOTAL} searchable · ${TX_TOTAL} transcribed`;
+}
 document.getElementById('stats').innerHTML=
  `<div class="stat"><b>${DATA.length}</b><span>songs cataloged</span></div>`+
  `<div class="stat"><b>${scoredCount}</b><span>scored</span></div>`+
  `<div class="stat"><b>${defaultLiveCount}</b><span>default-live catalog</span></div>`+
- `<div class="stat"><b>9</b><span>songs recovered from memos</span></div>`+
+ `<div class="stat"><b>${RECOVERED_COUNT}</b><span>songs recovered from memos</span></div>`+
  `<div class="stat"><b>${TX_MATCHED_TOTAL}</b><span>memos matched</span></div>`+
  `<div class="stat"><b>${TX_SEARCHABLE_TOTAL}</b><span>memos searchable</span></div>`+
  `<div class="stat"><b>${TX_TOTAL}</b><span>memos transcribed</span></div>`;
+function workKindLabel(kind){
+ const k=String(kind||'');
+ if(k==='listen')return 'Listen in Logic';
+ return k?k[0].toUpperCase()+k.slice(1):'';
+}
 workStarts.innerHTML=['write','produce','listen'].map(kind=>
- `<button type="button" class="work-start" data-open-work="${kind}">${kind[0].toUpperCase()+kind.slice(1)} <span>${workCounts[kind]} songs</span></button>`
+ `<button type="button" class="work-start" data-open-work="${kind}">${workKindLabel(kind)} <span>${workCounts[kind]} songs</span></button>`
 ).join('');
 function esc(s){return (s===null||s===undefined?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function flattenWorkField(value){
@@ -403,11 +449,21 @@ function updateResumeWork(){
  if(typeof resumeWork==='undefined'||!resumeWork)return null;
  const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
  resumeWork.hidden=!saved;
+ if(typeof catalogOverview!=='undefined'&&catalogOverview&&typeof catalogOverviewSummary!=='undefined'&&catalogOverviewSummary){
+  // Collapse on entering resume; preserve an explicit disclosure choice after that.
+  if(catalogOverviewSummary.hidden===!!saved)catalogOverview.open=!saved;
+  catalogOverviewSummary.hidden=!saved;
+ }
  if(typeof resumeWorkHint!=='undefined'&&resumeWorkHint)resumeWorkHint.hidden=!saved;
+ if(typeof document!=='undefined'&&document.body&&document.body.classList){
+  document.body.classList.toggle('has-resume',!!saved);
+ }
+ const workNow=resumeWork.closest?resumeWork.closest('.work-now'):null;
+ if(workNow&&workNow.classList)workNow.classList.toggle('has-resume',!!saved);
  const song=saved&&typeof DATA!=='undefined'?DATA.find(row=>row&&row.id===saved.id):null;
  const next=typeof safeWorkNextStep==='function'?safeWorkNextStep(song):'';
  if(saved&&resumeWorkText){
-  const label=saved.kind[0].toUpperCase()+saved.kind.slice(1);
+  const label=typeof workKindLabel==='function'?workKindLabel(saved.kind):(saved.kind[0].toUpperCase()+saved.kind.slice(1));
   const title=sname[saved.id]||'';
   resumeWorkText.textContent=`${label} · ${title}`;
   if(resumeWorkButton)resumeWorkButton.setAttribute('aria-label',`Resume ${label} session for ${title}`);
@@ -467,6 +523,13 @@ function forgetLastWorkSession(){
  }
  updateResumeWork();
  announceWorkSession(result.message);
+ if(result.ok&&typeof workStarts!=='undefined'&&workStarts){
+  const first=workStarts.querySelector('button');
+  if(first){
+    first.focus();
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(function(){first.focus();});
+  }
+ }
  return result.ok;
 }
 function stripPrivateLocators(text){
@@ -826,7 +889,7 @@ function updateWorkSessionState(){
  const idx=typeof activeWorkSongId!=='undefined'?ids.indexOf(activeWorkSongId):-1;
  workSession.hidden=!kind;
  if(kind&&workSessionText){
-  const label=kind[0].toUpperCase()+kind.slice(1);
+  const label=typeof workKindLabel==='function'?workKindLabel(kind):(kind[0].toUpperCase()+kind.slice(1));
   workSessionText.textContent=!ids.length
    ?`${label} · no matching songs`
    :idx>=0
@@ -890,7 +953,16 @@ function focusWorkSong(id,moveFocus){
  const kind=typeof work!=='undefined'&&work?String(work.value||''):'';
  if(kind&&typeof rememberWorkSession==='function')rememberWorkSession(kind,activeWorkSongId);
  updateWorkSessionState();
- if(moveFocus!==false)requestAnimationFrame(()=>{head.focus();head.scrollIntoView({block:'center'});});
+ if(moveFocus!==false)requestAnimationFrame(()=>{
+  const sessionEl=typeof workSession!=='undefined'?workSession:null;
+  const gap=(sessionEl&&!sessionEl.hidden)?sessionEl.offsetHeight:0;
+  if(typeof document!=='undefined'&&document.documentElement){
+   document.documentElement.style.setProperty('--work-session-gap',gap+'px');
+  }
+  head.focus();
+  head.scrollIntoView({block:'nearest'});
+  if(sessionEl&&!sessionEl.hidden)sessionEl.scrollIntoView({block:'nearest'});
+ });
  return true;
 }
 function stepWork(delta){
@@ -1212,7 +1284,9 @@ page = (page.replace('__DATA__', DATA)
     .replace('__TX_TOTAL__', str(TX_TOTAL))
     .replace('__TX_MATCHED_TOTAL__', str(TX_MATCHED_TOTAL))
     .replace('__TX_SEARCHABLE_TOTAL__', str(TX_SEARCHABLE_TOTAL))
-    .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED)))
+    .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED))
+    .replace('__COVER_COUNT__', str(COVER_COUNT))
+    .replace('__RECOVERED_COUNT__', str(RECOVERED_COUNT)))
 open(OUT_PATH,'w').write(page)
 print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,',
       TX_SEARCHABLE_TOTAL, 'searchable transcripts from', TX_TOTAL, 'transcribed')
