@@ -98,9 +98,9 @@ page = r'''<!DOCTYPE html>
 <title>Jeff Story Song Vault</title>
 <style>
 :root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;
- --pot:#3987e5;--rdy:#ee7a3a;--mom:#199e70;--line:#3a3a38;--good:#199e70;}
+ --pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--line:#3a3a38;--good:#199e70;}
 @media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;
- --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--rdy:#b84414;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
+ --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--write:#2466b8;--rdy:#b84414;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{overflow-x:hidden;overflow-x:clip}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
@@ -142,7 +142,7 @@ h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
 .lane{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px dashed var(--line)}
 .lane:last-child{border:none}
 .tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:99px;background:var(--card2);color:var(--ink2);white-space:nowrap}
-.tag.f{color:var(--pot)} .tag.q{color:var(--good)} .tag.x{color:var(--rdy)}
+.tag.f{color:var(--write)} .tag.q{color:var(--good)} .tag.x{color:var(--rdy)}
 .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .tab{padding:8px 16px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink2);cursor:pointer;font-size:15px;font-weight:600;min-height:44px}
 .tab.on{background:var(--card2);color:var(--ink);border-color:var(--ink3)}
@@ -191,12 +191,12 @@ input{flex:1;min-width:0;width:100%}
 #workSession{position:sticky;top:0;z-index:6;background:var(--card)}
 [data-song-id]{scroll-margin-top:var(--work-session-gap,0px)}
 .subtle-btn,.memo-link,.song-link{cursor:pointer;font-weight:600}
-.subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:8px 10px;color:var(--pot)}
+.subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:8px 10px;color:var(--write)}
 .song-link{border:0;background:transparent;padding:8px 4px;font-size:inherit;text-decoration:underline;text-underline-offset:2px;min-height:44px}
 .lane .song-link{font-weight:700;color:var(--ink)}
 .memo-next{color:var(--ink3);font-size:13px;margin-top:3px;overflow-wrap:anywhere}
 .copied{color:var(--good)}
-.pill.wk-write{color:var(--pot)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--mom)}
+.pill.wk-write{color:var(--write)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--mom)}
 .work-copy,.sit-down{margin-top:8px}
 .sit-memo{margin-top:4px}
 .sit-logic{margin-top:6px}

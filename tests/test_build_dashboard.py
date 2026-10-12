@@ -33,6 +33,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_phone_and_a11y_ready,
     dashboard_phone_layout_covers,
     dashboard_rdy_contrast_ready,
+    dashboard_write_contrast_ready,
     dashboard_skip_link_contrast_ready,
     dashboard_search_mark_contrast_ready,
     dashboard_resumes_song_work_privately,
@@ -1486,6 +1487,88 @@ class DashboardSearchMarkContrastTests(unittest.TestCase):
             ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)",
             dashboard,
         )
+
+
+# Pre-fix Potential blues used as write/link text. Bar --pot stays.
+_OLD_WRITE_DARK = "#3987e5"
+_OLD_WRITE_LIGHT = "#2a78d6"
+_AUDIT_WRITE_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--write:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--write:#2a78d6;}}
+.pill.wk-write{color:var(--write)}.memo-link,.song-link{padding:8px 10px;color:var(--write)}.tag.f{color:var(--write)}
+</style><span class="pill wk-write">write</span>"""
+_FIXED_WRITE_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--write:#3993fd;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--write:#2466b8;}}
+.pill.wk-write{color:var(--write)}.memo-link,.song-link{padding:8px 10px;color:var(--write)}.tag.f{color:var(--write)}
+</style><span class="pill wk-write">write</span>"""
+
+
+class DashboardWriteContrastTests(unittest.TestCase):
+    def test_audit_blues_miss_aa_on_card_and_light_bg(self):
+        self.assertGreaterEqual(contrast_ratio(_OLD_WRITE_DARK, "#1a1a19"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_WRITE_DARK, "#242423"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_WRITE_LIGHT, "#fcfcfb"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_WRITE_LIGHT, "#ffffff"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio(_OLD_WRITE_DARK, "#242423"), 4.27, places=2)
+        self.assertAlmostEqual(contrast_ratio(_OLD_WRITE_LIGHT, "#fcfcfb"), 4.30, places=2)
+        self.assertFalse(dashboard_write_contrast_ready(_AUDIT_WRITE_SNIPPET))
+
+    def test_gate_fails_closed_without_write_token_or_light_scheme(self):
+        self.assertFalse(dashboard_write_contrast_ready("<html></html>"))
+        no_light = _FIXED_WRITE_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_write_contrast_ready(no_light))
+        no_write_pill = _FIXED_WRITE_SNIPPET.replace(
+            ".pill.wk-write{color:var(--write)}", ".pill.wk-write{color:var(--pot)}"
+        )
+        self.assertFalse(dashboard_write_contrast_ready(no_write_pill))
+        no_link = _FIXED_WRITE_SNIPPET.replace(
+            ".memo-link,.song-link{padding:8px 10px;color:var(--write)}",
+            ".memo-link,.song-link{padding:8px 10px;color:var(--pot)}",
+        )
+        self.assertFalse(dashboard_write_contrast_ready(no_link))
+
+    def test_fixed_write_tokens_meet_aa_and_keep_light_scheme(self):
+        self.assertTrue(dashboard_write_contrast_ready(_FIXED_WRITE_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_WRITE_SNIPPET)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card2"]), WCAG_AA_NORMAL_TEXT
+            )
+
+    def test_committed_dashboard_write_and_links_meet_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_write_contrast_ready(dashboard))
+        self.assertIn("--write:#3993fd", dashboard)
+        self.assertIn("--write:#2466b8", dashboard)
+        self.assertIn(".pill.wk-write{color:var(--write)}", dashboard)
+        self.assertIn(".memo-link,.song-link{padding:8px 10px;color:var(--write)}", dashboard)
+        self.assertIn(".tag.f{color:var(--write)}", dashboard)
+        self.assertIn("--pot:#3987e5", dashboard)
+        self.assertIn("--pot:#2a78d6", dashboard)
+        dark, light = dashboard_theme_tokens(dashboard)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card2"]), WCAG_AA_NORMAL_TEXT
+            )
 
 
 if __name__ == "__main__":

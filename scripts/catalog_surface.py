@@ -1568,8 +1568,20 @@ _LIGHT_SCHEME_ROOT_RE = re.compile(
 _PRODUCE_PILL_COLOR_RE = re.compile(
     r"\.pill\.wk-produce\s*\{\s*color\s*:\s*var\(\s*--rdy\s*\)",
 )
+_WRITE_PILL_COLOR_RE = re.compile(
+    r"\.pill\.wk-write\s*\{\s*color\s*:\s*var\(\s*--write\s*\)",
+)
+_LINK_WRITE_COLOR_RE = re.compile(
+    r"\.memo-link,\s*\.song-link\s*\{[^}]*color\s*:\s*var\(\s*--write\s*\)",
+)
+_FLAGSHIP_WRITE_COLOR_RE = re.compile(
+    r"\.tag\.f\s*\{\s*color\s*:\s*var\(\s*--write\s*\)",
+)
 _BAR_NUMBER_INK_RE = re.compile(
     r"\.bar-n\s*\{\s*color\s*:\s*var\(\s*--ink\s*\)",
+)
+_OLD_WRITE_ON_POT_RE = re.compile(
+    r"(?:\.pill\.wk-write|\.memo-link,\s*\.song-link|\.tag\.f)\s*\{[^}]*color\s*:\s*var\(\s*--pot\s*\)"
 )
 
 
@@ -1614,6 +1626,40 @@ def dashboard_theme_tokens(html: str) -> tuple[dict[str, str], dict[str, str]]:
     dark_match = _CSS_ROOT_RE.search(without_light)
     dark = _css_root_tokens(dark_match.group(1) if dark_match else "")
     return dark, light
+
+
+def dashboard_write_contrast_ready(html: str) -> bool:
+    """Write pills, flagship tag, and song/memo links meet WCAG AA 4.5:1.
+
+    Bar fills, skip-link, and search marks may keep --pot. Text uses --write
+    so those fills are not forced into the same token. Light-scheme stays.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    if not _WRITE_PILL_COLOR_RE.search(chrome):
+        return False
+    if not _LINK_WRITE_COLOR_RE.search(chrome):
+        return False
+    if not _FLAGSHIP_WRITE_COLOR_RE.search(chrome):
+        return False
+    if _OLD_WRITE_ON_POT_RE.search(chrome):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        write = theme.get("write")
+        background = theme.get("bg")
+        card = theme.get("card")
+        card2 = theme.get("card2")
+        if not write or not background or not card or not card2:
+            return False
+        if contrast_ratio(write, background) < WCAG_AA_NORMAL_TEXT:
+            return False
+        if contrast_ratio(write, card) < WCAG_AA_NORMAL_TEXT:
+            return False
+        if contrast_ratio(write, card2) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return True
 
 
 def dashboard_rdy_contrast_ready(html: str) -> bool:
