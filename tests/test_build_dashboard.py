@@ -32,6 +32,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_computed_home_layout,
     dashboard_phone_and_a11y_ready,
     dashboard_phone_layout_covers,
+    dashboard_listen_contrast_ready,
     dashboard_rdy_contrast_ready,
     dashboard_write_contrast_ready,
     dashboard_skip_link_contrast_ready,
@@ -1569,6 +1570,84 @@ class DashboardWriteContrastTests(unittest.TestCase):
             self.assertGreaterEqual(
                 contrast_ratio(theme["write"], theme["card2"]), WCAG_AA_NORMAL_TEXT
             )
+
+
+_OLD_LISTEN_DARK = "#199e70"
+_OLD_LISTEN_LIGHT = "#1baf7a"
+_AUDIT_LISTEN_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--listen:#199e70;--good:#199e70;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--listen:#1baf7a;--good:#1baf7a;}}
+.pill.wk-listen{color:var(--listen)}.tag.q{color:var(--good)}
+</style><span class="pill wk-listen">listen</span>"""
+_FIXED_LISTEN_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--listen:#20b87e;--good:#20b87e;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--listen:#187a56;--good:#187a56;}}
+.pill.wk-listen{color:var(--listen)}.tag.q{color:var(--good)}
+</style><span class="pill wk-listen">listen</span>"""
+
+
+class DashboardListenContrastTests(unittest.TestCase):
+    def test_audit_greens_miss_aa_on_card2_and_light_bg(self):
+        self.assertGreaterEqual(contrast_ratio(_OLD_LISTEN_DARK, "#1a1a19"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_LISTEN_DARK, "#2c2c2a"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_LISTEN_LIGHT, "#fcfcfb"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio(_OLD_LISTEN_DARK, "#2c2c2a"), 4.11, places=2)
+        self.assertAlmostEqual(contrast_ratio(_OLD_LISTEN_LIGHT, "#fcfcfb"), 2.74, places=2)
+        self.assertFalse(dashboard_listen_contrast_ready(_AUDIT_LISTEN_SNIPPET))
+
+    def test_gate_fails_closed_without_listen_token_or_light_scheme(self):
+        self.assertFalse(dashboard_listen_contrast_ready("<html></html>"))
+        no_light = _FIXED_LISTEN_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_listen_contrast_ready(no_light))
+        on_mom = _FIXED_LISTEN_SNIPPET.replace(
+            ".pill.wk-listen{color:var(--listen)}", ".pill.wk-listen{color:var(--mom)}"
+        )
+        self.assertFalse(dashboard_listen_contrast_ready(on_mom))
+
+    def test_fixed_listen_tokens_meet_aa_and_keep_light_scheme(self):
+        self.assertTrue(dashboard_listen_contrast_ready(_FIXED_LISTEN_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_LISTEN_SNIPPET)
+        for theme in (dark, light):
+            for token in ("listen", "good"):
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["bg"]), WCAG_AA_NORMAL_TEXT
+                )
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["card"]), WCAG_AA_NORMAL_TEXT
+                )
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["card2"]), WCAG_AA_NORMAL_TEXT
+                )
+
+    def test_committed_dashboard_listen_and_quick_win_meet_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_listen_contrast_ready(dashboard))
+        self.assertIn("--listen:#20b87e", dashboard)
+        self.assertIn("--listen:#187a56", dashboard)
+        self.assertIn("--good:#20b87e", dashboard)
+        self.assertIn("--good:#187a56", dashboard)
+        self.assertIn(".pill.wk-listen{color:var(--listen)}", dashboard)
+        self.assertIn(".tag.q{color:var(--good)}", dashboard)
+        self.assertIn("--mom:#199e70", dashboard)
+        self.assertIn("--mom:#1baf7a", dashboard)
+        dark, light = dashboard_theme_tokens(dashboard)
+        for theme in (dark, light):
+            for token in ("listen", "good"):
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["bg"]), WCAG_AA_NORMAL_TEXT
+                )
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["card"]), WCAG_AA_NORMAL_TEXT
+                )
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["card2"]), WCAG_AA_NORMAL_TEXT
+                )
 
 
 if __name__ == "__main__":

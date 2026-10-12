@@ -1568,6 +1568,12 @@ _LIGHT_SCHEME_ROOT_RE = re.compile(
 _PRODUCE_PILL_COLOR_RE = re.compile(
     r"\.pill\.wk-produce\s*\{\s*color\s*:\s*var\(\s*--rdy\s*\)",
 )
+_LISTEN_PILL_COLOR_RE = re.compile(
+    r"\.pill\.wk-listen\s*\{\s*color\s*:\s*var\(\s*--listen\s*\)",
+)
+_QUICK_WIN_COLOR_RE = re.compile(
+    r"\.tag\.q\s*\{\s*color\s*:\s*var\(\s*--good\s*\)",
+)
 _WRITE_PILL_COLOR_RE = re.compile(
     r"\.pill\.wk-write\s*\{\s*color\s*:\s*var\(\s*--write\s*\)",
 )
@@ -1580,6 +1586,11 @@ _FLAGSHIP_WRITE_COLOR_RE = re.compile(
 _BAR_NUMBER_INK_RE = re.compile(
     r"\.bar-n\s*\{\s*color\s*:\s*var\(\s*--ink\s*\)",
 )
+_OLD_LISTEN_ON_MOM_RE = re.compile(
+    r"\.pill\.wk-listen\s*\{\s*color\s*:\s*var\(\s*--mom\s*\)"
+)
+
+
 _OLD_WRITE_ON_POT_RE = re.compile(
     r"(?:\.pill\.wk-write|\.memo-link,\s*\.song-link|\.tag\.f)\s*\{[^}]*color\s*:\s*var\(\s*--pot\s*\)"
 )
@@ -1626,6 +1637,40 @@ def dashboard_theme_tokens(html: str) -> tuple[dict[str, str], dict[str, str]]:
     dark_match = _CSS_ROOT_RE.search(without_light)
     dark = _css_root_tokens(dark_match.group(1) if dark_match else "")
     return dark, light
+
+
+def dashboard_listen_contrast_ready(html: str) -> bool:
+    """Listen pills and Quick-win/Copied/--good text meet WCAG AA 4.5:1.
+
+    Momentum bar fills may keep --mom. Listen text uses --listen. Quick win,
+    Copied, and YES-gate text keep --good, retuned to the same AA greens.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    if not _LISTEN_PILL_COLOR_RE.search(chrome):
+        return False
+    if not _QUICK_WIN_COLOR_RE.search(chrome):
+        return False
+    if _OLD_LISTEN_ON_MOM_RE.search(chrome):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        listen = theme.get("listen")
+        good = theme.get("good")
+        background = theme.get("bg")
+        card = theme.get("card")
+        card2 = theme.get("card2")
+        if not listen or not good or not background or not card or not card2:
+            return False
+        for token in (listen, good):
+            if contrast_ratio(token, background) < WCAG_AA_NORMAL_TEXT:
+                return False
+            if contrast_ratio(token, card) < WCAG_AA_NORMAL_TEXT:
+                return False
+            if contrast_ratio(token, card2) < WCAG_AA_NORMAL_TEXT:
+                return False
+    return True
 
 
 def dashboard_write_contrast_ready(html: str) -> bool:
