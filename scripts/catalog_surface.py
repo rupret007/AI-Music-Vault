@@ -1594,8 +1594,36 @@ def dashboard_rdy_contrast_ready(html: str) -> bool:
     return True
 
 
+def _readme_h2_headings(text: str) -> list[str]:
+    return [
+        line.strip()
+        for line in (text or "").splitlines()
+        if line.startswith("## ")
+    ]
+
+
+def readme_click_test_does_not_claim_private(text: str) -> bool:
+    """Public README must not title the click-test as a private session."""
+    return not any(
+        heading.lower() == "## click-test the private session"
+        for heading in _readme_h2_headings(text)
+    )
+
+
+def readme_click_test_uses_browser_local_heading(text: str) -> bool:
+    """If a Click-test heading is present, it must say browser-local."""
+    click_headings = [
+        heading
+        for heading in _readme_h2_headings(text)
+        if heading.lower().startswith("## click-test")
+    ]
+    if not click_headings:
+        return True
+    return all("browser-local" in heading.lower() for heading in click_headings)
+
+
 def readme_documents_session_click_test(text: str) -> bool:
-    """Jeff-facing README must match the real private-session click path."""
+    """Jeff-facing README must match the real browser-local session click path."""
     body = (text or "").lower()
     return (
         "click write, produce, or listen" in body
