@@ -1576,6 +1576,70 @@ def dashboard_rdy_contrast_ready(html: str) -> bool:
     return True
 
 
+_SEARCH_MARK_RULE_RE = re.compile(
+    r"\.msnip\s+mark\s*,\s*\.rtitle\s+mark\s*,\s*\.aka-hit\s+mark\s*\{([^}]*)\}",
+    re.IGNORECASE,
+)
+_CSS_DECL_RE = re.compile(r"([a-z-]+)\s*:\s*([^;]+)", re.IGNORECASE)
+_CSS_VAR_RE = re.compile(r"^var\(\s*--([a-z0-9]+)\s*\)$", re.IGNORECASE)
+
+
+def _css_declarations(block: str) -> dict[str, str]:
+    return {
+        name.lower(): value.strip()
+        for name, value in _CSS_DECL_RE.findall(block or "")
+    }
+
+
+def _resolve_theme_color(value: str, theme: dict[str, str]) -> str | None:
+    raw = (value or "").strip()
+    if raw.startswith("#"):
+        hex_value = raw.lower()
+        if len(hex_value) == 4 and all(ch in "0123456789abcdef#" for ch in hex_value):
+            return "#" + "".join(ch * 2 for ch in hex_value[1:])
+        if len(hex_value) == 7:
+            return hex_value
+        return None
+    match = _CSS_VAR_RE.fullmatch(raw)
+    if not match:
+        return None
+    return theme.get(match.group(1).lower())
+
+
+def dashboard_search_mark_contrast_ready(html: str) -> bool:
+    """Search-hit marks must meet WCAG AA 4.5:1 on dark and light themes.
+
+    White-on-`--pot` fails AA at 14px. Use `--ink` on `--bg` (or another
+    pair that actually meets 4.5:1) so title, alias, and memo hits stay
+    readable.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    rule = _SEARCH_MARK_RULE_RE.search(chrome)
+    if not rule:
+        return False
+    decls = _css_declarations(rule.group(1))
+    background = decls.get("background") or decls.get("background-color")
+    foreground = decls.get("color")
+    if not background or not foreground:
+        return False
+    collapsed = re.sub(r"\s+", "", rule.group(1).lower())
+    if "background:var(--pot)" in collapsed and (
+        "color:#fff" in collapsed or "color:#ffffff" in collapsed
+    ):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        fg = _resolve_theme_color(foreground, theme)
+        bg = _resolve_theme_color(background, theme)
+        if not fg or not bg:
+            return False
+        if contrast_ratio(fg, bg) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return True
+
+
 def _readme_h2_headings(text: str) -> list[str]:
     return [
         line.strip()
