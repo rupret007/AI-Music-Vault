@@ -10,7 +10,10 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from catalog_surface import dashboard_phone_layout_covers  # noqa: E402
+from catalog_surface import (  # noqa: E402
+    dashboard_computed_home_layout,
+    dashboard_phone_layout_covers,
+)
 
 
 class DashboardFilterLayoutTests(unittest.TestCase):
@@ -50,6 +53,10 @@ class DashboardFilterLayoutTests(unittest.TestCase):
             with self.subTest(surface=name):
                 self.assertNotIn("@media(max-width:375px)", text)
                 self.assertTrue(dashboard_phone_layout_covers(text, 390))
+                phone_layout = dashboard_computed_home_layout(text, 390)
+                self.assertEqual(phone_layout["padding"], "12px")
+                self.assertEqual(phone_layout["stat_flex_basis"], "calc(50% - 10px)")
+                self.assertEqual(dashboard_computed_home_layout(text, 800)["padding"], "20px")
                 phone = text.split("@media(max-width:640px){", 1)[1].split("</style>", 1)[0]
                 self.assertEqual(self.rules(phone, ".advanced-filters")[0]["width"], "100%")
                 self.assertEqual(self.rules(phone, ".advanced-menu")[0].get("grid-template-columns"), "minmax(0,1fr)")

@@ -312,8 +312,8 @@ def extras_ok(cat=None):
             '<h2 id="workNowTitle" tabindex="-1"> class="row-heading" aria-controls="song-detail- '
             'role="tablist" aria-label="Sort songs" '
             'aria-label="Search memo transcripts" '
-            '@media(max-width:640px){body{padding:12px;font-size:16px}'
-            '.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}} '
+            '<style>@media(max-width:640px){body{padding:12px;font-size:16px}'
+            '.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}</style> '
             'min-height:44px overflow-x:hidden :focus-visible class="score-lab" '
             '--ink3:#a8a79c --ink3:#5c5b54 '
         ),
@@ -1169,8 +1169,8 @@ class ValidateCatalogTests(unittest.TestCase):
     def test_dashboard_without_phone_a11y_fails_closed(self):
         extra = extras_ok()
         extra["dashboard_html"] = extra["dashboard_html"].replace(
-            "@media(max-width:640px){body{padding:12px;font-size:16px}"
-            ".rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}",
+            "<style>@media(max-width:640px){body{padding:12px;font-size:16px}"
+            ".rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}</style>",
             "",
         ).replace("min-height:44px", "")
         errors = validate(fixture(), extra)

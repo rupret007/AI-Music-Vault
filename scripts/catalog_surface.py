@@ -1239,10 +1239,17 @@ def dashboard_exposes_logic_ready(html: str) -> bool:
 # 390×844 (iPhone CSS width) must hit phone padding / 2-up stats. 375px-only misses it.
 PHONE_LAYOUT_MAX_WIDTH_PX = 640
 PHONE_LAYOUT_MIN_COVER_PX = 400
-PHONE_BODY_PADDING_CSS = "body{padding:12px"
-PHONE_TWO_UP_STATS_CSS = ".stat{min-width:0;flex-basis:calc(50% - 10px)}"
+PHONE_BODY_PADDING_VALUE = "12px"
+PHONE_STAT_FLEX_BASIS = "calc(50% - 10px)"
+PHONE_BODY_PADDING_CSS = f"body{{padding:{PHONE_BODY_PADDING_VALUE}"
+PHONE_TWO_UP_STATS_CSS = f".stat{{min-width:0;flex-basis:{PHONE_STAT_FLEX_BASIS}}}"
 PHONE_LAYOUT_MEDIA = f"@media(max-width:{PHONE_LAYOUT_MAX_WIDTH_PX}px)"
 _PHONE_MAX_WIDTH_MQ_RE = re.compile(r"@media\(max-width:(\d+)px\)\{")
+_STYLE_BLOCK_RE = re.compile(r"<style>(.*?)</style>", re.I | re.S)
+_WIDTH_MEDIA_RE = re.compile(
+    r"@media\s*\(\s*(min|max)-width\s*:\s*(\d+)px\s*\)",
+    re.I,
+)
 
 
 def _css_rule_block_at(text: str, start: int) -> str:
@@ -1259,6 +1266,67 @@ def _css_rule_block_at(text: str, start: int) -> str:
     if depth != 0:
         return ""
     return text[start : index - 1]
+
+
+def _css_declarations(block: str) -> dict[str, str]:
+    return {
+        key.strip(): value.strip()
+        for key, value in re.findall(r"([\w-]+)\s*:\s*([^;{}]+)", block)
+    }
+
+
+def _css_sources_for_layout(html: str) -> list[str]:
+    """Prefer `<style>` text so script braces cannot masquerade as CSS."""
+    chrome = dashboard_markup_chrome(html)
+    blocks = [block.strip() for block in _STYLE_BLOCK_RE.findall(chrome) if block.strip()]
+    return blocks or [chrome]
+
+
+def _apply_computed_home_layout(text: str, width_px: int, layout: dict[str, str | None]) -> None:
+    """Walk rules in source order and keep the last matching body/.stat values."""
+    index = 0
+    while True:
+        brace = text.find("{", index)
+        if brace < 0:
+            return
+        prefix_at = brace
+        while prefix_at > 0 and text[prefix_at - 1] not in "{}":
+            prefix_at -= 1
+        prefix = text[prefix_at:brace].strip()
+        block = _css_rule_block_at(text, brace + 1)
+        next_index = brace + 1 + len(block) + 1
+        if prefix.startswith("@media"):
+            match = _WIDTH_MEDIA_RE.fullmatch(prefix)
+            applies = False
+            if match:
+                kind, bound = match.group(1).lower(), int(match.group(2))
+                applies = (
+                    (kind == "max" and width_px <= bound)
+                    or (kind == "min" and width_px >= bound)
+                )
+            if applies:
+                _apply_computed_home_layout(block, width_px, layout)
+        elif prefix == "body":
+            padding = _css_declarations(block).get("padding")
+            if padding is not None:
+                layout["padding"] = padding
+        elif prefix == ".stat":
+            flex_basis = _css_declarations(block).get("flex-basis")
+            if flex_basis is not None:
+                layout["stat_flex_basis"] = flex_basis
+        index = next_index
+
+
+def dashboard_computed_home_layout(html: str, width_px: int = 390) -> dict[str, str | None]:
+    """Winning `body` padding and `.stat` flex-basis after matching width queries.
+
+    Later declarations win, so a 640px phone block does not count if an unscoped
+    `body{padding:20px}` follows it. A 375px-only query never applies at 390.
+    """
+    layout: dict[str, str | None] = {"padding": None, "stat_flex_basis": None}
+    for source in _css_sources_for_layout(html):
+        _apply_computed_home_layout(source, width_px, layout)
+    return layout
 
 
 def dashboard_phone_layout_covers(html: str, width_px: int = 390) -> bool:
@@ -1281,6 +1349,7 @@ def dashboard_phone_layout_covers(html: str, width_px: int = 390) -> bool:
 def dashboard_phone_and_a11y_ready(html: str) -> bool:
     """Phone sit-down at 640px (covers 390px) plus landmarks, names, contrast, and focus."""
     chrome = dashboard_markup_chrome(html)
+    phone = dashboard_computed_home_layout(chrome, 390)
     required = (
         'class="skip-link"',
         'href="#workNowTitle"',
@@ -1307,6 +1376,8 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
         all(marker in chrome for marker in required)
         and 'role="columnheader"' not in chrome
         and dashboard_phone_layout_covers(chrome, 390)
+        and phone["padding"] == PHONE_BODY_PADDING_VALUE
+        and phone["stat_flex_basis"] == PHONE_STAT_FLEX_BASIS
     )
 
 
