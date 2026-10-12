@@ -27,6 +27,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_tablist_keyboard_ready,
     dashboard_skip_link_contrast_ready,
     dashboard_search_mark_contrast_ready,
     readme_click_test_does_not_claim_private,
@@ -323,6 +324,11 @@ def extras_ok(cat=None):
             'class="skip-link" href="#workNowTitle" <header> <main id="main" <footer '
             '<h2 id="workNowTitle" tabindex="-1"> class="row-heading" aria-controls="song-detail- '
             'role="tablist" aria-label="Sort songs" '
+            'aria-orientation="horizontal" '
+            'id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0" '
+            'id="tabM" role="tab" aria-controls="paneM" aria-selected="false" tabindex="-1" '
+            'function nextVaultTab( function activateVaultTab( function handleVaultTabKey( '
+            'ArrowRight ArrowLeft tabS.tabIndex= tabM.tabIndex= '
             'aria-label="Search memo transcripts" '
             '<style>:root{--bg:#1a1a19;--ink:#ffffff}'
             '@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;}}'
@@ -1297,6 +1303,18 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_tablist_keyboard_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function handleVaultTabKey(", ""
+        ).replace("aria-orientation=\"horizontal\"", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("APG arrow-key tablist" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
 
     def test_dashboard_white_on_pot_skip_link_fails_closed(self):
         extra = extras_ok()
@@ -3010,6 +3028,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_empty_search_honest(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))

@@ -1400,6 +1400,25 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
     )
 
 
+def dashboard_tablist_keyboard_ready(html: str) -> bool:
+    """Songs/Memo tabs follow APG: roving tabindex plus arrow/Home/End keys."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        'role="tablist"',
+        'aria-orientation="horizontal"',
+        'id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0"',
+        'id="tabM" role="tab" aria-controls="paneM" aria-selected="false" tabindex="-1"',
+        "function nextVaultTab(",
+        "function activateVaultTab(",
+        "function handleVaultTabKey(",
+        "ArrowRight",
+        "ArrowLeft",
+        "tabS.tabIndex=",
+        "tabM.tabIndex=",
+    )
+    return all(marker in chrome for marker in required)
+
+
 def _html_id_at(html: str, value: str) -> int:
     """Index of an exact id attribute, not a longer id that starts with the same letters."""
     needle = f'id="{value}"'

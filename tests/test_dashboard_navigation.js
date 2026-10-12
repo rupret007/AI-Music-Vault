@@ -165,6 +165,12 @@ for (const marker of [
   "this page does not open audio",
   "aria-selected",
   "aria-expanded",
+  "aria-orientation=\"horizontal\"",
+  "id=\"tabS\" role=\"tab\" aria-controls=\"paneS\" aria-selected=\"true\" tabindex=\"0\"",
+  "id=\"tabM\" role=\"tab\" aria-controls=\"paneM\" aria-selected=\"false\" tabindex=\"-1\"",
+  "function nextVaultTab(",
+  "function activateVaultTab(",
+  "function handleVaultTabKey(",
 ]) {
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
 }
@@ -1207,6 +1213,86 @@ if (!searchEscape.handleVaultKey({ key: "Escape" }) || searchEscape.q.value !== 
 if (searchEscape.painted() !== "songs" || searchEscape.hashed() !== ":") {
   fail("escape must repaint Songs after clearing a name search");
 }
+
+const nextVaultTab = new Function(
+  "return (" + extractFunction(script, "nextVaultTab") + ");",
+)();
+if (nextVaultTab("S", "ArrowRight") !== "M" || nextVaultTab("M", "ArrowLeft") !== "S") {
+  fail("arrow keys must move between Songs and Memo tabs");
+}
+if (nextVaultTab("M", "ArrowRight") !== "S" || nextVaultTab("S", "ArrowLeft") !== "M") {
+  fail("arrow keys must wrap at both ends of the tablist");
+}
+if (nextVaultTab("M", "Home") !== "S" || nextVaultTab("S", "End") !== "M") {
+  fail("Home and End must jump to the first and last tab");
+}
+if (nextVaultTab("S", "Enter") !== "" || nextVaultTab("S", "Tab") !== "") {
+  fail("non-arrow keys must not steal Tab or Enter from the tab buttons");
+}
+
+function fakeTab(selected) {
+  const attrs = { "aria-selected": selected ? "true" : "false" };
+  return {
+    tabIndex: selected ? 0 : -1,
+    classList: { toggle() {} },
+    focused: false,
+    setAttribute(name, value) { attrs[name] = String(value); },
+    getAttribute(name) { return attrs[name]; },
+    focus() { this.focused = true; },
+  };
+}
+const tabS = fakeTab(true);
+const tabM = fakeTab(false);
+const paneS = { hidden: false };
+const paneM = { hidden: true };
+let memoPainted = 0;
+let openedWork = "";
+const tabRuntime = new Function(
+  "tabS",
+  "tabM",
+  "paneS",
+  "paneM",
+  "lastWorkKind",
+  "work",
+  "q",
+  "mrender",
+  "openWork",
+  "const showTab = " + extractFunction(script, "showTab") + ";" +
+    "const activateVaultTab = " + extractFunction(script, "activateVaultTab") + ";" +
+    "const handleVaultTabKey = " + extractFunction(script, "handleVaultTabKey") + ";" +
+    "const nextVaultTab = " + extractFunction(script, "nextVaultTab") + ";" +
+    "return { showTab, activateVaultTab, handleVaultTabKey };",
+)(
+  tabS,
+  tabM,
+  paneS,
+  paneM,
+  "",
+  { value: "" },
+  { value: "" },
+  () => { memoPainted += 1; },
+  (kind) => { openedWork = kind; },
+);
+tabRuntime.showTab("M");
+if (paneS.hidden !== true || paneM.hidden !== false) fail("showTab(M) must hide Songs");
+if (tabS.tabIndex !== -1 || tabM.tabIndex !== 0) fail("selected Memo tab must be the only tabbable tab");
+if (tabS.getAttribute("aria-selected") !== "false" || tabM.getAttribute("aria-selected") !== "true") {
+  fail("showTab must flip aria-selected");
+}
+tabRuntime.showTab("S");
+if (tabS.tabIndex !== 0 || tabM.tabIndex !== -1) fail("selected Songs tab must restore roving tabindex");
+const prevented = [];
+if (tabRuntime.handleVaultTabKey({ key: "ArrowRight", preventDefault: () => prevented.push("right") }, "S") !== "M") {
+  fail("ArrowRight from Songs must activate Memo");
+}
+if (!tabM.focused || memoPainted < 1 || prevented.join(",") !== "right") {
+  fail("arrow activation must focus Memo, paint it, and prevent scrolling");
+}
+if (tabRuntime.handleVaultTabKey({ key: "Home", preventDefault() {} }, "M") !== "S") {
+  fail("Home from Memo must activate Songs");
+}
+if (!tabS.focused) fail("Home must move focus to Songs");
+if (openedWork) fail("tab keyboard must not mint a work session without a stored kind");
 
 const songResultsStatus = new Function(
   "return (" + extractFunction(script, "songResultsStatus") + ");",
