@@ -1206,6 +1206,25 @@ def dashboard_finds_remembered_song_names(html: str) -> bool:
     return all(marker in chrome for marker in required)
 
 
+_DISHONEST_TERM_STATUS_RE = re.compile(r"textContent\s*=\s*term\s*\?")
+
+
+def dashboard_empty_search_honest(html: str) -> bool:
+    """Zero song hits must not claim closest-name ranking or a filter that is not set."""
+    chrome = dashboard_markup_chrome(html)
+    if "clear a filter?" in chrome:
+        return False
+    if _DISHONEST_TERM_STATUS_RE.search(chrome):
+        return False
+    required = (
+        "function songResultsStatus(",
+        "function emptySongsCopy(",
+        "press Escape or Clear filters",
+        "closest name first",
+    )
+    return all(marker in chrome for marker in required)
+
+
 def dashboard_exposes_logic_ready(html: str) -> bool:
     """First useful surface must name a sanitized Logic-ready next action."""
     chrome = dashboard_markup_chrome(html)

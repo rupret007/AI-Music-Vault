@@ -698,6 +698,14 @@ function markNormalized(text,term){
  const end=units[at+needle.length-1].end||units[at+needle.length-1].start;
  return esc(src.slice(0,start))+'<mark>'+esc(src.slice(start,end))+'</mark>'+esc(src.slice(end));
 }
+function songResultsStatus(term,shown,total){
+ const n=Number(shown)||0, all=Number(total)||0;
+ const base=`Showing ${n} of ${all} songs`;
+ return String(term||'').trim() && n ? `${base} · closest name first` : base;
+}
+function emptySongsCopy(){
+ return 'No songs match — press Escape or Clear filters.';
+}
 function sortSongRows(rows,term,sortKey){
  const decorated=rows.map(row=>({row,hit:term?songSearchHit(row,term):{hit:true,rank:99,via:''}}));
  decorated.sort((a,b)=>{
@@ -751,9 +759,7 @@ function render(){
  const rows=decorated.map(item=>item.row);
  const viaById={};
  decorated.forEach(item=>{viaById[item.row.id]=item.hit.via;});
- songResults.textContent=term
-  ?`Showing ${rows.length} of ${DATA.length} songs · closest name first`
-  :`Showing ${rows.length} of ${DATA.length} songs`;
+ songResults.textContent=songResultsStatus(term,rows.length,DATA.length);
  clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||lrv||k!=='mom');
  if(typeof visibleSongIds!=='undefined')visibleSongIds=rows.map(d=>d.id);
  list.innerHTML=rows.length?rows.map((d,i)=>{
@@ -789,7 +795,7 @@ function render(){
   ${questions?`<h4>Open questions</h4>${esc(questions)}`:''}
   <div class="work-copy"><button type="button" class="subtle-btn" data-copy-work="${esc(d.id)}">Copy work card</button></div>
   ${memoCountBySong[d.id]?`<h4>Matched memo evidence</h4><button type="button" class="memo-link" data-open-memos="${esc(d.id)}">Open ${memoCountBySong[d.id]} searchable memo${memoCountBySong[d.id]===1?'':'s'}</button>`:''}
- </div></div>`;}).join(''):'<div class="empty">No songs match — clear a filter?</div>';
+ </div></div>`;}).join(''):`<div class="empty">${emptySongsCopy()}</div>`;
  if(wv&&visibleSongIds.length){
   if(!visibleSongIds.includes(activeWorkSongId))activeWorkSongId=visibleSongIds[0];
   focusWorkSong(activeWorkSongId,false);
