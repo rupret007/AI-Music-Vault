@@ -34,6 +34,9 @@ from catalog_surface import (  # noqa: E402
     dashboard_phone_layout_covers,
     dashboard_listen_contrast_ready,
     dashboard_rdy_contrast_ready,
+    dashboard_write_contrast_ready,
+    dashboard_skip_link_contrast_ready,
+    dashboard_search_mark_contrast_ready,
     dashboard_resumes_song_work_privately,
     dashboard_theme_tokens,
     embedded_dashboard_payloads,
@@ -1375,6 +1378,197 @@ class DashboardRdyContrastTests(unittest.TestCase):
             )
             self.assertGreaterEqual(
                 contrast_ratio(theme["ink"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
+
+
+_OLD_SKIP_LINK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.skip-link{background:var(--pot);color:#fff}
+</style><a class="skip-link" href="#workNowTitle">Skip to work session</a>"""
+_FIXED_SKIP_LINK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.skip-link{background:var(--ink);color:var(--bg)}
+</style><a class="skip-link" href="#workNowTitle">Skip to work session</a>"""
+
+
+class DashboardSkipLinkContrastTests(unittest.TestCase):
+    def test_white_on_pot_misses_aa_on_dark_and_light(self):
+        self.assertLess(contrast_ratio("#ffffff", "#3987e5"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio("#ffffff", "#2a78d6"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#3987e5"), 3.64, places=2)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#2a78d6"), 4.42, places=2)
+        self.assertFalse(dashboard_skip_link_contrast_ready(_OLD_SKIP_LINK_SNIPPET))
+
+    def test_gate_fails_closed_without_light_scheme_or_skip_rule(self):
+        self.assertFalse(dashboard_skip_link_contrast_ready("<html></html>"))
+        no_light = _FIXED_SKIP_LINK_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_skip_link_contrast_ready(no_light))
+        no_rule = _FIXED_SKIP_LINK_SNIPPET.replace(".skip-link{background:var(--ink);color:var(--bg)}", "")
+        self.assertFalse(dashboard_skip_link_contrast_ready(no_rule))
+
+    def test_ink_on_bg_skip_link_meets_aa(self):
+        self.assertTrue(dashboard_skip_link_contrast_ready(_FIXED_SKIP_LINK_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_SKIP_LINK_SNIPPET)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["bg"], theme["ink"]), WCAG_AA_NORMAL_TEXT
+            )
+
+    def test_committed_dashboard_skip_link_meets_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_skip_link_contrast_ready(dashboard))
+        self.assertIn(
+            ".skip-link{position:absolute;left:-999px;top:8px;z-index:20;"
+            "background:var(--ink);color:var(--bg)",
+            dashboard,
+        )
+        dark, light = dashboard_theme_tokens(dashboard)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["bg"], theme["ink"]), WCAG_AA_NORMAL_TEXT
+            )
+
+
+_OLD_SEARCH_MARK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff}
+</style><mark>hit</mark>"""
+_FIXED_SEARCH_MARK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}
+</style><mark>hit</mark>"""
+
+
+class DashboardSearchMarkContrastTests(unittest.TestCase):
+    def test_white_on_pot_marks_miss_aa_on_dark_and_light(self):
+        self.assertLess(contrast_ratio("#ffffff", "#3987e5"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio("#ffffff", "#2a78d6"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#3987e5"), 3.64, places=2)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#2a78d6"), 4.42, places=2)
+        self.assertFalse(dashboard_search_mark_contrast_ready(_OLD_SEARCH_MARK_SNIPPET))
+
+    def test_gate_fails_closed_without_light_scheme_or_mark_rule(self):
+        self.assertFalse(dashboard_search_mark_contrast_ready("<html></html>"))
+        no_light = _FIXED_SEARCH_MARK_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_search_mark_contrast_ready(no_light))
+        no_rule = _FIXED_SEARCH_MARK_SNIPPET.replace(
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}",
+            "",
+        )
+        self.assertFalse(dashboard_search_mark_contrast_ready(no_rule))
+
+    def test_ink_on_bg_marks_meet_aa(self):
+        self.assertTrue(dashboard_search_mark_contrast_ready(_FIXED_SEARCH_MARK_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_SEARCH_MARK_SNIPPET)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["bg"], theme["ink"]), WCAG_AA_NORMAL_TEXT
+            )
+
+    def test_committed_dashboard_search_marks_meet_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_search_mark_contrast_ready(dashboard))
+        self.assertIn(
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)",
+            dashboard,
+        )
+
+
+# Pre-fix Potential blues used as write/link text. Bar --pot stays.
+_OLD_WRITE_DARK = "#3987e5"
+_OLD_WRITE_LIGHT = "#2a78d6"
+_AUDIT_WRITE_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--write:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--write:#2a78d6;}}
+.pill.wk-write{color:var(--write)}.memo-link,.song-link{padding:8px 10px;color:var(--write)}.tag.f{color:var(--write)}
+</style><span class="pill wk-write">write</span>"""
+_FIXED_WRITE_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--write:#3993fd;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--write:#2466b8;}}
+.pill.wk-write{color:var(--write)}.memo-link,.song-link{padding:8px 10px;color:var(--write)}.tag.f{color:var(--write)}
+</style><span class="pill wk-write">write</span>"""
+
+
+class DashboardWriteContrastTests(unittest.TestCase):
+    def test_audit_blues_miss_aa_on_card_and_light_bg(self):
+        self.assertGreaterEqual(contrast_ratio(_OLD_WRITE_DARK, "#1a1a19"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_WRITE_DARK, "#242423"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_WRITE_LIGHT, "#fcfcfb"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_WRITE_LIGHT, "#ffffff"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio(_OLD_WRITE_DARK, "#242423"), 4.27, places=2)
+        self.assertAlmostEqual(contrast_ratio(_OLD_WRITE_LIGHT, "#fcfcfb"), 4.30, places=2)
+        self.assertFalse(dashboard_write_contrast_ready(_AUDIT_WRITE_SNIPPET))
+
+    def test_gate_fails_closed_without_write_token_or_light_scheme(self):
+        self.assertFalse(dashboard_write_contrast_ready("<html></html>"))
+        no_light = _FIXED_WRITE_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_write_contrast_ready(no_light))
+        no_write_pill = _FIXED_WRITE_SNIPPET.replace(
+            ".pill.wk-write{color:var(--write)}", ".pill.wk-write{color:var(--pot)}"
+        )
+        self.assertFalse(dashboard_write_contrast_ready(no_write_pill))
+        no_link = _FIXED_WRITE_SNIPPET.replace(
+            ".memo-link,.song-link{padding:8px 10px;color:var(--write)}",
+            ".memo-link,.song-link{padding:8px 10px;color:var(--pot)}",
+        )
+        self.assertFalse(dashboard_write_contrast_ready(no_link))
+
+    def test_fixed_write_tokens_meet_aa_and_keep_light_scheme(self):
+        self.assertTrue(dashboard_write_contrast_ready(_FIXED_WRITE_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_WRITE_SNIPPET)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card2"]), WCAG_AA_NORMAL_TEXT
+            )
+
+    def test_committed_dashboard_write_and_links_meet_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_write_contrast_ready(dashboard))
+        self.assertIn("--write:#3993fd", dashboard)
+        self.assertIn("--write:#2466b8", dashboard)
+        self.assertIn(".pill.wk-write{color:var(--write)}", dashboard)
+        self.assertIn(".memo-link,.song-link{padding:8px 10px;color:var(--write)}", dashboard)
+        self.assertIn(".tag.f{color:var(--write)}", dashboard)
+        self.assertIn("--pot:#3987e5", dashboard)
+        self.assertIn("--pot:#2a78d6", dashboard)
+        dark, light = dashboard_theme_tokens(dashboard)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card2"]), WCAG_AA_NORMAL_TEXT
             )
 
 

@@ -4,8 +4,9 @@
 Updated 2026-08-27 — consolidated path: **Vault → local `data/app_api.json` → StoryBoard Band operations**. StoryBoard rejects the spine as an import. Show Night official set is owner-only. StoryBoard binds a local official-set dump as **Rad Dad — official set**. Show Night is the live set surface. Catalog rows are not the official set. Show Night owns official sets. Remote catalog URLs are rejected. Jeff-facing wording here is roles and counts only.*
 
 This is the recorded integration contract from the inspections dated below, not
-a fresh verification of other repositories. This repository is public. Importing
-a local JSON file does not make committed catalog contents private.
+a fresh verification of other repositories. This repository is public. This
+public catalog is not a remote fetch. Importing a local JSON file does not make
+committed catalog contents private.
 
 ## The consolidated path (read this first)
 
