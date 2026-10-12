@@ -41,6 +41,8 @@ for (const marker of [
   "function parseVaultHash(",
   "function sortMemoHits(",
   "function handleVaultKey(",
+  "activeMemoSong||",
+  "mq.value||''",
   "function normalizeSearch(",
   "function songAliases(",
   "function songSearchHit(",
@@ -1032,6 +1034,75 @@ if (!escapeNav.handleVaultKey({ key: "Escape" }) || escapeNav.active() !== "") {
 }
 if (escapeNav.painted() !== "memos" || escapeNav.hashed() !== ":") {
   fail("escape must repaint Memo Search and drop the hash");
+}
+
+const memoSearchEscape = new Function(
+  "paneM",
+  "paneS",
+  "mq",
+  "q",
+  "sname",
+  "proj",
+  "sort",
+  "scored",
+  "scope",
+  "evidence",
+  "let activeMemoSong = ''; let hashed = ''; let painted = '';" +
+    "function writeVaultHash(kind, id) { hashed = String(kind || '') + ':' + String(id || ''); }" +
+    "function mrender() { painted = 'memos'; }" +
+    "function render() { painted = 'songs'; }" +
+    "const handleVaultKey = " + extractFunction(script, "handleVaultKey") + ";" +
+    "return { handleVaultKey, hashed: () => hashed, painted: () => painted, mq };",
+)(
+  { hidden: false },
+  { hidden: true },
+  { value: "zzzzzzznomatchxyz", focus() {} },
+  { value: "", focus() {} },
+  names,
+  { value: "" },
+  { value: "mom" },
+  { value: "" },
+  { value: "" },
+  { value: "" },
+);
+if (!memoSearchEscape.handleVaultKey({ key: "Escape" }) || memoSearchEscape.mq.value !== "") {
+  fail("escape must clear an unscoped Memo Search query");
+}
+if (memoSearchEscape.painted() !== "memos" || memoSearchEscape.hashed() !== ":") {
+  fail("escape must repaint Memo Search after clearing an unscoped query");
+}
+
+const memoIdleEscape = new Function(
+  "paneM",
+  "paneS",
+  "mq",
+  "q",
+  "sname",
+  "proj",
+  "sort",
+  "scored",
+  "scope",
+  "evidence",
+  "let activeMemoSong = '';" +
+    "function writeVaultHash() {}" +
+    "function mrender() {}" +
+    "function render() {}" +
+    "const handleVaultKey = " + extractFunction(script, "handleVaultKey") + ";" +
+    "return handleVaultKey;",
+)(
+  { hidden: false },
+  { hidden: true },
+  { value: "  ", focus() {} },
+  { value: "", focus() {} },
+  names,
+  { value: "" },
+  { value: "mom" },
+  { value: "" },
+  { value: "" },
+  { value: "" },
+);
+if (memoIdleEscape({ key: "Escape" })) {
+  fail("escape must leave an empty Memo Search alone");
 }
 
 const stripForSearch = new Function(
