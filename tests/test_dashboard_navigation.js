@@ -48,7 +48,10 @@ for (const marker of [
   "function sortSongRows(",
   "function focusFoundSong(",
   "function handleSongSearchKey(",
+  "function songResultsStatus(",
+  "function emptySongsCopy(",
   "closest name first",
+  "press Escape or Clear filters",
   "titles, aliases, hooks",
   "scrollIntoView({block:'center'})",
   "function copyMemoFile(",
@@ -162,6 +165,9 @@ for (const marker of [
   "aria-expanded",
 ]) {
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
+}
+if (html.includes("clear a filter?")) {
+  fail("empty song results must not imply a filter is set");
 }
 if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
 if (html.includes("@media(max-width:375px)")) {
@@ -1198,6 +1204,32 @@ if (!searchEscape.handleVaultKey({ key: "Escape" }) || searchEscape.q.value !== 
 }
 if (searchEscape.painted() !== "songs" || searchEscape.hashed() !== ":") {
   fail("escape must repaint Songs after clearing a name search");
+}
+
+const songResultsStatus = new Function(
+  "return (" + extractFunction(script, "songResultsStatus") + ");",
+)();
+if (songResultsStatus("candy lane", 3, 150) !== "Showing 3 of 150 songs · closest name first") {
+  fail("ranked hits must still say closest name first");
+}
+if (songResultsStatus("zzzzzzzz", 0, 150) !== "Showing 0 of 150 songs") {
+  fail("zero search hits must not claim closest-name ranking");
+}
+if (songResultsStatus("", 150, 150) !== "Showing 150 of 150 songs") {
+  fail("an unfiltered list must not claim closest-name ranking");
+}
+if (songResultsStatus("  ", 2, 150) !== "Showing 2 of 150 songs") {
+  fail("whitespace-only search is not a ranked name search");
+}
+
+const emptySongsCopy = new Function(
+  "return (" + extractFunction(script, "emptySongsCopy") + ");",
+)();
+if (!emptySongsCopy().includes("Escape") || !emptySongsCopy().includes("Clear filters")) {
+  fail("empty song results must name Escape and Clear filters");
+}
+if (emptySongsCopy().includes("clear a filter?")) {
+  fail("empty song copy must not imply a filter is set");
 }
 
 console.log("dashboard song/memo navigation smoke ok");

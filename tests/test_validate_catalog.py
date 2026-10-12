@@ -16,6 +16,7 @@ from catalog_surface import (  # noqa: E402
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_empty_search_honest,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
@@ -300,6 +301,8 @@ def extras_ok(cat=None):
             'function songSearchHit( function markNormalized( '
             'function focusFoundSong( function handleSongSearchKey( '
             'closest name first titles, aliases, hooks memo lyric aka '
+            'function songResultsStatus( function emptySongsCopy( '
+            'press Escape or Clear filters '
             'id="logicReady" Sort: Logic-ready Any Logic-ready '
             'function logicReadyNext( function logicReadyLabel( '
             'Copy Logic-ready next id="workSessionLogic" id="copyWorkLogic" '
@@ -1153,6 +1156,33 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+
+    def test_dashboard_without_empty_search_honesty_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function songResultsStatus(", ""
+        ).replace("press Escape or Clear filters", "clear a filter?")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("zero song hits must not claim" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_empty_search_honest(extra["dashboard_html"]))
+
+    def test_dashboard_zero_hit_closest_name_claim_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function songResultsStatus(", ""
+        ) + (
+            "songResults.textContent=term "
+            "?`Showing ${rows.length} of ${DATA.length} songs · closest name first`"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("zero song hits must not claim" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_empty_search_honest(extra["dashboard_html"]))
 
     def test_dashboard_without_logic_ready_fails_closed(self):
         extra = extras_ok()
@@ -2800,6 +2830,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
         self.assertTrue(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+        self.assertTrue(dashboard_empty_search_honest(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))

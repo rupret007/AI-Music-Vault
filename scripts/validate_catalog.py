@@ -33,6 +33,7 @@ from catalog_surface import (
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_empty_search_honest,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
@@ -2042,6 +2043,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must find songs by existing aliases, fold "
                 "punctuation, rank the closest name first, and allow Enter "
                 "to open that row"
+            )
+        if not dashboard_empty_search_honest(dash):
+            errors.append(
+                "dashboard zero song hits must not claim closest-name ranking "
+                "or tell the user to clear a filter that is not set"
             )
         if not dashboard_exposes_logic_ready(dash):
             errors.append(
