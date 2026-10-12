@@ -25,8 +25,9 @@ sets. Parked-named rows in that slice stay current-artist repertoire,
 not a fourth live band. Nothing
 auto-posts. Jeff owns feel,
 set-list, and catalog calls. Not StoryDesk. Not StoryOps. StoryLiner is
-promo only. No new app. No fourth live band. This private catalog is
-not a public fetch.
+promo only. No new app. No fourth live band. This public catalog is
+not a remote fetch. Importing local JSON does not make committed
+catalog contents private.
 
 Run:  python3 scripts/export_app_api.py
 Check: python3 scripts/export_app_api.py --check
@@ -222,8 +223,9 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
                 "are not in the published slice are not a fourth live band. "
                 "Travis books. Nothing auto-posts. StoryLiner is promo only. "
                 "Jeff owns setlist order, duration, lead vocalist, and catalog "
-                "calls. Do not invent a second catalog. This private catalog "
-                "is not a public fetch."
+                "calls. Do not invent a second catalog. This public catalog "
+                "is not a remote fetch. Importing local JSON does not make "
+                "committed catalog contents private."
             ),
         },
     }
