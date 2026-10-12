@@ -94,7 +94,7 @@ Do not commit the workbook. `build_catalog.py`, `build_organized_vault.py`, and
 Owner-local audio tools and their separate dependencies are described in the
 [Workbench Plan](00_control_room/Workbench%20Plan.md); they are not CI prerequisites.
 
-## Click-test the private session
+## Click-test the browser-local session
 
 Open the dashboard locally. This manual browser check complements the Node smoke
 test; it does not establish that any audio has been heard or exported.

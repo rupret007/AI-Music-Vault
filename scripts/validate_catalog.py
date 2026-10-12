@@ -43,6 +43,8 @@ from catalog_surface import (
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    readme_click_test_does_not_claim_private,
+    readme_click_test_uses_browser_local_heading,
     readme_documents_session_click_test,
 )
 from export_catalog_csv import (
@@ -2055,9 +2057,18 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "README.md must say this repository is public — "
                 "private session means browser-local state, not a private repo"
             )
+        if not readme_click_test_does_not_claim_private(readme):
+            errors.append(
+                "README.md Click-test heading still claims a private session — "
+                "this public catalog is browser-local only"
+            )
+        if not readme_click_test_uses_browser_local_heading(readme):
+            errors.append(
+                "README.md Click-test heading must say browser-local session"
+            )
         if not readme_documents_session_click_test(readme):
             errors.append(
-                "README.md must document the private session click-test: "
+                "README.md must document the browser-local session click-test: "
                 "Click Write, Produce, or Listen; Refresh; Resume; Forget; "
                 "stores only work kind and catalog ID; "
                 "Logic export honesty (WAVs/AIFF/MIDI preference, no Ableton-first); "
