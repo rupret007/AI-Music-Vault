@@ -40,6 +40,7 @@ from catalog_surface import (
     dashboard_listen_is_not_playback,
     dashboard_opens_owner_audio,
     dashboard_resume_leads_first_paint,
+    dashboard_start_copy_omits_resume_preview,
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
@@ -2059,6 +2060,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard first paint must show the honesty sentence and "
                 "Write / Produce / Listen before collapsed catalog counts"
+            )
+        if not dashboard_start_copy_omits_resume_preview(dash):
+            errors.append(
+                "dashboard start-work copy must name Write / Produce / Listen "
+                "and Refresh, not preview Resume or Forget on a cold start"
             )
         if not dashboard_resume_leads_first_paint(dash):
             errors.append(

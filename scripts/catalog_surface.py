@@ -1425,6 +1425,24 @@ def dashboard_first_paint_ready(html: str) -> bool:
     return work_at < fold_at < stats_at
 
 
+def dashboard_start_copy_omits_resume_preview(html: str) -> bool:
+    """Cold-start copy names Write/Produce/Listen and Refresh, not Resume/Forget."""
+    chrome = dashboard_markup_chrome(html)
+    match = re.search(r'<p class="work-now-copy">(.*?)</p>', chrome, re.S)
+    if not match:
+        return False
+    copy = match.group(1).lower()
+    if "resume" in copy or "forget" in copy:
+        return False
+    return (
+        "write" in copy
+        and "produce" in copy
+        and "listen" in copy
+        and "highest-momentum" in copy
+        and "refresh" in copy
+    )
+
+
 def dashboard_resume_leads_first_paint(html: str) -> bool:
     """A stored session must lead with Resume, Do this now, Copy, and Forget."""
     chrome = dashboard_markup_chrome(html)

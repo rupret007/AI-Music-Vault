@@ -232,7 +232,7 @@ input{flex:1;min-width:0;width:100%}
 <section class="work-now" id="startWork" aria-labelledby="workNowTitle">
  <h2 id="workNowTitle" tabindex="-1">Start a work session</h2>
  <div class="work-starts" id="workStarts"></div>
- <p class="work-now-copy">Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
+ <p class="work-now-copy">Pick Write, Produce, or Listen. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser.</p>
 </section>
 <details class="catalog-overview" id="catalogOverview" open>
  <summary id="catalogOverviewSummary" hidden>Catalog details and counts</summary>

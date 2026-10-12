@@ -148,6 +148,9 @@ for (const marker of [
   "class=\"resume-actions\"",
   "id=\"advancedFilters\"",
   "Start a work session",
+  "class=\"work-now-copy\"",
+  "Pick Write, Produce, or Listen",
+  "highest-momentum",
   "More filters",
   "Sit-down",
   "data-open-work=",
@@ -164,6 +167,13 @@ for (const marker of [
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
 }
 if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
+{
+  const copy = html.match(/<p class="work-now-copy">([\s\S]*?)<\/p>/);
+  if (!copy) fail("start-work copy is missing");
+  if (/\bresume\b/i.test(copy[1]) || /\bforget\b/i.test(copy[1])) {
+    fail("start-work copy must not preview Resume or Forget");
+  }
+}
 if (html.includes("@media(max-width:375px)")) {
   fail("phone padding must not live in a 375px-only query that misses 390px");
 }
