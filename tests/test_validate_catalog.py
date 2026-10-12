@@ -100,6 +100,10 @@ from validate_catalog import (  # noqa: E402
     apps_md_claims_suggestion_dump_is_official_set,
     catalog_ok_report,
     catalog_ok_report_leaks_published_ids,
+    feed_admits_public_catalog,
+    feed_claims_private_catalog,
+    public_doc_admits_public_repo,
+    public_doc_claims_private_catalog,
     duplicate_session_log_headings,
     latest_session_log_has_logic_export_handoff,
     latest_session_log_has_continuation,
@@ -172,6 +176,7 @@ def fixture():
 
 
 APPS_MD_HONEST = (
+    "This repository is public. This public catalog is not a remote fetch. "
     "Local python3 scripts/validate_catalog.py fails closed "
     "if this file drifts. Hosted catalog-validate may be a "
     "0-step empty-runner — not a catalog fail. "
@@ -799,6 +804,81 @@ class ValidateCatalogTests(unittest.TestCase):
         extra["app_api"]["storyboard"]["ops"]["remote_catalog_urls"] = True
         errors = validate(fixture(), extra)
         self.assertTrue(any("remote_catalog_urls" in e for e in errors), errors)
+
+    def test_claiming_private_catalog_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["default_import"] = (
+            extra["app_api"]["storyboard"]["default_import"].replace(
+                "This public catalog is not a remote fetch.",
+                "This private catalog is not a public fetch.",
+            )
+        )
+        extra["app_api"]["notes"]["storyboard_import"] = extra["app_api"]["notes"][
+            "storyboard_import"
+        ].replace(
+            "This public catalog is not a remote fetch.",
+            "This private catalog is not a public fetch.",
+        )
+        self.assertTrue(feed_claims_private_catalog(extra["app_api"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("must not claim this private catalog" in e for e in errors),
+            errors,
+        )
+
+    def test_missing_public_catalog_admission_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["default_import"] = extra["app_api"][
+            "storyboard"
+        ]["default_import"].replace(
+            "This public catalog is not a remote fetch. ",
+            "",
+        )
+        extra["app_api"]["notes"]["storyboard_import"] = extra["app_api"]["notes"][
+            "storyboard_import"
+        ].replace(
+            "This public catalog is not a remote fetch. ",
+            "",
+        )
+        self.assertFalse(feed_admits_public_catalog(extra["app_api"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("must admit this public catalog is not a remote fetch" in e for e in errors),
+            errors,
+        )
+
+    def test_jeff_facing_docs_cannot_claim_private_catalog(self):
+        extra = extras_ok()
+        extra["readme"] = (
+            "This repository is public. Click Write, Produce, or Listen. "
+            "This private catalog is not a public fetch."
+        )
+        extra["apps_md"] = extra["readme"]
+        self.assertTrue(public_doc_claims_private_catalog(extra["readme"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("README.md still claims this private catalog" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            any("APPS.md still claims this private catalog" in e for e in errors),
+            errors,
+        )
+
+    def test_jeff_facing_docs_must_admit_public_repo(self):
+        extra = extras_ok()
+        extra["readme"] = "Click Write, Produce, or Listen. Resume Forget."
+        extra["apps_md"] = extra["readme"]
+        self.assertFalse(public_doc_admits_public_repo(extra["readme"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("README.md must say this repository is public" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            any("APPS.md must say this repository is public" in e for e in errors),
+            errors,
+        )
 
     def test_missing_band_operations_import_fails_closed(self):
         extra = extras_ok()
@@ -2447,6 +2527,7 @@ class ValidateCatalogTests(unittest.TestCase):
     def test_public_docs_roles_counts_only_pass(self):
         extras = extras_ok()
         extras["readme"] = (
+            "This repository is public. This public catalog is not a remote fetch. "
             "Vault is the catalog brain. 150 entities. "
             "Flagship, Quick win, Experimental, On deck, The Opus. "
             "128 YES / 20 NO / 2 NEEDS-CONSENT. "
@@ -2459,6 +2540,7 @@ class ValidateCatalogTests(unittest.TestCase):
             "Logic-ready next. Copy Logic-ready next.\n"
         )
         extras["apps_md"] = (
+            "This repository is public. This public catalog is not a remote fetch. "
             "Local python3 scripts/validate_catalog.py fails closed "
             "if this file drifts. Hosted catalog-validate may be a "
             "0-step empty-runner — not a catalog fail. "
@@ -2660,6 +2742,29 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(api["storyboard"]["ops"]["show_night_guest_sets_stay_opt_in"])
         self.assertTrue(api["storyboard"]["local_json_only"])
         self.assertIs(api["storyboard"]["remote_catalog_urls"], False)
+        self.assertFalse(feed_claims_private_catalog(api))
+        self.assertTrue(feed_admits_public_catalog(api))
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["storyboard"]["default_import"],
+        )
+        self.assertNotIn("This private catalog", api["storyboard"]["default_import"])
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["notes"]["storyboard_import"],
+        )
+        self.assertTrue(public_doc_admits_public_repo(extra["readme"]))
+        self.assertTrue(public_doc_admits_public_repo(extra["apps_md"]))
+        self.assertFalse(public_doc_claims_private_catalog(extra["readme"]))
+        self.assertFalse(public_doc_claims_private_catalog(extra["apps_md"]))
+        self.assertIn(
+            "this public catalog is not a remote fetch",
+            " ".join(extra["readme"].lower().split()),
+        )
+        self.assertIn(
+            "this public catalog is not a remote fetch",
+            " ".join(extra["apps_md"].lower().split()),
+        )
         self.assertEqual(
             api["storyboard"]["band_operations_import"], BAND_OPERATIONS_IMPORT
         )
