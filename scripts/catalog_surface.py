@@ -1224,6 +1224,38 @@ def dashboard_escape_clears_memo_search(html: str) -> bool:
     )
 
 
+def dashboard_empty_memo_search_honest(html: str) -> bool:
+    """Zero memo hits must not tell the user to clear a song filter that is not set."""
+    chrome = dashboard_markup_chrome(html)
+    if "clear the song filter or try a different word" in chrome:
+        return False
+    required = (
+        "function emptyMemosCopy(",
+        "press Escape or Show all memos",
+        "try a different word",
+    )
+    return all(marker in chrome for marker in required)
+
+
+_DISHONEST_TERM_STATUS_RE = re.compile(r"textContent\s*=\s*term\s*\?")
+
+
+def dashboard_empty_search_honest(html: str) -> bool:
+    """Zero song hits must not claim closest-name ranking or a filter that is not set."""
+    chrome = dashboard_markup_chrome(html)
+    if "clear a filter?" in chrome:
+        return False
+    if _DISHONEST_TERM_STATUS_RE.search(chrome):
+        return False
+    required = (
+        "function songResultsStatus(",
+        "function emptySongsCopy(",
+        "press Escape or Clear filters",
+        "closest name first",
+    )
+    return all(marker in chrome for marker in required)
+
+
 def dashboard_exposes_logic_ready(html: str) -> bool:
     """First useful surface must name a sanitized Logic-ready next action."""
     chrome = dashboard_markup_chrome(html)
@@ -1397,6 +1429,25 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
         and phone["padding"] == PHONE_BODY_PADDING_VALUE
         and phone["stat_flex_basis"] == PHONE_STAT_FLEX_BASIS
     )
+
+
+def dashboard_tablist_keyboard_ready(html: str) -> bool:
+    """Songs/Memo tabs follow APG: roving tabindex plus arrow/Home/End keys."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        'role="tablist"',
+        'aria-orientation="horizontal"',
+        'id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0"',
+        'id="tabM" role="tab" aria-controls="paneM" aria-selected="false" tabindex="-1"',
+        "function nextVaultTab(",
+        "function activateVaultTab(",
+        "function handleVaultTabKey(",
+        "ArrowRight",
+        "ArrowLeft",
+        "tabS.tabIndex=",
+        "tabM.tabIndex=",
+    )
+    return all(marker in chrome for marker in required)
 
 
 def _html_id_at(html: str, value: str) -> int:
@@ -1594,8 +1645,134 @@ def dashboard_rdy_contrast_ready(html: str) -> bool:
     return True
 
 
+_SKIP_LINK_RULE_RE = re.compile(r"\.skip-link\s*\{([^}]*)\}", re.IGNORECASE)
+_SEARCH_MARK_RULE_RE = re.compile(
+    r"\.msnip\s+mark\s*,\s*\.rtitle\s+mark\s*,\s*\.aka-hit\s+mark\s*\{([^}]*)\}",
+    re.IGNORECASE,
+)
+_CSS_DECL_RE = re.compile(r"([a-z-]+)\s*:\s*([^;]+)", re.IGNORECASE)
+_CSS_VAR_RE = re.compile(r"^var\(\s*--([a-z0-9]+)\s*\)$", re.IGNORECASE)
+
+
+def _css_declarations(block: str) -> dict[str, str]:
+    return {
+        name.lower(): value.strip()
+        for name, value in _CSS_DECL_RE.findall(block or "")
+    }
+
+
+def _resolve_theme_color(value: str, theme: dict[str, str]) -> str | None:
+    raw = (value or "").strip()
+    if raw.startswith("#"):
+        hex_value = raw.lower()
+        if len(hex_value) == 4 and all(ch in "0123456789abcdef#" for ch in hex_value):
+            return "#" + "".join(ch * 2 for ch in hex_value[1:])
+        if len(hex_value) == 7:
+            return hex_value
+        return None
+    match = _CSS_VAR_RE.fullmatch(raw)
+    if not match:
+        return None
+    return theme.get(match.group(1).lower())
+
+
+def dashboard_skip_link_contrast_ready(html: str) -> bool:
+    """Skip link text must meet WCAG AA 4.5:1 on dark and light themes.
+
+    White-on-`--pot` fails AA. Use `--ink` on `--bg` (or another pair that
+    actually meets 4.5:1) so the first keyboard control stays readable.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    rule = _SKIP_LINK_RULE_RE.search(chrome)
+    if not rule:
+        return False
+    decls = _css_declarations(rule.group(1))
+    background = decls.get("background") or decls.get("background-color")
+    foreground = decls.get("color")
+    if not background or not foreground:
+        return False
+    collapsed = re.sub(r"\s+", "", rule.group(1).lower())
+    if "background:var(--pot)" in collapsed and (
+        "color:#fff" in collapsed or "color:#ffffff" in collapsed
+    ):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        fg = _resolve_theme_color(foreground, theme)
+        bg = _resolve_theme_color(background, theme)
+        if not fg or not bg:
+            return False
+        if contrast_ratio(fg, bg) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return True
+
+
+def dashboard_search_mark_contrast_ready(html: str) -> bool:
+    """Search-hit marks must meet WCAG AA 4.5:1 on dark and light themes.
+
+    White-on-`--pot` fails AA at 14px. Use `--ink` on `--bg` (or another
+    pair that actually meets 4.5:1) so title, alias, and memo hits stay
+    readable.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    rule = _SEARCH_MARK_RULE_RE.search(chrome)
+    if not rule:
+        return False
+    decls = _css_declarations(rule.group(1))
+    background = decls.get("background") or decls.get("background-color")
+    foreground = decls.get("color")
+    if not background or not foreground:
+        return False
+    collapsed = re.sub(r"\s+", "", rule.group(1).lower())
+    if "background:var(--pot)" in collapsed and (
+        "color:#fff" in collapsed or "color:#ffffff" in collapsed
+    ):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        fg = _resolve_theme_color(foreground, theme)
+        bg = _resolve_theme_color(background, theme)
+        if not fg or not bg:
+            return False
+        if contrast_ratio(fg, bg) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return True
+
+
+def _readme_h2_headings(text: str) -> list[str]:
+    return [
+        line.strip()
+        for line in (text or "").splitlines()
+        if line.startswith("## ")
+    ]
+
+
+def readme_click_test_does_not_claim_private(text: str) -> bool:
+    """Public README must not title the click-test as a private session."""
+    return not any(
+        heading.lower() == "## click-test the private session"
+        for heading in _readme_h2_headings(text)
+    )
+
+
+def readme_click_test_uses_browser_local_heading(text: str) -> bool:
+    """If a Click-test heading is present, it must say browser-local."""
+    click_headings = [
+        heading
+        for heading in _readme_h2_headings(text)
+        if heading.lower().startswith("## click-test")
+    ]
+    if not click_headings:
+        return True
+    return all("browser-local" in heading.lower() for heading in click_headings)
+
+
 def readme_documents_session_click_test(text: str) -> bool:
-    """Jeff-facing README must match the real private-session click path."""
+    """Jeff-facing README must match the real browser-local session click path."""
     body = (text or "").lower()
     return (
         "click write, produce, or listen" in body

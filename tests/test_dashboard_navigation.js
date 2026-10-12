@@ -37,7 +37,10 @@ for (const marker of [
   "data-copy-file",
   "function openSong(",
   "function openSongMemos(",
+  "function emptyMemosCopy(",
   "function memoMatches(",
+  "press Escape or Show all memos",
+  "try a different word",
   "function parseVaultHash(",
   "function sortMemoHits(",
   "function handleVaultKey(",
@@ -50,7 +53,10 @@ for (const marker of [
   "function sortSongRows(",
   "function focusFoundSong(",
   "function handleSongSearchKey(",
+  "function songResultsStatus(",
+  "function emptySongsCopy(",
   "closest name first",
+  "press Escape or Clear filters",
   "titles, aliases, hooks",
   "scrollIntoView({block:'center'})",
   "function copyMemoFile(",
@@ -80,6 +86,8 @@ for (const marker of [
   "sit-logic",
   "Sort: Logic-ready",
   "class=\"skip-link\"",
+  "background:var(--ink);color:var(--bg)",
+  ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)",
   "href=\"#workNowTitle\"",
   '<h2 id="workNowTitle" tabindex="-1">',
   "<header>",
@@ -162,8 +170,20 @@ for (const marker of [
   "this page does not open audio",
   "aria-selected",
   "aria-expanded",
+  "aria-orientation=\"horizontal\"",
+  "id=\"tabS\" role=\"tab\" aria-controls=\"paneS\" aria-selected=\"true\" tabindex=\"0\"",
+  "id=\"tabM\" role=\"tab\" aria-controls=\"paneM\" aria-selected=\"false\" tabindex=\"-1\"",
+  "function nextVaultTab(",
+  "function activateVaultTab(",
+  "function handleVaultTabKey(",
 ]) {
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
+}
+if (html.includes("clear the song filter or try a different word")) {
+  fail("empty memo results must not imply a song filter is set");
+}
+if (html.includes("clear a filter?")) {
+  fail("empty song results must not imply a filter is set");
 }
 if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
 if (html.includes("@media(max-width:375px)")) {
@@ -1269,6 +1289,125 @@ if (!searchEscape.handleVaultKey({ key: "Escape" }) || searchEscape.q.value !== 
 }
 if (searchEscape.painted() !== "songs" || searchEscape.hashed() !== ":") {
   fail("escape must repaint Songs after clearing a name search");
+}
+
+const emptyMemosCopy = new Function(
+  "return (" + extractFunction(script, "emptyMemosCopy") + ");",
+)();
+if (emptyMemosCopy("") !== "No matched memo evidence found — try a different word.") {
+  fail("unscoped memo misses must not tell the user to clear a song filter");
+}
+if (emptyMemosCopy("ST-0001") !== "No matched memo evidence found — press Escape or Show all memos.") {
+  fail("scoped memo misses must name Escape and Show all memos");
+}
+if (emptyMemosCopy("").includes("clear the song filter") || emptyMemosCopy("ST-0001").includes("clear the song filter")) {
+  fail("empty memo copy must not invent a song-filter control");
+}
+
+const nextVaultTab = new Function(
+  "return (" + extractFunction(script, "nextVaultTab") + ");",
+)();
+if (nextVaultTab("S", "ArrowRight") !== "M" || nextVaultTab("M", "ArrowLeft") !== "S") {
+  fail("arrow keys must move between Songs and Memo tabs");
+}
+if (nextVaultTab("M", "ArrowRight") !== "S" || nextVaultTab("S", "ArrowLeft") !== "M") {
+  fail("arrow keys must wrap at both ends of the tablist");
+}
+if (nextVaultTab("M", "Home") !== "S" || nextVaultTab("S", "End") !== "M") {
+  fail("Home and End must jump to the first and last tab");
+}
+if (nextVaultTab("S", "Enter") !== "" || nextVaultTab("S", "Tab") !== "") {
+  fail("non-arrow keys must not steal Tab or Enter from the tab buttons");
+}
+
+function fakeTab(selected) {
+  const attrs = { "aria-selected": selected ? "true" : "false" };
+  return {
+    tabIndex: selected ? 0 : -1,
+    classList: { toggle() {} },
+    focused: false,
+    setAttribute(name, value) { attrs[name] = String(value); },
+    getAttribute(name) { return attrs[name]; },
+    focus() { this.focused = true; },
+  };
+}
+const tabS = fakeTab(true);
+const tabM = fakeTab(false);
+const paneS = { hidden: false };
+const paneM = { hidden: true };
+let memoPainted = 0;
+let openedWork = "";
+const tabRuntime = new Function(
+  "tabS",
+  "tabM",
+  "paneS",
+  "paneM",
+  "lastWorkKind",
+  "work",
+  "q",
+  "mrender",
+  "openWork",
+  "const showTab = " + extractFunction(script, "showTab") + ";" +
+    "const activateVaultTab = " + extractFunction(script, "activateVaultTab") + ";" +
+    "const handleVaultTabKey = " + extractFunction(script, "handleVaultTabKey") + ";" +
+    "const nextVaultTab = " + extractFunction(script, "nextVaultTab") + ";" +
+    "return { showTab, activateVaultTab, handleVaultTabKey };",
+)(
+  tabS,
+  tabM,
+  paneS,
+  paneM,
+  "",
+  { value: "" },
+  { value: "" },
+  () => { memoPainted += 1; },
+  (kind) => { openedWork = kind; },
+);
+tabRuntime.showTab("M");
+if (paneS.hidden !== true || paneM.hidden !== false) fail("showTab(M) must hide Songs");
+if (tabS.tabIndex !== -1 || tabM.tabIndex !== 0) fail("selected Memo tab must be the only tabbable tab");
+if (tabS.getAttribute("aria-selected") !== "false" || tabM.getAttribute("aria-selected") !== "true") {
+  fail("showTab must flip aria-selected");
+}
+tabRuntime.showTab("S");
+if (tabS.tabIndex !== 0 || tabM.tabIndex !== -1) fail("selected Songs tab must restore roving tabindex");
+const prevented = [];
+if (tabRuntime.handleVaultTabKey({ key: "ArrowRight", preventDefault: () => prevented.push("right") }, "S") !== "M") {
+  fail("ArrowRight from Songs must activate Memo");
+}
+if (!tabM.focused || memoPainted < 1 || prevented.join(",") !== "right") {
+  fail("arrow activation must focus Memo, paint it, and prevent scrolling");
+}
+if (tabRuntime.handleVaultTabKey({ key: "Home", preventDefault() {} }, "M") !== "S") {
+  fail("Home from Memo must activate Songs");
+}
+if (!tabS.focused) fail("Home must move focus to Songs");
+if (openedWork) fail("tab keyboard must not mint a work session without a stored kind");
+
+const songResultsStatus = new Function(
+  "return (" + extractFunction(script, "songResultsStatus") + ");",
+)();
+if (songResultsStatus("candy lane", 3, 150) !== "Showing 3 of 150 songs · closest name first") {
+  fail("ranked hits must still say closest name first");
+}
+if (songResultsStatus("zzzzzzzz", 0, 150) !== "Showing 0 of 150 songs") {
+  fail("zero search hits must not claim closest-name ranking");
+}
+if (songResultsStatus("", 150, 150) !== "Showing 150 of 150 songs") {
+  fail("an unfiltered list must not claim closest-name ranking");
+}
+if (songResultsStatus("  ", 2, 150) !== "Showing 2 of 150 songs") {
+  fail("whitespace-only search is not a ranked name search");
+}
+
+const emptySongsCopy = new Function(
+  "return (" + extractFunction(script, "emptySongsCopy") + ");",
+)();
+if (!emptySongsCopy().includes("Escape") || !emptySongsCopy().includes("Clear filters")) {
+  fail("empty song results must name Escape and Clear filters");
+}
+if (emptySongsCopy().includes("clear a filter?")) {
+  fail("empty song copy must not imply a filter is set");
 }
 
 console.log("dashboard song/memo navigation smoke ok");
