@@ -949,7 +949,7 @@ function openSongMemos(songId){
 }
 function handleVaultKey(e){
  if(!e||e.key!=='Escape')return false;
- if(typeof paneM!=='undefined'&&paneM&&!paneM.hidden&&activeMemoSong){
+ if(typeof paneM!=='undefined'&&paneM&&!paneM.hidden&&(activeMemoSong||(mq&&String(mq.value||'').trim()))){
   activeMemoSong='';mq.value='';
   if(typeof lastWorkKind!=='undefined'&&lastWorkKind){
    if(typeof writeVaultHash==='function')writeVaultHash('work',lastWorkKind);

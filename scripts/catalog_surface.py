@@ -1206,6 +1206,24 @@ def dashboard_finds_remembered_song_names(html: str) -> bool:
     return all(marker in chrome for marker in required)
 
 
+_MEMO_ESCAPE_SCOPED_ONLY_RE = re.compile(
+    r"paneM&&!paneM\.hidden&&activeMemoSong\)"
+)
+
+
+def dashboard_escape_clears_memo_search(html: str) -> bool:
+    """Escape on Memo Search must clear a typed query, not only a song scope."""
+    chrome = dashboard_markup_chrome(html)
+    collapsed = re.sub(r"\s+", "", chrome)
+    if _MEMO_ESCAPE_SCOPED_ONLY_RE.search(collapsed):
+        return False
+    return (
+        "function handleVaultKey(" in chrome
+        and "activeMemoSong||" in chrome
+        and "mq.value||''" in chrome
+    )
+
+
 def dashboard_empty_memo_search_honest(html: str) -> bool:
     """Zero memo hits must not tell the user to clear a song filter that is not set."""
     chrome = dashboard_markup_chrome(html)
