@@ -34,6 +34,7 @@ from catalog_surface import (
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
     dashboard_empty_memo_search_honest,
+    dashboard_empty_search_honest,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
@@ -44,6 +45,9 @@ from catalog_surface import (
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_search_mark_contrast_ready,
+    readme_click_test_does_not_claim_private,
+    readme_click_test_uses_browser_local_heading,
     readme_documents_session_click_test,
 )
 from export_catalog_csv import (
@@ -1986,9 +1990,18 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
     readme = extras.get("readme")
     if isinstance(readme, str) and readme.strip():
         errors.extend(public_facing_doc_errors("README.md", readme, cat))
+        if not readme_click_test_does_not_claim_private(readme):
+            errors.append(
+                "README.md Click-test heading still claims a private session — "
+                "this public catalog is browser-local only"
+            )
+        if not readme_click_test_uses_browser_local_heading(readme):
+            errors.append(
+                "README.md Click-test heading must say browser-local session"
+            )
         if not readme_documents_session_click_test(readme):
             errors.append(
-                "README.md must document the private session click-test: "
+                "README.md must document the browser-local session click-test: "
                 "Click Write, Produce, or Listen; Refresh; Resume; Forget; "
                 "stores only work kind and catalog ID; "
                 "Logic export honesty (WAVs/AIFF/MIDI preference, no Ableton-first); "
@@ -2049,6 +2062,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard zero memo hits must not tell the user to clear "
                 "a song filter that is not set"
             )
+        if not dashboard_empty_search_honest(dash):
+            errors.append(
+                "dashboard zero song hits must not claim closest-name ranking "
+                "or tell the user to clear a filter that is not set"
+            )
         if not dashboard_exposes_logic_ready(dash):
             errors.append(
                 "dashboard must name a sanitized Logic-ready next from "
@@ -2060,6 +2078,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must stay usable at 390px with landmarks, "
                 "labeled controls, 44px tap targets, visible focus, "
                 "and no horizontal scroll"
+            )
+        if not dashboard_search_mark_contrast_ready(dash):
+            errors.append(
+                "dashboard search-hit marks must meet WCAG AA 4.5:1 on "
+                "dark and light — do not paint white text on --pot"
             )
         if not dashboard_first_paint_ready(dash):
             errors.append(
