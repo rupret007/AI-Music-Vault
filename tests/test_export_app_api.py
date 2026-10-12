@@ -139,6 +139,11 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertTrue(mapping["ops"]["show_night_binds_official_set_dump"])
         self.assertTrue(mapping["local_json_only"])
         self.assertIs(mapping["remote_catalog_urls"], False)
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            mapping["default_import"],
+        )
+        self.assertNotIn("This private catalog", mapping["default_import"])
         self.assertEqual(mapping["band_operations_import"], BAND_OPERATIONS_IMPORT)
         self.assertTrue(mapping["ops"]["local_json_only"])
         self.assertIs(mapping["ops"]["remote_catalog_urls"], False)
@@ -373,6 +378,15 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertTrue(api["storyboard"]["vault_feed_is_not_a_show_night_writer"])
         self.assertTrue(api["storyboard"]["local_json_only"])
         self.assertIs(api["storyboard"]["remote_catalog_urls"], False)
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["storyboard"]["default_import"],
+        )
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["notes"]["storyboard_import"],
+        )
+        self.assertNotIn("This private catalog", api["notes"]["storyboard_import"])
         self.assertEqual(
             api["storyboard"]["band_operations_import"], BAND_OPERATIONS_IMPORT
         )

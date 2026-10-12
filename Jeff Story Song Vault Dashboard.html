@@ -10,7 +10,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{overflow-x:hidden;overflow-x:clip}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
-.skip-link{position:absolute;left:-999px;top:8px;z-index:20;background:var(--pot);color:#fff;padding:8px 12px;border-radius:8px}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:20;background:var(--ink);color:var(--bg);padding:8px 12px;border-radius:8px}
 .skip-link:focus,.skip-link:focus-visible{left:8px}
 :focus-visible{outline:2px solid var(--pot);outline-offset:2px}
 h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
@@ -90,7 +90,7 @@ input{flex:1;min-width:0;width:100%}
 .empty{color:var(--ink3);text-align:center;padding:30px}
 .mrow{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;padding:10px 14px}
 .mrow b{font-size:15px} .mmeta{color:var(--ink3);font-size:12px;margin-bottom:4px}
-.msnip{color:var(--ink2);font-size:14px} .msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff;border-radius:3px;padding:0 2px}
+.msnip{color:var(--ink2);font-size:14px} .msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg);border-radius:3px;padding:0 2px}
 .mhint{color:var(--ink3);font-size:13px;padding:16px;text-align:center;overflow-wrap:anywhere}
 .resultbar,.memo-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink3);font-size:13px;margin:0 0 10px;flex-wrap:wrap}
 .memo-scope{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink2)}
@@ -642,6 +642,14 @@ function markNormalized(text,term){
  const end=units[at+needle.length-1].end||units[at+needle.length-1].start;
  return esc(src.slice(0,start))+'<mark>'+esc(src.slice(start,end))+'</mark>'+esc(src.slice(end));
 }
+function songResultsStatus(term,shown,total){
+ const n=Number(shown)||0, all=Number(total)||0;
+ const base=`Showing ${n} of ${all} songs`;
+ return String(term||'').trim() && n ? `${base} · closest name first` : base;
+}
+function emptySongsCopy(){
+ return 'No songs match — press Escape or Clear filters.';
+}
 function sortSongRows(rows,term,sortKey){
  const decorated=rows.map(row=>({row,hit:term?songSearchHit(row,term):{hit:true,rank:99,via:''}}));
  decorated.sort((a,b)=>{
@@ -695,9 +703,7 @@ function render(){
  const rows=decorated.map(item=>item.row);
  const viaById={};
  decorated.forEach(item=>{viaById[item.row.id]=item.hit.via;});
- songResults.textContent=term
-  ?`Showing ${rows.length} of ${DATA.length} songs · closest name first`
-  :`Showing ${rows.length} of ${DATA.length} songs`;
+ songResults.textContent=songResultsStatus(term,rows.length,DATA.length);
  clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||lrv||k!=='mom');
  if(typeof visibleSongIds!=='undefined')visibleSongIds=rows.map(d=>d.id);
  list.innerHTML=rows.length?rows.map((d,i)=>{
@@ -733,7 +739,7 @@ function render(){
   ${questions?`<h4>Open questions</h4>${esc(questions)}`:''}
   <div class="work-copy"><button type="button" class="subtle-btn" data-copy-work="${esc(d.id)}">Copy work card</button></div>
   ${memoCountBySong[d.id]?`<h4>Matched memo evidence</h4><button type="button" class="memo-link" data-open-memos="${esc(d.id)}">Open ${memoCountBySong[d.id]} searchable memo${memoCountBySong[d.id]===1?'':'s'}</button>`:''}
- </div></div>`;}).join(''):'<div class="empty">No songs match — clear a filter?</div>';
+ </div></div>`;}).join(''):`<div class="empty">${emptySongsCopy()}</div>`;
  if(wv&&visibleSongIds.length){
   if(!visibleSongIds.includes(activeWorkSongId))activeWorkSongId=visibleSongIds[0];
   focusWorkSong(activeWorkSongId,false);
