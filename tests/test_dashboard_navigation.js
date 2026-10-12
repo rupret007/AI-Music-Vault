@@ -78,6 +78,7 @@ for (const marker of [
   "sit-logic",
   "Sort: Logic-ready",
   "class=\"skip-link\"",
+  ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)",
   "href=\"#workNowTitle\"",
   '<h2 id="workNowTitle" tabindex="-1">',
   "<header>",

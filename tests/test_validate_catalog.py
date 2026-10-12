@@ -26,6 +26,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_search_mark_contrast_ready,
     readme_documents_session_click_test,
     catalog_workspace_uses_vault_framing,
     overlay_feed_scopes,
@@ -312,7 +313,10 @@ def extras_ok(cat=None):
             '<h2 id="workNowTitle" tabindex="-1"> class="row-heading" aria-controls="song-detail- '
             'role="tablist" aria-label="Sort songs" '
             'aria-label="Search memo transcripts" '
-            '<style>@media(max-width:640px){body{padding:12px;font-size:16px}'
+            '<style>:root{--bg:#1a1a19;--ink:#ffffff}'
+            '@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;}}'
+            '.msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}'
+            '@media(max-width:640px){body{padding:12px;font-size:16px}'
             '.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}</style> '
             'min-height:44px overflow-x:hidden :focus-visible class="score-lab" '
             '--ink3:#a8a79c --ink3:#5c5b54 '
@@ -1169,8 +1173,8 @@ class ValidateCatalogTests(unittest.TestCase):
     def test_dashboard_without_phone_a11y_fails_closed(self):
         extra = extras_ok()
         extra["dashboard_html"] = extra["dashboard_html"].replace(
-            "<style>@media(max-width:640px){body{padding:12px;font-size:16px}"
-            ".rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}</style>",
+            "@media(max-width:640px){body{padding:12px;font-size:16px}"
+            ".rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}",
             "",
         ).replace("min-height:44px", "")
         errors = validate(fixture(), extra)
@@ -1179,6 +1183,19 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+
+    def test_dashboard_white_on_pot_search_marks_fail_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}",
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff}",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("search-hit marks must meet WCAG AA" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
 
     def test_dashboard_without_first_paint_fails_closed(self):
         extra = extras_ok()
@@ -2802,6 +2819,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
         self.assertTrue(dashboard_work_next_stays_in_view(extra["dashboard_html"]))
