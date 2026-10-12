@@ -5,10 +5,11 @@ ideas, tracking evidence, and choosing the next writing or production step.
 `data/master_catalog.json` is the source of truth; generated views are indexes,
 not audio players or finished exports.
 
-**This repository is PUBLIC.** Committed metadata, lyrics, transcripts, and the
-dashboard are publicly readable and include sensitive historical material.
-“Private session” or “private sit-down” means browser-local navigation and resume
-state, not private repository contents. Audio masters and Logic projects stay
+**This repository is PUBLIC.** This public catalog is not a remote fetch.
+Committed metadata, lyrics, transcripts, and the dashboard are publicly
+readable and include sensitive historical material. “Private session” or
+“private sit-down” means browser-local navigation and resume state, not
+private repository contents. Audio masters and Logic projects stay
 outside this repo. Do not commit audio, personal data, or local session notes.
 
 ## Features

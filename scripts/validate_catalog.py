@@ -319,6 +319,51 @@ def apps_md_claims_catalog_is_official_set(text: str) -> bool:
     return catalog_surface_claims_official_set(text)
 
 
+PRIVATE_CATALOG_CLAIM = "this private catalog"
+PUBLIC_CATALOG_NOT_REMOTE = "this public catalog is not a remote fetch"
+PUBLIC_REPO_ADMISSION = "this repository is public"
+
+
+def _collapsed_honesty_text(text: str | None) -> str:
+    """Lowercase and collapse wrapping so honesty phrases survive line breaks."""
+    return " ".join((text or "").lower().split())
+
+
+def _feed_honesty_text(api: dict | None) -> str:
+    """Published StoryBoard prose that must not claim the catalog is private."""
+    payload = api if isinstance(api, dict) else {}
+    storyboard = payload.get("storyboard")
+    notes = payload.get("notes")
+    mapping = storyboard if isinstance(storyboard, dict) else {}
+    note_map = notes if isinstance(notes, dict) else {}
+    parts = (
+        mapping.get("default_import"),
+        mapping.get("inspected"),
+        note_map.get("storyboard_import"),
+    )
+    return "\n".join(str(part) for part in parts if part)
+
+
+def feed_claims_private_catalog(api: dict | None) -> bool:
+    """Published feed must not call this public catalog private."""
+    return PRIVATE_CATALOG_CLAIM in _collapsed_honesty_text(_feed_honesty_text(api))
+
+
+def feed_admits_public_catalog(api: dict | None) -> bool:
+    """Published feed must admit the catalog is public and not a remote fetch."""
+    return PUBLIC_CATALOG_NOT_REMOTE in _collapsed_honesty_text(_feed_honesty_text(api))
+
+
+def public_doc_claims_private_catalog(text: str) -> bool:
+    """Jeff-facing docs must not call this public catalog private."""
+    return PRIVATE_CATALOG_CLAIM in _collapsed_honesty_text(text)
+
+
+def public_doc_admits_public_repo(text: str) -> bool:
+    """Jeff-facing docs must say this repository is public."""
+    return PUBLIC_REPO_ADMISSION in _collapsed_honesty_text(text)
+
+
 def module_doc_claims_hosted_ci() -> bool:
     """Validator docstring must not claim hosted CI is the fail-closed gate."""
     return apps_md_claims_hosted_ci(sys.modules[__name__].__doc__ or "")
@@ -477,6 +522,11 @@ def public_facing_doc_errors(label: str, text: str, cat: dict) -> list[str]:
             f"{label} still claims catalog rows are the live set — "
             "Show Night owns official sets"
         )
+    if public_doc_claims_private_catalog(text):
+        errors.append(
+            f"{label} still claims this private catalog — "
+            "this repository is public"
+        )
     return errors
 
 
@@ -554,7 +604,7 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         errors.append(
             "app_api.json must be local JSON — StoryBoard #12 rejects a "
             "remote catalog locator (url / href / sourceUrl / catalogUrl / "
-            "fetch). This private catalog is not a public fetch."
+            "fetch). This public catalog is not a remote fetch."
         )
     if vault_payload_looks_like_spine(api):
         errors.append(
@@ -766,7 +816,17 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         if sb.get("remote_catalog_urls") is not REMOTE_CATALOG_URLS:
             errors.append(
                 "storyboard.remote_catalog_urls must be false — this "
-                "private catalog is not a public fetch"
+                "public catalog is not a remote fetch"
+            )
+        if feed_claims_private_catalog(api):
+            errors.append(
+                "app_api.json must not claim this private catalog — "
+                "this repository is public"
+            )
+        if not feed_admits_public_catalog(api):
+            errors.append(
+                "app_api.json must admit this public catalog is not a "
+                "remote fetch"
             )
         if sb.get("band_operations_import") != BAND_OPERATIONS_IMPORT:
             errors.append(
@@ -1981,10 +2041,20 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "set and Show Night owns official sets"
             )
         errors.extend(public_facing_doc_errors("APPS.md", apps_md, cat))
+        if not public_doc_admits_public_repo(apps_md):
+            errors.append(
+                "APPS.md must say this repository is public — "
+                "importing local JSON does not make the catalog private"
+            )
 
     readme = extras.get("readme")
     if isinstance(readme, str) and readme.strip():
         errors.extend(public_facing_doc_errors("README.md", readme, cat))
+        if not public_doc_admits_public_repo(readme):
+            errors.append(
+                "README.md must say this repository is public — "
+                "private session means browser-local state, not a private repo"
+            )
         if not readme_documents_session_click_test(readme):
             errors.append(
                 "README.md must document the private session click-test: "
