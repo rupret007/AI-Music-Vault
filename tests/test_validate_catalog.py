@@ -27,6 +27,8 @@ from catalog_surface import (  # noqa: E402
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    readme_click_test_does_not_claim_private,
+    readme_click_test_uses_browser_local_heading,
     readme_documents_session_click_test,
     catalog_workspace_uses_vault_framing,
     overlay_feed_scopes,
@@ -2360,10 +2362,12 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         errors = validate(fixture(), extras)
         self.assertTrue(
-            any("private session click-test" in e for e in errors),
+            any("browser-local session click-test" in e for e in errors),
             errors,
         )
         self.assertFalse(readme_documents_session_click_test(extras["readme"]))
+        self.assertTrue(readme_click_test_does_not_claim_private(extras["readme"]))
+        self.assertTrue(readme_click_test_uses_browser_local_heading(extras["readme"]))
 
     def test_readme_click_test_requires_session_log_handoff_and_no_ableton_first(self):
         missing_handoff = (
@@ -2388,6 +2392,42 @@ class ValidateCatalogTests(unittest.TestCase):
             "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)."
         )
         self.assertFalse(readme_documents_session_click_test(missing_logic_ready))
+
+    def test_readme_click_test_private_heading_fails(self):
+        extras = extras_ok()
+        extras["readme"] = (
+            "## Click-test the private session\n"
+            "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
+            "Copy next step. Do this now. Stores only a work kind and catalog ID. "
+            "Sit-down handoff goes in Session Log. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "Logic-ready next. Copy Logic-ready next.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("still claims a private session" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(readme_click_test_does_not_claim_private(extras["readme"]))
+        self.assertFalse(readme_click_test_uses_browser_local_heading(extras["readme"]))
+
+    def test_readme_click_test_heading_requires_browser_local(self):
+        extras = extras_ok()
+        extras["readme"] = (
+            "## Click-test the session\n"
+            "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
+            "Copy next step. Do this now. Stores only a work kind and catalog ID. "
+            "Sit-down handoff goes in Session Log. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "Logic-ready next. Copy Logic-ready next.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("must say browser-local session" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(readme_click_test_does_not_claim_private(extras["readme"]))
+        self.assertFalse(readme_click_test_uses_browser_local_heading(extras["readme"]))
 
     def test_public_docs_roles_counts_only_pass(self):
         extras = extras_ok()
@@ -2840,6 +2880,10 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_work_next_stays_in_view(extra["dashboard_html"]))
         self.assertTrue(dashboard_listen_is_not_playback(extra["dashboard_html"]))
         self.assertTrue(readme_documents_session_click_test(extra["readme"]))
+        self.assertTrue(readme_click_test_does_not_claim_private(extra["readme"]))
+        self.assertTrue(readme_click_test_uses_browser_local_heading(extra["readme"]))
+        self.assertIn("## Click-test the browser-local session", extra["readme"])
+        self.assertNotIn("## Click-test the private session", extra["readme"])
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
         self.assertFalse(catalog_ok_report_leaks_published_ids())
