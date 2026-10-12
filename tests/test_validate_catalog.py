@@ -16,6 +16,7 @@ from catalog_surface import (  # noqa: E402
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_empty_memo_search_honest,
     dashboard_empty_search_honest,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
@@ -311,6 +312,8 @@ def extras_ok(cat=None):
             'function songSearchHit( function markNormalized( '
             'function focusFoundSong( function handleSongSearchKey( '
             'closest name first titles, aliases, hooks memo lyric aka '
+            'function emptyMemosCopy( press Escape or Show all memos '
+            'try a different word '
             'function songResultsStatus( function emptySongsCopy( '
             'press Escape or Clear filters '
             'id="logicReady" Sort: Logic-ready Any Logic-ready '
@@ -1250,6 +1253,21 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+
+    def test_dashboard_without_empty_memo_search_honesty_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function emptyMemosCopy(", ""
+        ).replace(
+            "press Escape or Show all memos",
+            "clear the song filter or try a different word",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("zero memo hits must not tell the user" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_empty_memo_search_honest(extra["dashboard_html"]))
 
     def test_dashboard_without_empty_search_honesty_fails_closed(self):
         extra = extras_ok()
@@ -3025,6 +3043,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
         self.assertTrue(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+        self.assertTrue(dashboard_empty_memo_search_honest(extra["dashboard_html"]))
         self.assertTrue(dashboard_empty_search_honest(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))

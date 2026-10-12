@@ -1225,6 +1225,11 @@ if(tabS&&tabS.parentElement)tabS.parentElement.addEventListener('keydown',e=>han
 render();
 updateResumeWork();
 // ---- memo transcript search ----
+function emptyMemosCopy(songScoped){
+ return songScoped
+  ? 'No matched memo evidence found — press Escape or Show all memos.'
+  : 'No matched memo evidence found — try a different word.';
+}
 function memoMatches(m,term,songId){
  if(songId&&m.s!==songId)return false;
  if(!term)return !!songId;
@@ -1299,7 +1304,7 @@ function mrender(){
   <div class="mrow"><div class="mmeta">${esc(m.d)} · ${Math.round((Number(m.u)||0)/60)}min${m.s&&sname[m.s]?` · matched to <button type="button" class="song-link" data-open-song="${esc(m.s)}">${esc(sname[m.s])}</button>`:' · unmatched'}</div>
   <b>${markHay(m.n,term)}</b><div class="msnip">${snip}</div>
   <div class="mmeta" style="margin-top:4px">file: ${esc(intake.label)} (Voice Memo Intake)${intake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(intake.copy)}">Copy intake name</button>`:' · no copy-safe intake name yet'}</div></div>`;}).join('')
-  :'<div class="empty">No matched memo evidence found — clear the song filter or try a different word.</div>';
+  :`<div class="empty">${emptyMemosCopy(activeMemoSong)}</div>`;
 }
 mq.addEventListener('input',mrender);
 mlist.addEventListener('click',e=>{
