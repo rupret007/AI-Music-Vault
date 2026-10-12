@@ -27,6 +27,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_skip_link_contrast_ready,
     dashboard_search_mark_contrast_ready,
     readme_click_test_does_not_claim_private,
     readme_click_test_uses_browser_local_heading,
@@ -325,6 +326,7 @@ def extras_ok(cat=None):
             'aria-label="Search memo transcripts" '
             '<style>:root{--bg:#1a1a19;--ink:#ffffff}'
             '@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;}}'
+            '.skip-link{background:var(--ink);color:var(--bg)}'
             '.msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}'
             '@media(max-width:640px){body{padding:12px;font-size:16px}'
             '.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}</style> '
@@ -1295,6 +1297,19 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+
+    def test_dashboard_white_on_pot_skip_link_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            ".skip-link{background:var(--ink);color:var(--bg)}",
+            ".skip-link{background:var(--pot);color:#fff}",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("skip link must meet WCAG AA" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
 
     def test_dashboard_white_on_pot_search_marks_fail_closed(self):
         extra = extras_ok()
@@ -2995,6 +3010,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_empty_search_honest(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
