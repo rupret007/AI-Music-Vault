@@ -1236,8 +1236,50 @@ def dashboard_exposes_logic_ready(html: str) -> bool:
     return not logic_ready_next_leaks_private_locators()
 
 
+# 390×844 (iPhone CSS width) must hit phone padding / 2-up stats. 375px-only misses it.
+PHONE_LAYOUT_MAX_WIDTH_PX = 640
+PHONE_LAYOUT_MIN_COVER_PX = 400
+PHONE_BODY_PADDING_CSS = "body{padding:12px"
+PHONE_TWO_UP_STATS_CSS = ".stat{min-width:0;flex-basis:calc(50% - 10px)}"
+PHONE_LAYOUT_MEDIA = f"@media(max-width:{PHONE_LAYOUT_MAX_WIDTH_PX}px)"
+_PHONE_MAX_WIDTH_MQ_RE = re.compile(r"@media\(max-width:(\d+)px\)\{")
+
+
+def _css_rule_block_at(text: str, start: int) -> str:
+    """Return the CSS inside a `{...}` block that starts at `start` (after `{`)."""
+    depth = 1
+    index = start
+    while index < len(text) and depth:
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        index += 1
+    if depth != 0:
+        return ""
+    return text[start : index - 1]
+
+
+def dashboard_phone_layout_covers(html: str, width_px: int = 390) -> bool:
+    """True when tighter padding and 2-up stats apply at `width_px`.
+
+    A 375px-only query never covers 390. The live breakpoint is 640px
+    (must be at least 400px) so a 390×844 home view gets the phone tweaks.
+    """
+    chrome = dashboard_markup_chrome(html)
+    for match in _PHONE_MAX_WIDTH_MQ_RE.finditer(chrome):
+        max_width = int(match.group(1))
+        if max_width < PHONE_LAYOUT_MIN_COVER_PX or width_px > max_width:
+            continue
+        block = _css_rule_block_at(chrome, match.end())
+        if PHONE_BODY_PADDING_CSS in block and PHONE_TWO_UP_STATS_CSS in block:
+            return True
+    return False
+
+
 def dashboard_phone_and_a11y_ready(html: str) -> bool:
-    """Phone sit-down at 375px plus landmarks, names, contrast, and focus."""
+    """Phone sit-down at 640px (covers 390px) plus landmarks, names, contrast, and focus."""
     chrome = dashboard_markup_chrome(html)
     required = (
         'class="skip-link"',
@@ -1249,7 +1291,9 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
         'role="tablist"',
         'aria-label="Sort songs"',
         'aria-label="Search memo transcripts"',
-        "@media(max-width:375px)",
+        PHONE_LAYOUT_MEDIA,
+        PHONE_BODY_PADDING_CSS,
+        PHONE_TWO_UP_STATS_CSS,
         "min-height:44px",
         "overflow-x:hidden",
         ":focus-visible",
@@ -1262,6 +1306,7 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
     return (
         all(marker in chrome for marker in required)
         and 'role="columnheader"' not in chrome
+        and dashboard_phone_layout_covers(chrome, 390)
     )
 
 

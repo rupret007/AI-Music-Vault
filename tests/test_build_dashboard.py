@@ -30,6 +30,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_resume_leads_first_paint,
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
+    dashboard_phone_layout_covers,
     dashboard_rdy_contrast_ready,
     dashboard_resumes_song_work_privately,
     dashboard_theme_tokens,
@@ -1028,13 +1029,15 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         ) as handle:
             dashboard = handle.read()
         self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
+        self.assertTrue(dashboard_phone_layout_covers(dashboard, 390))
         self.assertIn("Skip to work session", dashboard)
         self.assertIn("<header>", dashboard)
         self.assertIn('<main id="main"', dashboard)
         self.assertIn("<footer", dashboard)
         self.assertIn('aria-label="Sort songs"', dashboard)
         self.assertIn('aria-label="Search memo transcripts"', dashboard)
-        self.assertIn("@media(max-width:375px)", dashboard)
+        self.assertIn("@media(max-width:640px)", dashboard)
+        self.assertNotIn("@media(max-width:375px)", dashboard)
         self.assertIn("min-height:44px", dashboard)
         self.assertIn("overflow-x:hidden", dashboard)
         self.assertIn(":focus-visible", dashboard)
@@ -1044,6 +1047,36 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         self.assertIn('class="row-heading"', dashboard)
         self.assertIn('aria-controls="song-detail-', dashboard)
         self.assertNotIn("grid-template-columns:1fr 90px 90px", dashboard)
+
+    def test_phone_padding_and_two_up_stats_apply_at_640px_not_375px(self):
+        padding = (
+            "body{padding:12px;font-size:16px}.rhead{padding:10px}"
+            ".stat{min-width:0;flex-basis:calc(50% - 10px)}"
+        )
+        only_375 = f"<style>@media(max-width:375px){{{padding}}}</style>"
+        at_640 = f"<style>@media(max-width:640px){{{padding}}}</style>"
+        at_400 = f"<style>@media(max-width:400px){{{padding}}}</style>"
+        self.assertFalse(dashboard_phone_layout_covers(only_375, 390))
+        self.assertTrue(dashboard_phone_layout_covers(at_640, 390))
+        self.assertTrue(dashboard_phone_layout_covers(at_400, 390))
+        self.assertFalse(dashboard_phone_layout_covers(at_640, 800))
+
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        reverted = dashboard.replace(
+            "body{padding:12px;font-size:16px}.rhead{padding:10px}"
+            ".stat{min-width:0;flex-basis:calc(50% - 10px)}",
+            "",
+        ).replace(
+            "</style>",
+            f"@media(max-width:375px){{{padding}}}</style>",
+            1,
+        )
+        self.assertFalse(dashboard_phone_layout_covers(reverted, 390))
+        self.assertFalse(dashboard_phone_and_a11y_ready(reverted))
 
     def test_phone_gate_fails_closed_without_landmarks(self):
         self.assertFalse(dashboard_phone_and_a11y_ready("<html></html>"))

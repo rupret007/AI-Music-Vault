@@ -84,7 +84,9 @@ for (const marker of [
   "<main id=\"main\"",
   "aria-label=\"Sort songs\"",
   "aria-label=\"Search memo transcripts\"",
-  "@media(max-width:375px)",
+  "@media(max-width:640px)",
+  "body{padding:12px",
+  ".stat{min-width:0;flex-basis:calc(50% - 10px)}",
   "min-height:44px",
   "overflow-x:hidden",
   ":focus-visible",
@@ -162,6 +164,28 @@ for (const marker of [
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
 }
 if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
+if (html.includes("@media(max-width:375px)")) {
+  fail("phone padding must not live in a 375px-only query that misses 390px");
+}
+function cssBlockAt(source, start) {
+  let depth = 1;
+  let cursor = start;
+  for (; cursor < source.length && depth; cursor += 1) {
+    if (source[cursor] === "{") depth += 1;
+    if (source[cursor] === "}") depth -= 1;
+  }
+  return source.slice(start, cursor - 1);
+}
+const phoneMq = "@media(max-width:640px){";
+const phoneAt = html.indexOf(phoneMq);
+if (phoneAt < 0) fail("missing 640px phone media query");
+const phoneBlock = cssBlockAt(html, phoneAt + phoneMq.length);
+if (!phoneBlock.includes("body{padding:12px")) {
+  fail("640px phone query must tighten body padding so 390px is a phone");
+}
+if (!phoneBlock.includes(".stat{min-width:0;flex-basis:calc(50% - 10px)}")) {
+  fail("640px phone query must keep 2-up stats so 390px is a phone");
+}
 function idAt(source, value) {
   const needle = 'id="' + value + '"';
   let start = 0;

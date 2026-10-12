@@ -5,10 +5,12 @@ These standard-library checks also run in the project's offline unittest gate.
 """
 from pathlib import Path
 import re
+import sys
 import unittest
 
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from catalog_surface import dashboard_phone_layout_covers  # noqa: E402
 
 
 class DashboardFilterLayoutTests(unittest.TestCase):
@@ -46,7 +48,9 @@ class DashboardFilterLayoutTests(unittest.TestCase):
     def test_phone_menu_and_controls_fit_the_available_width(self):
         for name, text in self.surfaces():
             with self.subTest(surface=name):
-                phone = text.split("@media(max-width:640px){", 1)[1].split("@media", 1)[0]
+                self.assertNotIn("@media(max-width:375px)", text)
+                self.assertTrue(dashboard_phone_layout_covers(text, 390))
+                phone = text.split("@media(max-width:640px){", 1)[1].split("</style>", 1)[0]
                 self.assertEqual(self.rules(phone, ".advanced-filters")[0]["width"], "100%")
                 self.assertEqual(self.rules(phone, ".advanced-menu")[0].get("grid-template-columns"), "minmax(0,1fr)")
                 selects = self.rules(text, ".advanced-menu select")[0]
