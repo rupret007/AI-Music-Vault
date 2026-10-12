@@ -26,6 +26,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_tablist_keyboard_ready,
     readme_documents_session_click_test,
     catalog_workspace_uses_vault_framing,
     overlay_feed_scopes,
@@ -311,6 +312,11 @@ def extras_ok(cat=None):
             'class="skip-link" href="#workNowTitle" <header> <main id="main" <footer '
             '<h2 id="workNowTitle" tabindex="-1"> class="row-heading" aria-controls="song-detail- '
             'role="tablist" aria-label="Sort songs" '
+            'aria-orientation="horizontal" '
+            'id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0" '
+            'id="tabM" role="tab" aria-controls="paneM" aria-selected="false" tabindex="-1" '
+            'function nextVaultTab( function activateVaultTab( function handleVaultTabKey( '
+            'ArrowRight ArrowLeft tabS.tabIndex= tabM.tabIndex= '
             'aria-label="Search memo transcripts" '
             '<style>@media(max-width:640px){body{padding:12px;font-size:16px}'
             '.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}</style> '
@@ -1179,6 +1185,18 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_tablist_keyboard_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function handleVaultTabKey(", ""
+        ).replace("aria-orientation=\"horizontal\"", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("APG arrow-key tablist" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
 
     def test_dashboard_without_first_paint_fails_closed(self):
         extra = extras_ok()
@@ -2802,6 +2820,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
         self.assertTrue(dashboard_work_next_stays_in_view(extra["dashboard_html"]))

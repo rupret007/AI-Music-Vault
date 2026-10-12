@@ -250,9 +250,9 @@ input{flex:1;min-width:0;width:100%}
  <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button> ''' + _lane_work_pill("JS-0128") + r'''<span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
  <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button> ''' + _lane_work_pill("JS-0107") + r'''<span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
 </section>
-<nav class="tabs" role="tablist" aria-label="Vault views">
- <button type="button" class="tab on" id="tabS" role="tab" aria-controls="paneS" aria-selected="true">Songs</button>
- <button type="button" class="tab" id="tabM" role="tab" aria-controls="paneM" aria-selected="false">Memo Search (__TX_SEARCHABLE_TOTAL__ searchable)</button>
+<nav class="tabs" role="tablist" aria-label="Vault views" aria-orientation="horizontal">
+ <button type="button" class="tab on" id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0">Songs</button>
+ <button type="button" class="tab" id="tabM" role="tab" aria-controls="paneM" aria-selected="false" tabindex="-1">Memo Search (__TX_SEARCHABLE_TOTAL__ searchable)</button>
 </nav>
 <main id="main">
 <div id="paneS" role="tabpanel" aria-labelledby="tabS">
@@ -341,11 +341,49 @@ TX.forEach(m=>{
  }
 });
 let activeMemoSong='';
+function nextVaultTab(current,key){
+ const here=current==='M'?'M':'S';
+ if(key==='Home')return 'S';
+ if(key==='End')return 'M';
+ if(key==='ArrowRight'||key==='ArrowLeft')return here==='S'?'M':'S';
+ return '';
+}
 function showTab(w){
  const memo=w==='M';
- paneS.hidden=memo;paneM.hidden=!memo;
- tabS.classList.toggle('on',!memo);tabM.classList.toggle('on',memo);
- tabS.setAttribute('aria-selected',String(!memo));tabM.setAttribute('aria-selected',String(memo));
+ if(typeof paneS!=='undefined'&&paneS)paneS.hidden=memo;
+ if(typeof paneM!=='undefined'&&paneM)paneM.hidden=!memo;
+ if(tabS){
+  tabS.classList.toggle('on',!memo);
+  tabS.setAttribute('aria-selected',String(!memo));
+  tabS.tabIndex=memo?-1:0;
+ }
+ if(tabM){
+  tabM.classList.toggle('on',memo);
+  tabM.setAttribute('aria-selected',String(memo));
+  tabM.tabIndex=memo?0:-1;
+ }
+}
+function activateVaultTab(w,opts){
+ const next=w==='M'?'M':'S';
+ showTab(next);
+ if(next==='M'){
+  if(typeof mrender==='function')mrender();
+ }else if(typeof lastWorkKind!=='undefined'&&lastWorkKind&&typeof work!=='undefined'&&work&&!work.value&&typeof q!=='undefined'&&q&&!q.value&&typeof openWork==='function'){
+  openWork(lastWorkKind);
+ }
+ if(opts&&opts.focus){
+  const tab=next==='M'?tabM:tabS;
+  if(tab&&typeof tab.focus==='function')tab.focus();
+ }
+ return next;
+}
+function handleVaultTabKey(e,current){
+ if(!e)return '';
+ const from=current==='M'||current==='S'?current:(tabM&&tabM.getAttribute&&tabM.getAttribute('aria-selected')==='true'?'M':'S');
+ const next=nextVaultTab(from,e.key);
+ if(!next)return '';
+ if(e.preventDefault)e.preventDefault();
+ return activateVaultTab(next,{focus:true});
 }
 const projects=[...new Set(DATA.map(d=>d.p))].sort();
 projects.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;proj.appendChild(o);});
@@ -1175,11 +1213,9 @@ if(copyWorkLogic)copyWorkLogic.addEventListener('click',()=>copyCurrentWorkLogic
 if(copyResumeNext)copyResumeNext.addEventListener('click',()=>copyResumeWorkNext(copyResumeNext));
 if(copyResumeLogic)copyResumeLogic.addEventListener('click',()=>copyResumeLogicNext(copyResumeLogic));
 if(openWorkEvidence)openWorkEvidence.addEventListener('click',()=>reviewCurrentWorkEvidence(openWorkEvidence));
-tabS.addEventListener('click',()=>{
- showTab('S');
- if(typeof lastWorkKind!=='undefined'&&lastWorkKind&&work&&!work.value&&!q.value)openWork(lastWorkKind);
-});
-tabM.addEventListener('click',()=>{showTab('M');mrender();});
+tabS.addEventListener('click',()=>activateVaultTab('S'));
+tabM.addEventListener('click',()=>activateVaultTab('M'));
+if(tabS&&tabS.parentElement)tabS.parentElement.addEventListener('keydown',e=>handleVaultTabKey(e));
 render();
 updateResumeWork();
 // ---- memo transcript search ----
