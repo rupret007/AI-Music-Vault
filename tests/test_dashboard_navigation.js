@@ -37,7 +37,10 @@ for (const marker of [
   "data-copy-file",
   "function openSong(",
   "function openSongMemos(",
+  "function emptyMemosCopy(",
   "function memoMatches(",
+  "press Escape or Show all memos",
+  "try a different word",
   "function parseVaultHash(",
   "function sortMemoHits(",
   "function handleVaultKey(",
@@ -162,6 +165,9 @@ for (const marker of [
   "aria-expanded",
 ]) {
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
+}
+if (html.includes("clear the song filter or try a different word")) {
+  fail("empty memo results must not imply a song filter is set");
 }
 if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
 if (html.includes("@media(max-width:375px)")) {
@@ -1198,6 +1204,19 @@ if (!searchEscape.handleVaultKey({ key: "Escape" }) || searchEscape.q.value !== 
 }
 if (searchEscape.painted() !== "songs" || searchEscape.hashed() !== ":") {
   fail("escape must repaint Songs after clearing a name search");
+}
+
+const emptyMemosCopy = new Function(
+  "return (" + extractFunction(script, "emptyMemosCopy") + ");",
+)();
+if (emptyMemosCopy("") !== "No matched memo evidence found — try a different word.") {
+  fail("unscoped memo misses must not tell the user to clear a song filter");
+}
+if (emptyMemosCopy("ST-0001") !== "No matched memo evidence found — press Escape or Show all memos.") {
+  fail("scoped memo misses must name Escape and Show all memos");
+}
+if (emptyMemosCopy("").includes("clear the song filter") || emptyMemosCopy("ST-0001").includes("clear the song filter")) {
+  fail("empty memo copy must not invent a song-filter control");
 }
 
 console.log("dashboard song/memo navigation smoke ok");

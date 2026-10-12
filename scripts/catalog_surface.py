@@ -1206,6 +1206,19 @@ def dashboard_finds_remembered_song_names(html: str) -> bool:
     return all(marker in chrome for marker in required)
 
 
+def dashboard_empty_memo_search_honest(html: str) -> bool:
+    """Zero memo hits must not tell the user to clear a song filter that is not set."""
+    chrome = dashboard_markup_chrome(html)
+    if "clear the song filter or try a different word" in chrome:
+        return False
+    required = (
+        "function emptyMemosCopy(",
+        "press Escape or Show all memos",
+        "try a different word",
+    )
+    return all(marker in chrome for marker in required)
+
+
 def dashboard_exposes_logic_ready(html: str) -> bool:
     """First useful surface must name a sanitized Logic-ready next action."""
     chrome = dashboard_markup_chrome(html)
