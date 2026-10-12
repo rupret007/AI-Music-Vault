@@ -2051,7 +2051,7 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             )
         if not dashboard_phone_and_a11y_ready(dash):
             errors.append(
-                "dashboard must stay usable at 375px with landmarks, "
+                "dashboard must stay usable at 390px with landmarks, "
                 "labeled controls, 44px tap targets, visible focus, "
                 "and no horizontal scroll"
             )

@@ -29,7 +29,9 @@ from catalog_surface import (  # noqa: E402
     dashboard_opens_owner_audio,
     dashboard_resume_leads_first_paint,
     dashboard_work_next_stays_in_view,
+    dashboard_computed_home_layout,
     dashboard_phone_and_a11y_ready,
+    dashboard_phone_layout_covers,
     dashboard_rdy_contrast_ready,
     dashboard_resumes_song_work_privately,
     dashboard_theme_tokens,
@@ -1028,13 +1030,15 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         ) as handle:
             dashboard = handle.read()
         self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
+        self.assertTrue(dashboard_phone_layout_covers(dashboard, 390))
         self.assertIn("Skip to work session", dashboard)
         self.assertIn("<header>", dashboard)
         self.assertIn('<main id="main"', dashboard)
         self.assertIn("<footer", dashboard)
         self.assertIn('aria-label="Sort songs"', dashboard)
         self.assertIn('aria-label="Search memo transcripts"', dashboard)
-        self.assertIn("@media(max-width:375px)", dashboard)
+        self.assertIn("@media(max-width:640px)", dashboard)
+        self.assertNotIn("@media(max-width:375px)", dashboard)
         self.assertIn("min-height:44px", dashboard)
         self.assertIn("overflow-x:hidden", dashboard)
         self.assertIn(":focus-visible", dashboard)
@@ -1044,6 +1048,90 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         self.assertIn('class="row-heading"', dashboard)
         self.assertIn('aria-controls="song-detail-', dashboard)
         self.assertNotIn("grid-template-columns:1fr 90px 90px", dashboard)
+
+    def test_phone_padding_and_two_up_stats_apply_at_640px_not_375px(self):
+        padding = (
+            "body{padding:12px;font-size:16px}.rhead{padding:10px}"
+            ".stat{min-width:0;flex-basis:calc(50% - 10px)}"
+        )
+        only_375 = f"<style>@media(max-width:375px){{{padding}}}</style>"
+        at_640 = f"<style>@media(max-width:640px){{{padding}}}</style>"
+        at_400 = f"<style>@media(max-width:400px){{{padding}}}</style>"
+        self.assertFalse(dashboard_phone_layout_covers(only_375, 390))
+        self.assertTrue(dashboard_phone_layout_covers(at_640, 390))
+        self.assertTrue(dashboard_phone_layout_covers(at_400, 390))
+        self.assertFalse(dashboard_phone_layout_covers(at_640, 800))
+
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        reverted = dashboard.replace(
+            "body{padding:12px;font-size:16px}.rhead{padding:10px}"
+            ".stat{min-width:0;flex-basis:calc(50% - 10px)}",
+            "",
+        ).replace(
+            "</style>",
+            f"@media(max-width:375px){{{padding}}}</style>",
+            1,
+        )
+        self.assertFalse(dashboard_phone_layout_covers(reverted, 390))
+        self.assertFalse(dashboard_phone_and_a11y_ready(reverted))
+
+    def test_computed_home_layout_at_390px_uses_phone_padding_and_two_up_stats(self):
+        padding = (
+            "body{padding:12px;font-size:16px}.rhead{padding:10px}"
+            ".stat{min-width:0;flex-basis:calc(50% - 10px)}"
+        )
+        base = (
+            "<style>body{padding:20px;font-size:16px}"
+            ".stat{min-width:100px;flex:1 1 140px}"
+            f"@media(max-width:640px){{{padding}}}</style>"
+        )
+        self.assertEqual(
+            dashboard_computed_home_layout(base, 390),
+            {"padding": "12px", "stat_flex_basis": "calc(50% - 10px)"},
+        )
+        self.assertEqual(dashboard_computed_home_layout(base, 800)["padding"], "20px")
+        self.assertNotEqual(
+            dashboard_computed_home_layout(base, 800)["stat_flex_basis"],
+            "calc(50% - 10px)",
+        )
+        only_375 = base.replace("max-width:640px", "max-width:375px")
+        self.assertEqual(dashboard_computed_home_layout(only_375, 390)["padding"], "20px")
+        self.assertIsNone(dashboard_computed_home_layout(only_375, 390)["stat_flex_basis"])
+
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        phone = dashboard_computed_home_layout(dashboard, 390)
+        desktop = dashboard_computed_home_layout(dashboard, 800)
+        self.assertEqual(phone["padding"], "12px")
+        self.assertEqual(phone["stat_flex_basis"], "calc(50% - 10px)")
+        self.assertEqual(desktop["padding"], "20px")
+        self.assertNotEqual(desktop["stat_flex_basis"], "calc(50% - 10px)")
+        overridden = dashboard.replace("</style>", "body{padding:20px}</style>", 1)
+        self.assertTrue(dashboard_phone_layout_covers(overridden, 390))
+        self.assertEqual(dashboard_computed_home_layout(overridden, 390)["padding"], "20px")
+        self.assertFalse(dashboard_phone_and_a11y_ready(overridden))
+
+    def test_phone_home_browser_check_measures_390px_padding_and_two_up_stats(self):
+        with open(
+            os.path.join(ROOT, "tests", "test_dashboard_phone_home.js"),
+            encoding="utf-8",
+        ) as handle:
+            source = handle.read()
+        self.assertIn("width: 390, height: 844", source)
+        self.assertIn("paddingLeft", source)
+        self.assertIn("12px", source)
+        self.assertIn("firstRowCount", source)
+        self.assertIn("expanded stats must be 2-up at 390px", source)
+        self.assertIn("390px home must use 12px body padding", source)
+        self.assertIn("Write / Produce / Listen must be on the first 390×844 screen", source)
+        self.assertIn("will not download a browser", source)
 
     def test_phone_gate_fails_closed_without_landmarks(self):
         self.assertFalse(dashboard_phone_and_a11y_ready("<html></html>"))

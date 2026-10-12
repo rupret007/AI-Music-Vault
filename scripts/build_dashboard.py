@@ -207,8 +207,7 @@ input{flex:1;min-width:0;width:100%}
 .work-session-actions .primary-action{border-color:var(--pot);color:var(--ink)}
 .pill.memo-link{min-height:44px}
 @media(max-width:800px){.row-heading{grid-template-columns:minmax(0,1fr)}.row-heading>.memo-link{justify-self:start;margin:0 12px 10px}}
-@media(max-width:640px){.work-start{flex:1 1 100%}.resume-work{align-items:stretch}.controls>input,.controls>select{flex-basis:100%}.advanced-filters{margin-left:0;width:100%}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{grid-template-columns:minmax(0,1fr)}.lane{align-items:flex-start}}
-@media(max-width:375px){body{padding:12px;font-size:16px}.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}
+@media(max-width:640px){.work-start{flex:1 1 100%}.resume-work{align-items:stretch}.controls>input,.controls>select{flex-basis:100%}.advanced-filters{margin-left:0;width:100%}.memo-scope{align-items:flex-start;flex-direction:column}.work-session-actions{justify-content:flex-start}.advanced-menu{grid-template-columns:minmax(0,1fr)}.lane{align-items:flex-start}body{padding:12px;font-size:16px}.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}
 </style></head><body>
 <a class="skip-link" href="#workNowTitle">Skip to work session</a>
 <header>
