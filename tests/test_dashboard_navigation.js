@@ -145,6 +145,7 @@ for (const marker of [
   "id=\"forgetWorkSession\"",
   "id=\"catalogOverview\"",
   "id=\"catalogOverviewSummary\"",
+  "catalogOverviewSummary.hidden=false",
   "class=\"resume-actions\"",
   "id=\"advancedFilters\"",
   "Start a work session",
@@ -164,6 +165,12 @@ for (const marker of [
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
 }
 if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
+if (/<details[^>]*id="catalogOverview"[^>]*\bopen\b/.test(html)) {
+  fail("catalog overview must start collapsed");
+}
+if (html.includes("catalogOverview.open=!saved")) {
+  fail("catalog overview must not auto-open from resume state");
+}
 if (html.includes("@media(max-width:375px)")) {
   fail("phone padding must not live in a 375px-only query that misses 390px");
 }

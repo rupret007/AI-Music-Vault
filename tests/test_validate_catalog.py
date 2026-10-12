@@ -19,6 +19,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_catalog_overview_starts_collapsed,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
     dashboard_opens_owner_audio,
@@ -268,6 +269,7 @@ def extras_ok(cat=None):
             'id="resumeWorkNext" Do this now id="copyResumeNext" Copy next step '
             'id="forgetWorkSession" Forget class="resume-actions" has-resume '
             'id="workStarts" id="catalogOverview" id="catalogOverviewSummary" '
+            'catalogOverviewSummary.hidden=false '
             'id="statsFold" <details id="statsLine" id="stats" '
             'const COVER_COUNT const RECOVERED_COUNT no audio in this repo '
             'id="advancedFilters" '
@@ -1191,6 +1193,36 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_first_paint_ready(extra["dashboard_html"]))
+
+    def test_dashboard_open_catalog_overview_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="catalogOverview"',
+            'id="catalogOverview" open',
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("catalog overview must start collapsed" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_catalog_overview_starts_collapsed(extra["dashboard_html"])
+        )
+
+    def test_dashboard_hidden_catalog_overview_summary_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "catalogOverviewSummary.hidden=false",
+            "catalogOverview.open=!saved",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("catalog overview must start collapsed" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_catalog_overview_starts_collapsed(extra["dashboard_html"])
+        )
 
     def test_dashboard_without_resume_lead_fails_closed(self):
         extra = extras_ok()
@@ -2803,6 +2835,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_catalog_overview_starts_collapsed(extra["dashboard_html"]))
         self.assertTrue(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
         self.assertTrue(dashboard_work_next_stays_in_view(extra["dashboard_html"]))
         self.assertTrue(dashboard_listen_is_not_playback(extra["dashboard_html"]))

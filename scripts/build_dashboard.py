@@ -234,8 +234,8 @@ input{flex:1;min-width:0;width:100%}
  <div class="work-starts" id="workStarts"></div>
  <p class="work-now-copy">Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
 </section>
-<details class="catalog-overview" id="catalogOverview" open>
- <summary id="catalogOverviewSummary" hidden>Catalog details and counts</summary>
+<details class="catalog-overview" id="catalogOverview">
+ <summary id="catalogOverviewSummary">Catalog details and counts</summary>
  <p class="sub">Every song, one place · Catalog v1.6 · ''' + SURFACE_SUBTITLE + r''' · Momentum Index · __TX_TOTAL__ memos transcribed · __TX_SEARCHABLE_TOTAL__ usable-text transcripts searchable · no audio in this repo</p>
 <details class="stats-fold" id="statsFold">
  <summary id="statsLine">Catalog counts</summary>
@@ -450,9 +450,7 @@ function updateResumeWork(){
  const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
  resumeWork.hidden=!saved;
  if(typeof catalogOverview!=='undefined'&&catalogOverview&&typeof catalogOverviewSummary!=='undefined'&&catalogOverviewSummary){
-  // Collapse on entering resume; preserve an explicit disclosure choice after that.
-  if(catalogOverviewSummary.hidden===!!saved)catalogOverview.open=!saved;
-  catalogOverviewSummary.hidden=!saved;
+  catalogOverviewSummary.hidden=false;
  }
  if(typeof resumeWorkHint!=='undefined'&&resumeWorkHint)resumeWorkHint.hidden=!saved;
  if(typeof document!=='undefined'&&document.body&&document.body.classList){

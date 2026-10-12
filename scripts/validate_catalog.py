@@ -36,6 +36,7 @@ from catalog_surface import (
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_catalog_overview_starts_collapsed,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
     dashboard_opens_owner_audio,
@@ -2059,6 +2060,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard first paint must show the honesty sentence and "
                 "Write / Produce / Listen before collapsed catalog counts"
+            )
+        if not dashboard_catalog_overview_starts_collapsed(dash):
+            errors.append(
+                "dashboard catalog overview must start collapsed with a visible "
+                "summary — do not auto-open subtitle and counts on first paint"
             )
         if not dashboard_resume_leads_first_paint(dash):
             errors.append(
