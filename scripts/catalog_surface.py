@@ -1206,6 +1206,25 @@ def dashboard_finds_remembered_song_names(html: str) -> bool:
     return all(marker in chrome for marker in required)
 
 
+_DISHONEST_TERM_STATUS_RE = re.compile(r"textContent\s*=\s*term\s*\?")
+
+
+def dashboard_empty_search_honest(html: str) -> bool:
+    """Zero song hits must not claim closest-name ranking or a filter that is not set."""
+    chrome = dashboard_markup_chrome(html)
+    if "clear a filter?" in chrome:
+        return False
+    if _DISHONEST_TERM_STATUS_RE.search(chrome):
+        return False
+    required = (
+        "function songResultsStatus(",
+        "function emptySongsCopy(",
+        "press Escape or Clear filters",
+        "closest name first",
+    )
+    return all(marker in chrome for marker in required)
+
+
 def dashboard_exposes_logic_ready(html: str) -> bool:
     """First useful surface must name a sanitized Logic-ready next action."""
     chrome = dashboard_markup_chrome(html)
@@ -1577,6 +1596,10 @@ def dashboard_rdy_contrast_ready(html: str) -> bool:
 
 
 _SKIP_LINK_RULE_RE = re.compile(r"\.skip-link\s*\{([^}]*)\}", re.IGNORECASE)
+_SEARCH_MARK_RULE_RE = re.compile(
+    r"\.msnip\s+mark\s*,\s*\.rtitle\s+mark\s*,\s*\.aka-hit\s+mark\s*\{([^}]*)\}",
+    re.IGNORECASE,
+)
 _CSS_DECL_RE = re.compile(r"([a-z-]+)\s*:\s*([^;]+)", re.IGNORECASE)
 _CSS_VAR_RE = re.compile(r"^var\(\s*--([a-z0-9]+)\s*\)$", re.IGNORECASE)
 
@@ -1613,6 +1636,40 @@ def dashboard_skip_link_contrast_ready(html: str) -> bool:
     if not _LIGHT_SCHEME_MQ_RE.search(chrome):
         return False
     rule = _SKIP_LINK_RULE_RE.search(chrome)
+    if not rule:
+        return False
+    decls = _css_declarations(rule.group(1))
+    background = decls.get("background") or decls.get("background-color")
+    foreground = decls.get("color")
+    if not background or not foreground:
+        return False
+    collapsed = re.sub(r"\s+", "", rule.group(1).lower())
+    if "background:var(--pot)" in collapsed and (
+        "color:#fff" in collapsed or "color:#ffffff" in collapsed
+    ):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        fg = _resolve_theme_color(foreground, theme)
+        bg = _resolve_theme_color(background, theme)
+        if not fg or not bg:
+            return False
+        if contrast_ratio(fg, bg) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return True
+
+
+def dashboard_search_mark_contrast_ready(html: str) -> bool:
+    """Search-hit marks must meet WCAG AA 4.5:1 on dark and light themes.
+
+    White-on-`--pot` fails AA at 14px. Use `--ink` on `--bg` (or another
+    pair that actually meets 4.5:1) so title, alias, and memo hits stay
+    readable.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    rule = _SEARCH_MARK_RULE_RE.search(chrome)
     if not rule:
         return False
     decls = _css_declarations(rule.group(1))

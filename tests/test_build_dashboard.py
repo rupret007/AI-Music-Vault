@@ -34,6 +34,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_phone_layout_covers,
     dashboard_rdy_contrast_ready,
     dashboard_skip_link_contrast_ready,
+    dashboard_search_mark_contrast_ready,
     dashboard_resumes_song_work_privately,
     dashboard_theme_tokens,
     embedded_dashboard_payloads,
@@ -1432,6 +1433,59 @@ class DashboardSkipLinkContrastTests(unittest.TestCase):
             self.assertGreaterEqual(
                 contrast_ratio(theme["bg"], theme["ink"]), WCAG_AA_NORMAL_TEXT
             )
+
+
+_OLD_SEARCH_MARK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff}
+</style><mark>hit</mark>"""
+_FIXED_SEARCH_MARK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}
+</style><mark>hit</mark>"""
+
+
+class DashboardSearchMarkContrastTests(unittest.TestCase):
+    def test_white_on_pot_marks_miss_aa_on_dark_and_light(self):
+        self.assertLess(contrast_ratio("#ffffff", "#3987e5"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio("#ffffff", "#2a78d6"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#3987e5"), 3.64, places=2)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#2a78d6"), 4.42, places=2)
+        self.assertFalse(dashboard_search_mark_contrast_ready(_OLD_SEARCH_MARK_SNIPPET))
+
+    def test_gate_fails_closed_without_light_scheme_or_mark_rule(self):
+        self.assertFalse(dashboard_search_mark_contrast_ready("<html></html>"))
+        no_light = _FIXED_SEARCH_MARK_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_search_mark_contrast_ready(no_light))
+        no_rule = _FIXED_SEARCH_MARK_SNIPPET.replace(
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}",
+            "",
+        )
+        self.assertFalse(dashboard_search_mark_contrast_ready(no_rule))
+
+    def test_ink_on_bg_marks_meet_aa(self):
+        self.assertTrue(dashboard_search_mark_contrast_ready(_FIXED_SEARCH_MARK_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_SEARCH_MARK_SNIPPET)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["bg"], theme["ink"]), WCAG_AA_NORMAL_TEXT
+            )
+
+    def test_committed_dashboard_search_marks_meet_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_search_mark_contrast_ready(dashboard))
+        self.assertIn(
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)",
+            dashboard,
+        )
 
 
 if __name__ == "__main__":

@@ -21,8 +21,9 @@ official live set. Show Night owns official sets.
 `data/app_api.json` is the StoryBoard import. `master_catalog.json`
 is the spine and is rejected as an import. StoryLiner is promo only.
 Nothing auto-posts. Jeff owns feel, set-list, and catalog calls.
-Parked catalogs are not a fourth live band. This private catalog
-is not a public fetch.
+Parked catalogs are not a fourth live band. This public catalog
+is not a remote fetch. Importing local JSON does not make
+committed catalog contents private.
 """
 from __future__ import annotations
 
@@ -1221,7 +1222,9 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "spine and is rejected as an import. StoryBoard #16 fails closed "
             "on that spine. StoryBoard #12 accepts this file only as local "
             "JSON (Band operations → Music & setlists). Remote catalog URLs "
-            "are rejected. This private catalog is not a public fetch. "
+            "are rejected. This public catalog is not a remote fetch. "
+            "Importing local JSON does not make committed catalog contents "
+            "private. "
             "Published setlist_ready_default_import is the default plan "
             "when present (empty published slice stays empty — StoryBoard will "
             "not recompute a live band). StoryBoard names that draft setlist "
