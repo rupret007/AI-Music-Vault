@@ -43,6 +43,7 @@ from catalog_surface import (
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_skip_link_contrast_ready,
     readme_documents_session_click_test,
 )
 from export_catalog_csv import (
@@ -2054,6 +2055,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must stay usable at 390px with landmarks, "
                 "labeled controls, 44px tap targets, visible focus, "
                 "and no horizontal scroll"
+            )
+        if not dashboard_skip_link_contrast_ready(dash):
+            errors.append(
+                "dashboard skip link must meet WCAG AA 4.5:1 on dark and "
+                "light — do not paint white text on --pot"
             )
         if not dashboard_first_paint_ready(dash):
             errors.append(
