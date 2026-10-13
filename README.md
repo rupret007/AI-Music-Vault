@@ -115,10 +115,11 @@ test; it does not establish that any audio has been heard or exported.
 5. Click **Forget**, then refresh. Resume stays gone and the work hash is cleared.
    Browser storage holds only schema version, work kind, and catalog ID. Extra
    fields, stale schemas, unknown IDs, and mismatched kinds are rejected.
-6. Search Songs by an alias or a title without apostrophes; Enter opens the
-   closest result and Escape clears search. Memo Search folds the same
-   punctuation (`its alright` finds It’s Alright). Memo lyric matches are
-   leads, not listens.
+6. Search Songs by an alias or a title without apostrophes; arrow keys move a
+   visible highlight among results and Enter opens the focused row (closest
+   result if none is highlighted). Escape clears search. Memo Search folds the
+   same punctuation (`its alright` finds It’s Alright) and uses the same
+   arrow/Enter focus. Memo lyric matches are leads, not listens.
 7. Check **Logic-ready next**, **Assets on file**, and **Copy Logic-ready next**
    when shown. Pair Voice Memo Intake name + **Copy next step** in your local
    Session Log handoff. Work in Logic (export honesty, WAVs/AIFF/MIDI preference,

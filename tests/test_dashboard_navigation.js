@@ -58,6 +58,13 @@ for (const marker of [
   "function sortSongRows(",
   "function focusFoundSong(",
   "function handleSongSearchKey(",
+  "function nextSearchCursor(",
+  "function searchActivateId(",
+  "function paintSearchFocus(",
+  "function handleMemoSearchKey(",
+  "search-focus",
+  "aria-activedescendant",
+  ".row.search-focus .rhead,.mrow.search-focus",
   "function songResultsStatus(",
   "function emptySongsCopy(",
   "closest name first",
@@ -1331,26 +1338,138 @@ if (markNormalized("Candy Lane (2017)", "candy lane") !== "<mark>Candy Lane</mar
   fail("the matching alias must highlight");
 }
 
+const nextSearchCursor = new Function(
+  "return (" + extractFunction(script, "nextSearchCursor") + ");",
+)();
+if (nextSearchCursor(-1, "ArrowDown", 3) !== 0 || nextSearchCursor(-1, "ArrowUp", 3) !== 2) {
+  fail("first arrow must land on the first or last search result");
+}
+if (nextSearchCursor(0, "ArrowDown", 3) !== 1 || nextSearchCursor(2, "ArrowDown", 3) !== 0) {
+  fail("arrow down must wrap through search results");
+}
+if (nextSearchCursor(0, "ArrowUp", 3) !== 2 || nextSearchCursor(1, "Tab", 3) !== 1) {
+  fail("arrow up must wrap and non-arrow keys must keep the cursor");
+}
+const searchActivateId = new Function(
+  "return (" + extractFunction(script, "searchActivateId") + ");",
+)();
+if (searchActivateId(["ST-0019", "JS-9998"], -1) !== "ST-0019") {
+  fail("Enter without an arrow cursor must still open the closest name match");
+}
+if (searchActivateId(["ST-0019", "JS-9998"], 1) !== "JS-9998") {
+  fail("Enter after arrows must open the focused search result");
+}
+
+const painted = [];
+const paintSearchFocus = new Function(
+  "return (" + extractFunction(script, "paintSearchFocus") + ");",
+)();
+const fakeResults = [0, 1].map((i) => {
+  const attrs = {};
+  const classes = new Set();
+  return {
+    id: "song-row-" + i,
+    classList: {
+      toggle(name, on) {
+        if (on) classes.add(name);
+        else classes.delete(name);
+        painted.push({ i, name, on: !!on });
+      },
+      has(name) { return classes.has(name); },
+    },
+    setAttribute(name, value) { attrs[name] = String(value); },
+    getAttribute(name) { return attrs[name]; },
+    scrolled: false,
+    scrollIntoView() { this.scrolled = true; },
+  };
+});
+const fakeList = { querySelectorAll() { return fakeResults; } };
+const focusedRow = paintSearchFocus(fakeList, "[data-song-id]", 1, "search-focus");
+if (focusedRow !== fakeResults[1] || !fakeResults[1].classList.has("search-focus") || fakeResults[0].classList.has("search-focus")) {
+  fail("search focus paint must mark only the active result");
+}
+if (fakeResults[1].getAttribute("aria-selected") !== "true" || fakeResults[0].getAttribute("aria-selected") !== "false") {
+  fail("search focus paint must expose aria-selected on the active result");
+}
+if (!fakeResults[1].scrolled) {
+  fail("search focus paint must scroll the active result into view");
+}
+
 const searchFocus = { id: "", focused: 0 };
+const searchAttrs = { "aria-activedescendant": "" };
+const searchBox = {
+  value: "candy lane",
+  setAttribute(name, value) { searchAttrs[name] = String(value); },
+};
 const searchKey = new Function(
   "q",
   "visibleSongIds",
   "work",
   "focusWorkSong",
   "focusFoundSong",
-  "return (" + extractFunction(script, "handleSongSearchKey") + ");",
+  "list",
+  "paintSearchFocus",
+  "nextSearchCursor",
+  "searchActivateId",
+  "let songSearchCursor = -1;" +
+    extractFunction(script, "handleSongSearchKey") +
+    "; return function(e){ return handleSongSearchKey(e); };",
 )(
-  { value: "candy lane" },
+  searchBox,
   ["ST-0019", "JS-9998"],
   { value: "" },
   () => { searchFocus.id = "work"; return true; },
   (id) => { searchFocus.id = id; searchFocus.focused += 1; return true; },
+  fakeList,
+  paintSearchFocus,
+  nextSearchCursor,
+  searchActivateId,
 );
 if (!searchKey({ key: "Enter", preventDefault() {} }) || searchFocus.id !== "ST-0019") {
   fail("Enter in Songs search must open the closest name match");
 }
 if (searchKey({ key: "Tab" }) || searchFocus.focused !== 1) {
   fail("non-Enter keys must leave the search results alone");
+}
+if (!searchKey({ key: "ArrowDown", preventDefault() {} }) || searchAttrs["aria-activedescendant"] !== "song-row-ST-0019") {
+  fail("ArrowDown must move visible focus to the first search result");
+}
+if (!searchKey({ key: "ArrowDown", preventDefault() {} }) || searchAttrs["aria-activedescendant"] !== "song-row-JS-9998") {
+  fail("a second ArrowDown must move visible focus to the next search result");
+}
+if (!searchKey({ key: "Enter", preventDefault() {} }) || searchFocus.id !== "JS-9998") {
+  fail("Enter after arrows must open the focused search result");
+}
+
+const memoOpened = { id: "" };
+const memoItems = [
+  { id: "memo-hit-0", dataset: { openSong: "ST-0001" } },
+  { id: "memo-hit-1", dataset: { openSong: "JS-0128" } },
+];
+const memoKey = new Function(
+  "mlist",
+  "mq",
+  "paintSearchFocus",
+  "nextSearchCursor",
+  "openSong",
+  "let memoSearchCursor = -1;" +
+    extractFunction(script, "handleMemoSearchKey") +
+    "; return function(e){ return handleMemoSearchKey(e); };",
+)(
+  { querySelectorAll() { return memoItems; } },
+  { setAttribute() {} },
+  () => memoItems[1],
+  nextSearchCursor,
+  (id) => { memoOpened.id = id; },
+);
+if (memoKey({ key: "Tab" })) {
+  fail("Tab must not steal memo search results");
+}
+if (!memoKey({ key: "ArrowDown", preventDefault() {} }) || !memoKey({ key: "ArrowDown", preventDefault() {} })) {
+  fail("arrow keys must move through memo search results");
+}
+if (!memoKey({ key: "Enter", preventDefault() {} }) || memoOpened.id !== "JS-0128") {
+  fail("Enter on a focused memo result must open the matched song");
 }
 
 const searchEscape = new Function(
