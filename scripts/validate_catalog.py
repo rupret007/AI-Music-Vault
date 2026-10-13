@@ -42,6 +42,7 @@ from catalog_surface import (
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
     dashboard_opens_owner_audio,
+    dashboard_work_starts_name_the_action,
     dashboard_resume_leads_first_paint,
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
@@ -2191,6 +2192,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard Listen control must say Listen in Logic and "
                 "must not open audio"
+            )
+        if not dashboard_work_starts_name_the_action(dash):
+            errors.append(
+                "dashboard Write / Produce / Listen must name Start and "
+                "the highest-momentum match, not a song-count instruction"
             )
 
     audio_hits = extras.get("audio_files")

@@ -26,6 +26,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_finds_remembered_song_names,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
+    dashboard_work_starts_name_the_action,
     dashboard_opens_owner_audio,
     dashboard_resume_leads_first_paint,
     dashboard_work_next_stays_in_view,
@@ -1291,10 +1292,35 @@ class DashboardFirstPaintTests(unittest.TestCase):
             dashboard = handle.read()
         self.assertTrue(dashboard_listen_is_not_playback(dashboard))
         self.assertIn("if(k==='listen')return 'Listen in Logic';", dashboard)
-        self.assertIn("${workKindLabel(kind)} <span>${workCounts[kind]} songs</span>", dashboard)
+        self.assertIn("${workKindLabel(kind)} <span>${workCounts[kind]} in queue</span>", dashboard)
         self.assertIn('option value="listen">Listen in Logic</option>', dashboard)
         self.assertNotIn("<audio", dashboard)
         self.assertIn("this page does not open audio", dashboard)
+
+    def test_work_starts_name_start_and_queue_not_song_count(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_work_starts_name_the_action(dashboard))
+        self.assertIn("function workStartLabel(", dashboard)
+        self.assertIn("highest-momentum match", dashboard)
+        self.assertIn("${workCounts[kind]} in queue", dashboard)
+        self.assertIn(
+            'aria-label="${workStartLabel(kind,workCounts[kind])}"', dashboard
+        )
+        self.assertNotIn("${workCounts[kind]} songs", dashboard)
+        self.assertFalse(
+            dashboard_work_starts_name_the_action(
+                dashboard.replace(
+                    "function workStartLabel(", "function workStartCopy("
+                ).replace(
+                    "${workCounts[kind]} in queue",
+                    "${workCounts[kind]} songs",
+                )
+            )
+        )
 
 
 # Pre-A06 oranges from the UX audit. Kept here so the contrast gate
