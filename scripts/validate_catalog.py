@@ -1167,11 +1167,11 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.merge_key must be vault:catalog_import_v1:{vault_id ?? id} "
                 "(StoryBoard sourceKey)"
             )
-        if "import_is_idempotent" in sb:
+        if sb.get("import_is_idempotent") is not True:
             errors.append(
-                "storyboard.import_is_idempotent must not be published — "
-                "this repo does not test StoryBoard's importer; "
-                "do not hardcode import_is_idempotent"
+                "storyboard.import_is_idempotent must be true — "
+                "tests/test_storyboard_catalog_import.mjs runs StoryBoard "
+                "planCatalogImport/reconcileCatalogImport"
             )
         if sb.get("reconcile_skips_existing_source_key") is not True:
             errors.append(

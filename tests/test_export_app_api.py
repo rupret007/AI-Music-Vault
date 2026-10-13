@@ -267,8 +267,8 @@ class ExportHonestyTests(unittest.TestCase):
     def test_catalog_import_is_idempotent(self):
         payload = build_payload(fixture())
         mapping = storyboard_mapping()
-        self.assertNotIn("import_is_idempotent", mapping)
-        self.assertNotIn("import_is_idempotent", payload["storyboard"])
+        self.assertTrue(mapping["import_is_idempotent"])
+        self.assertTrue(payload["storyboard"]["import_is_idempotent"])
         self.assertTrue(mapping["reconcile_skips_existing_source_key"])
         self.assertTrue(mapping["reconcile_skips_existing_title"])
         self.assertTrue(catalog_import_is_idempotent([], payload["songs"]))

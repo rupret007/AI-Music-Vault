@@ -143,6 +143,7 @@
   ],
   "why_null": "durationSeconds, leadVocalist, genre, lyricsUrl, and chartUrl are not in the vault. Do not invent them. Jeff owns feel, set-list, and catalog calls.",
   "merge_key": "vault:catalog_import_v1:{vault_id ?? id}",
+  "import_is_idempotent": true,
   "reconcile_skips_existing_source_key": true,
   "reconcile_skips_existing_title": true,
   "bpm_note": "StoryBoard parseBpm prefers songs[].bpm_int (clean integer 20–400), then songs[].bpm as an integer, then a leading 2–3 digit tempo. `bpm` and `bpm_int` are the same pre-parsed integer. `bpm_raw` keeps catalog text such as '214 (cut)'.",

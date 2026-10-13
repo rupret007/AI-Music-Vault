@@ -72,7 +72,8 @@ input{flex:1;min-width:0;width:100%}
 .row-heading>.memo-link{margin:8px 12px 8px 0}
 .rhead{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;padding:10px 12px;cursor:pointer}
 .rhead:hover,.rhead:focus-visible{background:var(--card2);outline:2px solid var(--pot);outline-offset:-2px}
-.row.search-focus .rhead,.mrow.search-focus{background:var(--card2);outline:2px solid var(--pot);outline-offset:-2px}
+.rhead.search-focus,.mopt.search-focus{background:var(--card2);outline:2px solid var(--pot);outline-offset:-2px}
+.mopt{display:block}.mrow-actions{margin-top:6px}
 .scores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;grid-column:1/-1}
 .score{min-width:0}.score-lab{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3)}
 @media(min-width:641px){.rhead{grid-template-columns:64px minmax(0,1fr) 110px 110px 110px}.scores{display:contents;grid-column:auto}.score-lab{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}}
@@ -188,13 +189,13 @@ input{flex:1;min-width:0;width:100%}
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
-<div id="list" aria-label="Song search results"></div>
+<div id="list" role="listbox" aria-label="Song search results"></div>
 <div class="covers-note">93 covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
 <div class="controls"><input id="mq" placeholder="Search 807 usable transcript snippets… (try: its alright, garden, better than now)" aria-label="Search memo transcripts" aria-controls="mlist" aria-autocomplete="list" aria-activedescendant=""></div>
 <div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div><div class="memo-next" id="memoScopeHook" hidden></div></div><span><button type="button" class="subtle-btn" id="copyMemoWork" hidden data-copy-work="">Copy work card</button> <button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></span></div>
-<div id="mlist" aria-label="Memo search results"><div class="mhint">Type 3+ letters to search 807 usable-text transcripts. Source truth: 916 transcribed and 372 matched; 355 matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
+<div id="mlist" role="listbox" aria-label="Memo search results"><div class="mhint">Type 3+ letters to search 807 usable-text transcripts. Source truth: 916 transcribed and 372 matched; 355 matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
 </div>
 </main>
 <footer class="foot">Catalog v1.6. Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio. Logic-ready next is catalog evidence, not a completed export.</footer>
@@ -742,7 +743,7 @@ function render(){
   const lrFormats=typeof logicReadyFormats==='function'?logicReadyFormats(d):[];
   const scoreLabel=`${esc(d.t)} ${esc(d.id)}. Potential ${d.pot||'unscored'}, readiness ${d.rdy||'unscored'}, momentum ${d.mom||'unscored'}`;
   return `
- <div class="row" aria-selected="false" id="song-row-${esc(d.id)}" data-song-id="${esc(d.id)}"><div class="row-heading"><div class="rhead" role="button" tabindex="0" aria-expanded="false" aria-controls="song-detail-${esc(d.id)}" aria-label="${scoreLabel}" data-toggle-song>
+ <div class="row" data-song-id="${esc(d.id)}"><div class="row-heading"><div class="rhead" role="option" aria-selected="false" id="song-row-${esc(d.id)}" tabindex="0" aria-expanded="false" aria-controls="song-detail-${esc(d.id)}" aria-label="${scoreLabel}" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
   <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?` <span class="pill">${esc(lrPill)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   <div class="scores" role="group" aria-label="Potential, readiness, and momentum scores"><div class="score"><span class="score-lab">Potential</span>${bar(d.pot,'pot')}</div><div class="score"><span class="score-lab">Readiness</span>${bar(d.rdy,'rdy')}</div><div class="score"><span class="score-lab">Momentum</span>${bar(d.mom,'mom')}</div></div>
@@ -825,7 +826,7 @@ function handleSongSearchKey(e){
   let cur=typeof songSearchCursor==='number'?songSearchCursor:-1;
   cur=nextSearchCursor(cur,e.key,ids.length);
   songSearchCursor=cur;
-  if(typeof paintSearchFocus==='function'&&typeof list!=='undefined')paintSearchFocus(list,'.row',cur,'search-focus');
+  if(typeof paintSearchFocus==='function'&&typeof list!=='undefined')paintSearchFocus(list,'.rhead',cur,'search-focus');
   if(typeof q!=='undefined'&&q&&q.setAttribute)q.setAttribute('aria-activedescendant',ids[cur]?'song-row-'+ids[cur]:'');
   return true;
  }
@@ -848,10 +849,11 @@ function handleMemoSearchKey(e){
   let cur=typeof memoSearchCursor==='number'?memoSearchCursor:-1;
   cur=nextSearchCursor(cur,e.key,items.length);
   memoSearchCursor=cur;
-  if(typeof paintSearchFocus==='function')paintSearchFocus(mlist,'.mrow',cur,'search-focus');
+  if(typeof paintSearchFocus==='function')paintSearchFocus(mlist,'.mopt',cur,'search-focus');
   if(typeof mq!=='undefined'&&mq&&mq.setAttribute){
    const hit=items[cur];
-   mq.setAttribute('aria-activedescendant',hit&&hit.id?hit.id:'');
+   const opt=hit&&hit.querySelector?hit.querySelector('.mopt'):null;
+   mq.setAttribute('aria-activedescendant',opt&&opt.id?opt.id:(hit&&hit.id?hit.id:''));
   }
   return true;
  }
@@ -1298,9 +1300,9 @@ function mrender(){
  mlist.innerHTML=ordered.length?summary+visible.map(({m,snip},i)=>{
  const intake=intakeNameSummary(m.f);
   return `
-  <div class="mrow" aria-selected="false" id="memo-hit-${i}" data-memo-index="${i}"${m.s?` data-open-song="${esc(m.s)}"`:''}><div class="mmeta">${esc(m.d)} · ${Math.round((Number(m.u)||0)/60)}min${m.s&&sname[m.s]?` · matched to <button type="button" class="song-link" data-open-song="${esc(m.s)}">${esc(sname[m.s])}</button>`:' · unmatched'}</div>
+  <div class="mrow" data-memo-index="${i}"${m.s?` data-open-song="${esc(m.s)}"`:''}><div class="mopt" role="option" aria-selected="false" id="memo-hit-${i}"><div class="mmeta">${esc(m.d)} · ${Math.round((Number(m.u)||0)/60)}min${m.s&&sname[m.s]?` · matched to ${esc(sname[m.s])}`:' · unmatched'}</div>
   <b>${markHay(m.n,term)}</b><div class="msnip">${snip}</div>
-  <div class="mmeta" style="margin-top:4px">file: ${esc(intake.label)} (Voice Memo Intake)${intake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(intake.copy)}">Copy intake name</button>`:' · no copy-safe intake name yet'}</div></div>`;}).join('')
+  <div class="mmeta" style="margin-top:4px">file: ${esc(intake.label)} (Voice Memo Intake)${intake.copy?'':' · no copy-safe intake name yet'}</div></div><div class="mrow-actions">${m.s&&sname[m.s]?`<button type="button" class="song-link" data-open-song="${esc(m.s)}">${esc(sname[m.s])}</button>`:''}${intake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(intake.copy)}">Copy intake name</button>`:''}</div></div>`;}).join('')
   :`<div class="empty">${emptyMemosCopy(activeMemoSong)}</div>`;
 }
 mq.addEventListener('input',mrender);

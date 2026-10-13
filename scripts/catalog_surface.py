@@ -1511,12 +1511,20 @@ def dashboard_search_results_keyboard_ready(html: str) -> bool:
         "ArrowUp",
         "aria-activedescendant",
         "search-focus",
-        ".row.search-focus .rhead,.mrow.search-focus",
+        ".rhead.search-focus,.mopt.search-focus",
         "outline:2px solid var(--pot)",
         "if(!term&&!(cursor>=0))return false",
-        "paintSearchFocus(list,'.row',cur,'search-focus')",
+        "paintSearchFocus(list,'.rhead',cur,'search-focus')",
+        'id="list" role="listbox"',
+        'id="mlist" role="listbox"',
+        'class="rhead" role="option"',
+        'class="mopt" role="option"',
     )
-    return all(marker in chrome for marker in required) and 'role="listbox"' not in chrome
+    return (
+        all(marker in chrome for marker in required)
+        and 'class="row" role="option"' not in chrome
+        and 'class="mrow" role="option"' not in chrome
+    )
 
 
 def dashboard_tablist_keyboard_ready(html: str) -> bool:

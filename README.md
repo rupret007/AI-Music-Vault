@@ -43,9 +43,11 @@ permissions; blocked storage soft-fails.
 
 For development, use **Python 3.12** (the CI version) and **Node.js** for the
 navigation smoke test (verified locally with Node 22). The core build and checks
-use the standard libraries only. Where older docs use `python3`, ensure it selects
-the same Python version. There is no npm project, Makefile, required
-environment variable, `.env` file, or desktop packaging step.
+use the standard libraries only. The StoryBoard importer test loads
+`catalog-import.ts` from StoryBoard and installs `zod` into a temp directory.
+Where older docs use `python3`, ensure it selects the same Python version.
+There is no repo-level npm project, Makefile, required environment variable,
+`.env` file, or desktop packaging step.
 
 ## Build and test
 
@@ -64,6 +66,7 @@ gate locally (CI uses `python` after selecting 3.12):
 ```bash
 python3.12 scripts/validate_catalog.py
 python3.12 -m unittest discover -s tests -v
+node --experimental-strip-types tests/test_storyboard_catalog_import.mjs
 node tests/test_dashboard_navigation.js
 node tests/test_dashboard_resume.js
 python3.12 scripts/export_app_api.py --check

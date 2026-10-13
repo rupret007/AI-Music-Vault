@@ -1320,6 +1320,7 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "set-list, and catalog calls."
         ),
         "merge_key": f"vault:{CATALOG_IMPORT_POLICY_VERSION}:{{vault_id ?? id}}",
+        "import_is_idempotent": True,
         "reconcile_skips_existing_source_key": True,
         "reconcile_skips_existing_title": True,
         "bpm_note": (

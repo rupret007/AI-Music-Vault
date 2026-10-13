@@ -331,10 +331,12 @@ def extras_ok(cat=None):
             'function searchActivateMemoSong( function paintSearchFocus( '
             'function handleMemoSearchKey( '
             'ArrowDown ArrowUp aria-activedescendant search-focus '
-            '.row.search-focus .rhead,.mrow.search-focus '
+            '.rhead.search-focus,.mopt.search-focus '
             'outline:2px solid var(--pot) '
             'if(!term&&!(cursor>=0))return false '
-            "paintSearchFocus(list,'.row',cur,'search-focus') "
+            "paintSearchFocus(list,'.rhead',cur,'search-focus') "
+            'id="list" role="listbox" id="mlist" role="listbox" '
+            'class="rhead" role="option" class="mopt" role="option" '
             'function handleVaultKey( activeMemoSong|| mq.value||\'\' '
             'closest name first titles, aliases, hooks memo lyric aka '
             'function emptyMemosCopy( press Escape or Show all memos '
@@ -760,15 +762,11 @@ class ValidateCatalogTests(unittest.TestCase):
         errors = validate(fixture(), extra)
         self.assertTrue(any("import_is_idempotent" in e for e in errors), errors)
 
-    def test_import_idempotent_true_claim_fails_closed(self):
+    def test_import_idempotent_missing_claim_fails_closed(self):
         extra = extras_ok()
-        extra["app_api"]["storyboard"]["import_is_idempotent"] = True
+        extra["app_api"]["storyboard"].pop("import_is_idempotent", None)
         errors = validate(fixture(), extra)
         self.assertTrue(any("import_is_idempotent" in e for e in errors), errors)
-        self.assertTrue(
-            any("must not be published" in e or "do not hardcode" in e for e in errors),
-            errors,
-        )
 
     def test_old_schema_version_fails(self):
         extra = extras_ok()
@@ -1448,7 +1446,7 @@ class ValidateCatalogTests(unittest.TestCase):
         extra = extras_ok()
         extra["dashboard_html"] = extra["dashboard_html"].replace(
             "function handleMemoSearchKey(", ""
-        ).replace(".row.search-focus .rhead,.mrow.search-focus", "")
+        ).replace(".rhead.search-focus,.mopt.search-focus", "")
         errors = validate(fixture(), extra)
         self.assertTrue(
             any("arrow keys, Enter, and" in e for e in errors),
@@ -1480,9 +1478,21 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
 
-    def test_dashboard_listbox_search_pattern_fails_closed(self):
+    def test_dashboard_without_listbox_search_fails_closed(self):
         extra = extras_ok()
-        extra["dashboard_html"] = extra["dashboard_html"] + ' role="listbox"'
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="list" role="listbox"', 'id="list"'
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_option_wrapping_row_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"] + ' class="row" role="option"'
         errors = validate(fixture(), extra)
         self.assertTrue(
             any("arrow keys, Enter, and" in e for e in errors),
@@ -3280,7 +3290,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(
             apps_md_claims_catalog_is_official_set(extra["apps_md"])
         )
-        self.assertNotIn("import_is_idempotent", extra["app_api"]["storyboard"])
+        self.assertTrue(extra["app_api"]["storyboard"]["import_is_idempotent"])
         self.assertTrue(extra["app_api"]["storyboard"]["catalog_rows_are_not_the_official_set"])
         self.assertTrue(
             extra["app_api"]["storyboard"]["vault_default_live_is_not_the_official_set"]

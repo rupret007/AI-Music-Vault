@@ -65,9 +65,13 @@ for (const marker of [
   "function handleMemoSearchKey(",
   "search-focus",
   "aria-activedescendant",
-  ".row.search-focus .rhead,.mrow.search-focus",
+  ".rhead.search-focus,.mopt.search-focus",
   "if(!term&&!(cursor>=0))return false",
-  "paintSearchFocus(list,'.row',cur,'search-focus')",
+  "paintSearchFocus(list,'.rhead',cur,'search-focus')",
+  'id="list" role="listbox"',
+  'id="mlist" role="listbox"',
+  'class="rhead" role="option"',
+  'class="mopt" role="option"',
   "function songResultsStatus(",
   "function emptySongsCopy(",
   "closest name first",
@@ -1411,7 +1415,7 @@ const fakeResults = [0, 1].map((i) => {
   };
 });
 const fakeList = { querySelectorAll() { return fakeResults; } };
-const focusedRow = paintSearchFocus(fakeList, ".row", 1, "search-focus");
+const focusedRow = paintSearchFocus(fakeList, ".rhead", 1, "search-focus");
 if (focusedRow !== fakeResults[1] || !fakeResults[1].classList.has("search-focus") || fakeResults[0].classList.has("search-focus")) {
   fail("search focus paint must mark only the active result");
 }
