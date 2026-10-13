@@ -144,6 +144,9 @@ for (const marker of [
   "id=\"forgetWorkSession\"",
   "has-resume",
   "function workKindLabel(",
+  "function workStartLabel(",
+  "highest-momentum match",
+  "${workCounts[kind]} in queue",
   "Listen in Logic",
   "scrollIntoView({block:'nearest'})",
   "sessionEl.scrollIntoView({block:'nearest'})",
@@ -190,6 +193,9 @@ if (html.includes("clear the song filter or try a different word")) {
 }
 if (html.includes("clear a filter?")) {
   fail("empty song results must not imply a filter is set");
+}
+if (html.includes("${workCounts[kind]} songs")) {
+  fail("work starts must not label the queue as N songs");
 }
 if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
 if (html.includes("@media(max-width:375px)")) {
@@ -576,6 +582,19 @@ const workKindLabel = new Function(
 if (workKindLabel("listen") !== "Listen in Logic") fail("Listen must be labeled Listen in Logic");
 if (workKindLabel("write") !== "Write" || workKindLabel("produce") !== "Produce") {
   fail("write and produce labels must stay human work kinds");
+}
+const workStartLabel = new Function(
+  "workKindLabel",
+  "return (" + extractFunction(script, "workStartLabel") + ");",
+)(workKindLabel);
+if (workStartLabel("write", 12) !== "Start Write on the highest-momentum match (12 in queue)") {
+  fail("Write start must name Start and the highest-momentum match");
+}
+if (workStartLabel("listen", 0) !== "Start Listen in Logic on the highest-momentum match (0 in queue)") {
+  fail("Listen start must keep Listen in Logic and name the queue");
+}
+if (workStartLabel("produce", 3).includes("songs") || workStartLabel("write", 12).includes("songs")) {
+  fail("work start labels must not call the queue N songs");
 }
 if (extractFunction(script, "focusWorkSong").includes("scrollIntoView({block:'center'})")) {
   fail("work-session song focus must not center-scroll the next step away");

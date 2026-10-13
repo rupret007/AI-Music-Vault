@@ -316,8 +316,14 @@ function workKindLabel(kind){
  if(k==='listen')return 'Listen in Logic';
  return k?k[0].toUpperCase()+k.slice(1):'';
 }
+function workStartLabel(kind,count){
+ const label=workKindLabel(kind);
+ const n=Number(count);
+ const queued=Number.isFinite(n)?n:0;
+ return `Start ${label} on the highest-momentum match (${queued} in queue)`;
+}
 workStarts.innerHTML=['write','produce','listen'].map(kind=>
- `<button type="button" class="work-start" data-open-work="${kind}">${workKindLabel(kind)} <span>${workCounts[kind]} songs</span></button>`
+ `<button type="button" class="work-start" data-open-work="${kind}" aria-label="${workStartLabel(kind,workCounts[kind])}">${workKindLabel(kind)} <span>${workCounts[kind]} in queue</span></button>`
 ).join('');
 function esc(s){return (s===null||s===undefined?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function flattenWorkField(value){

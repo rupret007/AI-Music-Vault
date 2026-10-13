@@ -1552,6 +1552,27 @@ def dashboard_listen_is_not_playback(html: str) -> bool:
     )
 
 
+def dashboard_work_starts_name_the_action(html: str) -> bool:
+    """Write / Produce / Listen must start one highest-momentum match.
+
+    Visible counts are queue size, not an instruction to write N songs.
+    The accessible name must say Start and highest-momentum match.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if "${workCounts[kind]} songs" in chrome:
+        return False
+    required = (
+        "function workStartLabel(",
+        "function workKindLabel(",
+        "highest-momentum match",
+        "in queue",
+        "${workCounts[kind]} in queue",
+        'aria-label="${workStartLabel(kind,workCounts[kind])}"',
+        'data-open-work="${kind}"',
+    )
+    return all(marker in chrome for marker in required)
+
+
 # WCAG 2 relative-luminance threshold for sRGB (not the older 0.03928 form).
 _SRGB_LINEAR_CUTOFF = 0.04045
 WCAG_AA_NORMAL_TEXT = 4.5

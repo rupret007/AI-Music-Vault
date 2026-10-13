@@ -24,6 +24,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_finds_remembered_song_names,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
+    dashboard_work_starts_name_the_action,
     dashboard_opens_owner_audio,
     dashboard_resume_leads_first_paint,
     dashboard_work_next_stays_in_view,
@@ -292,7 +293,10 @@ def extras_ok(cat=None):
             'id="copyWorkNext" id="openWorkEvidence" '
             'function latestMemoForSong( data-open-work="listen" '
             'Start a work session More filters Sit-down '
-            'function workKindLabel( Listen in Logic '
+            'function workKindLabel( function workStartLabel( '
+            'Listen in Logic highest-momentum match '
+            'aria-label="${workStartLabel(kind,workCounts[kind])}" '
+            '${workCounts[kind]} in queue data-open-work="${kind}" '
             "scrollIntoView({block:'nearest'}) "
             '#workSession{position:sticky overflow-x:clip '
             'sessionEl.scrollIntoView({block:\'nearest\'}) '
@@ -1423,6 +1427,21 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_listen_is_not_playback(extra["dashboard_html"]))
+
+    def test_dashboard_work_starts_song_count_label_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function workStartLabel(", ""
+        ).replace(
+            "${workCounts[kind]} in queue",
+            "${workCounts[kind]} songs",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("highest-momentum match, not a song-count instruction" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_work_starts_name_the_action(extra["dashboard_html"]))
 
     def test_dashboard_owner_audio_index_fails_closed(self):
         extra = extras_ok()
@@ -3069,6 +3088,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
         self.assertTrue(dashboard_work_next_stays_in_view(extra["dashboard_html"]))
         self.assertTrue(dashboard_listen_is_not_playback(extra["dashboard_html"]))
+        self.assertTrue(dashboard_work_starts_name_the_action(extra["dashboard_html"]))
         self.assertTrue(readme_documents_session_click_test(extra["readme"]))
         self.assertTrue(readme_click_test_does_not_claim_private(extra["readme"]))
         self.assertTrue(readme_click_test_uses_browser_local_heading(extra["readme"]))
