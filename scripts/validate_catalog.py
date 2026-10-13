@@ -31,6 +31,7 @@ import sys
 
 from catalog_surface import (
     catalog_surface_admits_not_official_set,
+    duplicate_memo_uids,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
     dashboard_escape_clears_memo_search,
@@ -50,6 +51,7 @@ from catalog_surface import (
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_search_results_keyboard_ready,
     dashboard_tablist_keyboard_ready,
     dashboard_skip_link_contrast_ready,
     dashboard_search_mark_contrast_ready,
@@ -1165,6 +1167,18 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.merge_key must be vault:catalog_import_v1:{vault_id ?? id} "
                 "(StoryBoard sourceKey)"
             )
+        if sb.get("import_is_idempotent") is not True:
+            errors.append(
+                "storyboard.import_is_idempotent must be true — "
+                "tests/test_storyboard_catalog_import.mjs runs StoryBoard "
+                "planCatalogImport/reconcileCatalogImport"
+            )
+        if sb.get("reconcile_skips_existing_source_key") is not True:
+            errors.append(
+                "storyboard.reconcile_skips_existing_source_key must be true"
+            )
+        if sb.get("reconcile_skips_existing_title") is not True:
+            errors.append("storyboard.reconcile_skips_existing_title must be true")
         if list(sb.get("reads") or []) != list(IMPORTER_READS):
             errors.append(
                 "storyboard.reads must list exactly the fields StoryBoard reads: "
@@ -1928,6 +1942,9 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
         unknown = sorted(sid for sid in vm_matches if sid not in by_id)
         if unknown:
             errors.append(f"vm_matches points at unknown song_id values: {unknown}")
+        dup_memos = duplicate_memo_uids(vm_matches)
+        if dup_memos:
+            errors.append(f"vm_matches duplicate memo uids: {dup_memos}")
 
     api = extras.get("app_api")
     if api is None:
@@ -2167,6 +2184,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must stay usable at 390px with landmarks, "
                 "labeled controls, 44px tap targets, visible focus, "
                 "and no horizontal scroll"
+            )
+        if not dashboard_search_results_keyboard_ready(dash):
+            errors.append(
+                "dashboard search results must use arrow keys, Enter, and "
+                "a visible dark-theme focus ring"
             )
         if not dashboard_tablist_keyboard_ready(dash):
             errors.append(
