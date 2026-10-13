@@ -37,6 +37,7 @@ from catalog_surface import (
     dashboard_escape_clears_memo_search,
     dashboard_empty_memo_search_honest,
     dashboard_empty_search_honest,
+    dashboard_memo_query_ranks_catalog_matches,
     dashboard_memo_search_folds_punctuation,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
@@ -2161,6 +2162,13 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard zero memo hits must not tell the user to clear "
                 "a song filter that is not set"
+            )
+        if not dashboard_memo_query_ranks_catalog_matches(dash):
+            errors.append(
+                "dashboard memo queries must rank catalog-matched rows "
+                "(or a Songs named jump) above unmatched Whisper hits, "
+                "keep the Whisper disclaimer once, keep Voice Memo Intake "
+                "unsplit, and cap visible rows at 80"
             )
         if not dashboard_memo_search_folds_punctuation(dash):
             errors.append(

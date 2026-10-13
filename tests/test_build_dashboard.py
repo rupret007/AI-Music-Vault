@@ -21,6 +21,8 @@ from catalog_surface import (  # noqa: E402
     catalog_recovered_count,
     contrast_ratio,
     dashboard_displays_owner_audio_index,
+    dashboard_markup_chrome,
+    dashboard_memo_query_ranks_catalog_matches,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
@@ -295,10 +297,15 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("data-copy-file", dashboard)
         self.assertIn("Copy intake name", dashboard)
         self.assertIn("newest first", dashboard)
+        self.assertIn("catalog matches first", dashboard)
+        self.assertIn("Songs named", dashboard)
         self.assertIn("this page does not open audio", dashboard)
         self.assertIn("function parseVaultHash(", dashboard)
         self.assertIn("function sortMemoHits(", dashboard)
+        self.assertIn("function memoIsCatalogMatched(", dashboard)
+        self.assertIn("function namedSongsForMemoQuery(", dashboard)
         self.assertIn("function handleVaultKey(", dashboard)
+        self.assertTrue(dashboard_memo_query_ranks_catalog_matches(dashboard))
         self.assertFalse(dashboard_opens_owner_audio(dashboard))
         self.assertTrue(dashboard_exposes_song_work(dashboard))
         self.assertTrue(dashboard_resumes_song_work_privately(dashboard))
@@ -354,13 +361,18 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         )
         self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
         self.assertIn(
-            "Transcripts are machine-made (Whisper, run locally on your Mac) — "
-            "they mishear sung words constantly, so treat hits as leads, not gospel. "
-            "Copy the intake name only (sanitized); write, produce, or listen in Logic "
-            "(export honesty, WAVs/AIFF/MIDI preference, no Ableton-first).",
+            "Hits are leads, not gospel — Whisper mishears sung words.",
             dashboard,
         )
+        self.assertEqual(
+            dashboard_markup_chrome(dashboard).count("Whisper mishears sung words"),
+            1,
+        )
+        self.assertIn('id="memoWhisper"', dashboard)
         self.assertIn("Copy the intake name only (sanitized)", dashboard)
+        self.assertIn('class="intake-loc"', dashboard)
+        self.assertIn("Voice&nbsp;Memo&nbsp;Intake", dashboard)
+        self.assertIn("MEMO_VISIBLE_CAP=80", dashboard)
         self.assertIn("No copy-safe intake name on this memo row yet;", dashboard)
         self.assertIn("no copy-safe intake name yet", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)

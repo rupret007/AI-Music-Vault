@@ -48,6 +48,18 @@ for (const marker of [
   "try a different word",
   "function parseVaultHash(",
   "function sortMemoHits(",
+  "function memoIsCatalogMatched(",
+  "function namedSongsForMemoQuery(",
+  "function memoResultsStatus(",
+  "function memoIntakeLine(",
+  "Songs named",
+  "catalog matches first",
+  "id=\"memoWhisper\"",
+  "Whisper mishears sung words",
+  "class=\"intake-loc\"",
+  ".intake-loc{white-space:nowrap}",
+  "Voice&nbsp;Memo&nbsp;Intake",
+  "MEMO_VISIBLE_CAP=80",
   "function handleVaultKey(",
   "activeMemoSong||",
   "mq.value||''",
@@ -493,9 +505,16 @@ if (!parseVaultHash("#work=write", names) || parseVaultHash("#work=write", names
 if (parseVaultHash("#work=unknown", names)) fail("hash must reject unknown work");
 if (parseVaultHash("#work=JS-0001", names)) fail("hash must reject a catalog id as work");
 
-const sortMemoHits = new Function(
-  "return (" + extractFunction(script, "sortMemoHits") + ");",
+const memoIsCatalogMatched = new Function(
+  "return (" + extractFunction(script, "memoIsCatalogMatched") + ");",
 )();
+if (!memoIsCatalogMatched({ s: "JS-0128" }) || memoIsCatalogMatched({ s: "" }) || memoIsCatalogMatched({})) {
+  fail("catalog match must require a song id");
+}
+const sortMemoHits = new Function(
+  "memoIsCatalogMatched",
+  "return (" + extractFunction(script, "sortMemoHits") + ");",
+)(memoIsCatalogMatched);
 const ordered = sortMemoHits([
   { m: { d: "2020-01-01", f: "old.m4a" } },
   { m: { d: "2024-12-01", f: "new.m4a" } },
@@ -503,6 +522,35 @@ const ordered = sortMemoHits([
 ]);
 if (ordered[0].m.f !== "new.m4a") fail("newest memo must come first");
 if (ordered[2].m.d !== "") fail("undated memo must sink");
+const matchedFirst = sortMemoHits([
+  { m: { d: "2025-10-22", f: "unmatched-new.m4a", s: "" } },
+  { m: { d: "2020-01-01", f: "matched-old.m4a", s: "JS-0128" } },
+  { m: { d: "2024-12-01", f: "unmatched-mid.m4a" } },
+  { m: { d: "2021-06-01", f: "matched-newer.m4a", s: "JS-0128" } },
+  { m: { d: "", f: "matched-undated.m4a", s: "ST-0001" } },
+]);
+if (matchedFirst.map((hit) => hit.m.f).join(",") !== "matched-newer.m4a,matched-old.m4a,matched-undated.m4a,unmatched-new.m4a,unmatched-mid.m4a") {
+  fail("catalog-matched memos must sort above unmatched Whisper hits");
+}
+if (!script.includes("const MEMO_VISIBLE_CAP=80") || !extractFunction(script, "mrender").includes("slice(0,MEMO_VISIBLE_CAP)")) {
+  fail("memo search must keep an 80-row visible cap");
+}
+const chrome = html.split("<script>")[0];
+if ((chrome.match(/Whisper mishears sung words/g) || []).length !== 1) {
+  fail("Whisper disclaimer must appear once in dashboard chrome");
+}
+if (extractFunction(script, "mrender").includes("Whisper") || extractFunction(script, "memoIntakeLine").includes("Whisper")) {
+  fail("Whisper copy must not repeat in memo rows or the empty hint");
+}
+const memoResultsStatus = new Function(
+  "return (" + extractFunction(script, "memoResultsStatus") + ");",
+)();
+if (memoResultsStatus(80, 84, true) !== "Showing 80 of 84 matching memos · catalog matches first") {
+  fail("unscoped memo queries must say catalog matches first and keep the 80 cap in the status line");
+}
+if (memoResultsStatus(3, 3, false) !== "Showing 3 matching memos · newest first") {
+  fail("scoped memo lists must keep newest-first copy");
+}
 
 const esc = new Function("return (" + extractFunction(script, "esc") + ");")();
 const normalizedMatchRange = new Function(
@@ -1302,6 +1350,42 @@ if (!memoHit.hit || memoHit.via !== "memo" || memoHit.rank !== 4) {
 }
 if (songSearchHit({ id: "JS-9999", t: "Unrelated" }, "ca").hit) {
   fail("short queries must not scan memo lyrics");
+}
+const namedSongsForMemoQuery = new Function(
+  "normalizeSearch",
+  "songSearchHit",
+  "DATA",
+  "return (" + extractFunction(script, "namedSongsForMemoQuery") + ");",
+)(
+  normalizeSearch,
+  songSearchHit,
+  [],
+);
+const named = namedSongsForMemoQuery("alright", [
+  { id: "JS-0128", t: "It's Alright", aka: [] },
+  { id: "ST-0004", t: "Manic", th: "feeling alright tonight" },
+  { id: "JS-9999", t: "Unrelated" },
+]);
+if (named.length !== 1 || named[0].row.id !== "JS-0128") {
+  fail("Songs named jump must use catalog titles, not theme or memo-lyric hits");
+}
+const namedSongsJumpHtml = new Function(
+  "esc",
+  "return (" + extractFunction(script, "namedSongsJumpHtml") + ");",
+)(esc);
+if (!namedSongsJumpHtml(named).includes("Songs named") || !namedSongsJumpHtml(named).includes("data-open-song=\"JS-0128\"")) {
+  fail("memo query must offer a Songs named jump to the catalog title");
+}
+const memoIntakeLine = new Function(
+  "esc",
+  "return (" + extractFunction(script, "memoIntakeLine") + ");",
+)(esc);
+const intakeLine = memoIntakeLine({ label: "Clip.m4a", copy: "Clip.m4a" });
+if (!intakeLine.includes('<span class="intake-loc">(Voice&nbsp;Memo&nbsp;Intake)</span>')) {
+  fail("Voice Memo Intake must stay one unsplit phrase");
+}
+if (intakeLine.includes(".wav") || intakeLine.includes("file://") || !intakeLine.includes("data-copy-file=\"Clip.m4a\"")) {
+  fail("intake copy must stay basename only with no audio locator");
 }
 const sortSongRows = new Function(
   "songSearchHit",
