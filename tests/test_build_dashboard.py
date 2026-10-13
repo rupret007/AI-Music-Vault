@@ -24,6 +24,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_catalog_overview_starts_collapsed,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
     dashboard_work_starts_name_the_action,
@@ -1231,6 +1232,7 @@ class DashboardFirstPaintTests(unittest.TestCase):
         ) as handle:
             builder = handle.read()
         self.assertTrue(dashboard_first_paint_ready(dashboard))
+        self.assertTrue(dashboard_catalog_overview_starts_collapsed(dashboard))
         self.assertTrue(dashboard_start_copy_omits_resume_preview(dashboard))
         self.assertIn("No audio in this repo, and catalog rows are not the live set.", dashboard)
         self.assertIn(f"const COVER_COUNT = {catalog_cover_count(catalog)};", dashboard)

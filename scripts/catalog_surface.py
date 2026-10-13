@@ -1494,6 +1494,33 @@ def dashboard_first_paint_ready(html: str) -> bool:
     return work_at < fold_at < stats_at
 
 
+def dashboard_catalog_overview_starts_collapsed(html: str) -> bool:
+    """First paint must not auto-open catalog subtitle/counts; summary stays visible."""
+    chrome = dashboard_markup_chrome(html)
+    if 'id="catalogOverview"' not in chrome:
+        return False
+    if 'id="catalogOverviewSummary"' not in chrome:
+        return False
+    overview = re.search(r"<details[^>]*id=\"catalogOverview\"[^>]*>", chrome)
+    if overview and re.search(r"\bopen\b", overview.group(0)):
+        return False
+    if "id=\"catalogOverview\" open" in chrome or "open id=\"catalogOverview\"" in chrome:
+        return False
+    summary = re.search(r"<summary[^>]*id=\"catalogOverviewSummary\"[^>]*>", chrome)
+    if summary and re.search(r"\bhidden\b", summary.group(0)):
+        return False
+    if (
+        "id=\"catalogOverviewSummary\" hidden" in chrome
+        or "hidden id=\"catalogOverviewSummary\"" in chrome
+    ):
+        return False
+    if "catalogOverviewSummary.hidden=false" not in chrome:
+        return False
+    if "catalogOverview.open=!saved" in chrome:
+        return False
+    return True
+
+
 def dashboard_start_copy_omits_resume_preview(html: str) -> bool:
     """Cold-start copy names Write/Produce/Listen and Refresh, not Resume/Forget."""
     chrome = dashboard_markup_chrome(html)

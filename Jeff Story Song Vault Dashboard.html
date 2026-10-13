@@ -140,8 +140,8 @@ input{flex:1;min-width:0;width:100%}
  <div class="work-starts" id="workStarts"></div>
  <p class="work-now-copy">Pick Write, Produce, or Listen. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser.</p>
 </section>
-<details class="catalog-overview" id="catalogOverview" open>
- <summary id="catalogOverviewSummary" hidden>Catalog details and counts</summary>
+<details class="catalog-overview" id="catalogOverview">
+ <summary id="catalogOverviewSummary">Catalog details and counts</summary>
  <p class="sub">Every song, one place · Catalog v1.6 · Catalog brain · StoryBoard consumes data/app_api.json · Show Night owns official sets · catalog rows are not the live set · Momentum Index · 916 memos transcribed · 807 usable-text transcripts searchable · no audio in this repo</p>
 <details class="stats-fold" id="statsFold">
  <summary id="statsLine">Catalog counts</summary>
@@ -400,9 +400,7 @@ function updateResumeWork(){
  const saved=readStoredWorkSession(vaultStorage(),sname,DATA);
  resumeWork.hidden=!saved;
  if(typeof catalogOverview!=='undefined'&&catalogOverview&&typeof catalogOverviewSummary!=='undefined'&&catalogOverviewSummary){
-  // Collapse on entering resume; preserve an explicit disclosure choice after that.
-  if(catalogOverviewSummary.hidden===!!saved)catalogOverview.open=!saved;
-  catalogOverviewSummary.hidden=!saved;
+  catalogOverviewSummary.hidden=false;
  }
  if(typeof resumeWorkHint!=='undefined'&&resumeWorkHint)resumeWorkHint.hidden=!saved;
  if(typeof document!=='undefined'&&document.body&&document.body.classList){

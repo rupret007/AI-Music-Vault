@@ -164,6 +164,7 @@ for (const marker of [
   "id=\"forgetWorkSession\"",
   "id=\"catalogOverview\"",
   "id=\"catalogOverviewSummary\"",
+  "catalogOverviewSummary.hidden=false",
   "class=\"resume-actions\"",
   "id=\"advancedFilters\"",
   "Start a work session",
@@ -201,6 +202,12 @@ if (html.includes("${workCounts[kind]} songs")) {
   fail("work starts must not label the queue as N songs");
 }
 if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
+if (/<details[^>]*id="catalogOverview"[^>]*\bopen\b/.test(html)) {
+  fail("catalog overview must start collapsed");
+}
+if (html.includes("catalogOverview.open=!saved")) {
+  fail("catalog overview must not auto-open from resume state");
+}
 {
   const copy = html.match(/<p class="work-now-copy">([\s\S]*?)<\/p>/);
   if (!copy) fail("start-work copy is missing");

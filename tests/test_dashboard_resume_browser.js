@@ -324,7 +324,7 @@ async function tabTo(cdp) {
       state = await evalValue(cdp, MEASURE_EXPR);
       assert.equal(state.stored, null);
       assert.equal(state.resumeHidden, true);
-      assert.equal(state.overviewOpen, true);
+      assert.equal(state.overviewOpen, false, "Forget must not auto-open catalog details");
       assert.equal(state.focusOpenWork, "write");
       await cdp.send("Page.reload");
       await waitFor(cdp, `!!document.querySelector('#workStarts button')`, "reload after Forget");
