@@ -328,11 +328,13 @@ def extras_ok(cat=None):
             'function songSearchHit( function markNormalized( '
             'function focusFoundSong( function handleSongSearchKey( '
             'function nextSearchCursor( function searchActivateId( '
-            'function paintSearchFocus( function handleMemoSearchKey( '
+            'function searchActivateMemoSong( function paintSearchFocus( '
+            'function handleMemoSearchKey( '
             'ArrowDown ArrowUp aria-activedescendant search-focus '
             '.row.search-focus .rhead,.mrow.search-focus '
             'outline:2px solid var(--pot) '
             'if(!term&&!(cursor>=0))return false '
+            "paintSearchFocus(list,'.row',cur,'search-focus') "
             'function handleVaultKey( activeMemoSong|| mq.value||\'\' '
             'closest name first titles, aliases, hooks memo lyric aka '
             'function emptyMemosCopy( press Escape or Show all memos '
@@ -1459,6 +1461,28 @@ class ValidateCatalogTests(unittest.TestCase):
         extra["dashboard_html"] = extra["dashboard_html"].replace(
             "if(!term&&!(cursor>=0))return false", ""
         )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_memo_activate_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function searchActivateMemoSong(", ""
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_listbox_search_pattern_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"] + ' role="listbox"'
         errors = validate(fixture(), extra)
         self.assertTrue(
             any("arrow keys, Enter, and" in e for e in errors),

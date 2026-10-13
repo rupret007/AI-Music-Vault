@@ -355,6 +355,21 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertEqual(songs[0]["bpm"], 100)
         self.assertEqual(songs[0]["title"], "Turn Over The Flag")
 
+    def test_upsert_empty_title_does_not_collide_with_blank_library_title(self):
+        songs = [{"sourceKey": "manual:blank", "title": "   ", "origin": "manual"}]
+        draft = {
+            "sourceKey": "vault:catalog_import_v1:ST-0004",
+            "title": "",
+            "origin": "vault",
+        }
+        self.assertEqual(upsert_catalog_song(songs, draft), draft["sourceKey"])
+        self.assertEqual(len(songs), 2)
+        self.assertEqual(songs[0]["sourceKey"], "manual:blank")
+        self.assertEqual(songs[1]["sourceKey"], draft["sourceKey"])
+        recon = reconcile_catalog_import([draft], songs[:1])
+        self.assertEqual(recon["createSongs"][0]["sourceKey"], draft["sourceKey"])
+        self.assertEqual(recon["skipSongs"], [])
+
     def test_duration_stays_null(self):
         for rec in build_payload(fixture())["songs"]:
             self.assertIsNone(rec["duration_seconds"])

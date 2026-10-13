@@ -1503,6 +1503,7 @@ def dashboard_search_results_keyboard_ready(html: str) -> bool:
     required = (
         "function nextSearchCursor(",
         "function searchActivateId(",
+        "function searchActivateMemoSong(",
         "function paintSearchFocus(",
         "function handleSongSearchKey(",
         "function handleMemoSearchKey(",
@@ -1513,8 +1514,9 @@ def dashboard_search_results_keyboard_ready(html: str) -> bool:
         ".row.search-focus .rhead,.mrow.search-focus",
         "outline:2px solid var(--pot)",
         "if(!term&&!(cursor>=0))return false",
+        "paintSearchFocus(list,'.row',cur,'search-focus')",
     )
-    return all(marker in chrome for marker in required)
+    return all(marker in chrome for marker in required) and 'role="listbox"' not in chrome
 
 
 def dashboard_tablist_keyboard_ready(html: str) -> bool:

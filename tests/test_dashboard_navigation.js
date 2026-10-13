@@ -60,12 +60,14 @@ for (const marker of [
   "function handleSongSearchKey(",
   "function nextSearchCursor(",
   "function searchActivateId(",
+  "function searchActivateMemoSong(",
   "function paintSearchFocus(",
   "function handleMemoSearchKey(",
   "search-focus",
   "aria-activedescendant",
   ".row.search-focus .rhead,.mrow.search-focus",
   "if(!term&&!(cursor>=0))return false",
+  "paintSearchFocus(list,'.row',cur,'search-focus')",
   "function songResultsStatus(",
   "function emptySongsCopy(",
   "closest name first",
@@ -1372,6 +1374,18 @@ if (searchActivateId(["ST-0019", "JS-9998"], -1) !== "ST-0019") {
 if (searchActivateId(["ST-0019", "JS-9998"], 1) !== "JS-9998") {
   fail("Enter after arrows must open the focused search result");
 }
+const searchActivateMemoSong = new Function(
+  "return (" + extractFunction(script, "searchActivateMemoSong") + ");",
+)();
+if (searchActivateMemoSong([{ dataset: { openSong: "" } }, { dataset: { openSong: "JS-0128" } }], -1) !== "JS-0128") {
+  fail("Enter without an arrow cursor must open the first matched memo song");
+}
+if (searchActivateMemoSong([{ dataset: { openSong: "" } }, { dataset: { openSong: "JS-0128" } }], 0) !== "") {
+  fail("Enter on a focused unmatched memo must fail closed");
+}
+if (searchActivateMemoSong([{ dataset: { openSong: "ST-0001" } }, { dataset: { openSong: "JS-0128" } }], 1) !== "JS-0128") {
+  fail("Enter after arrows must open the focused memo's matched song");
+}
 
 const painted = [];
 const paintSearchFocus = new Function(
@@ -1397,7 +1411,7 @@ const fakeResults = [0, 1].map((i) => {
   };
 });
 const fakeList = { querySelectorAll() { return fakeResults; } };
-const focusedRow = paintSearchFocus(fakeList, "[data-song-id]", 1, "search-focus");
+const focusedRow = paintSearchFocus(fakeList, ".row", 1, "search-focus");
 if (focusedRow !== fakeResults[1] || !fakeResults[1].classList.has("search-focus") || fakeResults[0].classList.has("search-focus")) {
   fail("search focus paint must mark only the active result");
 }
@@ -1505,6 +1519,7 @@ const memoKey = new Function(
   "paintSearchFocus",
   "nextSearchCursor",
   "openSong",
+  "searchActivateMemoSong",
   "let memoSearchCursor = -1;" +
     extractFunction(script, "handleMemoSearchKey") +
     "; return function(e){ return handleMemoSearchKey(e); };",
@@ -1514,6 +1529,7 @@ const memoKey = new Function(
   () => memoItems[1],
   nextSearchCursor,
   (id) => { memoOpened.id = id; },
+  searchActivateMemoSong,
 );
 if (memoKey({ key: "Tab" })) {
   fail("Tab must not steal memo search results");
@@ -1523,6 +1539,39 @@ if (!memoKey({ key: "ArrowDown", preventDefault() {} }) || !memoKey({ key: "Arro
 }
 if (!memoKey({ key: "Enter", preventDefault() {} }) || memoOpened.id !== "JS-0128") {
   fail("Enter on a focused memo result must open the matched song");
+}
+
+const unmatchedFirstOpened = { id: "" };
+const unmatchedFirstItems = [
+  { id: "memo-hit-0", dataset: { openSong: "" } },
+  { id: "memo-hit-1", dataset: { openSong: "JS-0128" } },
+];
+const unmatchedFirstKey = new Function(
+  "mlist",
+  "mq",
+  "paintSearchFocus",
+  "nextSearchCursor",
+  "openSong",
+  "searchActivateMemoSong",
+  "let memoSearchCursor = -1;" +
+    extractFunction(script, "handleMemoSearchKey") +
+    "; return function(e){ return handleMemoSearchKey(e); };",
+)(
+  { querySelectorAll() { return unmatchedFirstItems; } },
+  { setAttribute() {} },
+  () => unmatchedFirstItems[0],
+  nextSearchCursor,
+  (id) => { unmatchedFirstOpened.id = id; },
+  searchActivateMemoSong,
+);
+if (!unmatchedFirstKey({ key: "Enter", preventDefault() {} }) || unmatchedFirstOpened.id !== "JS-0128") {
+  fail("Enter without an arrow cursor must skip an unmatched first memo");
+}
+if (!unmatchedFirstKey({ key: "ArrowDown", preventDefault() {} })) {
+  fail("ArrowDown must focus the first memo even when it is unmatched");
+}
+if (unmatchedFirstKey({ key: "Enter", preventDefault() {} }) || unmatchedFirstOpened.id !== "JS-0128") {
+  fail("Enter on a focused unmatched memo must fail closed");
 }
 
 const searchEscape = new Function(

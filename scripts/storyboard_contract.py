@@ -1148,13 +1148,18 @@ def upsert_catalog_song(songs: list[dict], draft: dict) -> str:
     existing_key = next((row for row in songs if row.get("sourceKey") == key), None)
     if existing_key:
         return str(existing_key["sourceKey"])
-    title_l = str(draft.get("title") or "").lower()
-    duplicate_title = next(
-        (row for row in songs if str(row.get("title") or "").lower() == title_l),
-        None,
-    )
-    if duplicate_title:
-        return str(duplicate_title["sourceKey"])
+    title_l = str(draft.get("title") or "").strip().lower()
+    if title_l:
+        duplicate_title = next(
+            (
+                row
+                for row in songs
+                if str(row.get("title") or "").strip().lower() == title_l
+            ),
+            None,
+        )
+        if duplicate_title:
+            return str(duplicate_title["sourceKey"])
     songs.append(dict(draft))
     return key
 
@@ -1167,9 +1172,9 @@ def reconcile_catalog_import(plan_songs, existing_songs) -> dict:
         if isinstance(row, dict) and row.get("sourceKey")
     }
     by_title = {
-        str(row.get("title") or "").lower(): row
+        str(row.get("title") or "").strip().lower(): row
         for row in existing_songs or []
-        if isinstance(row, dict) and row.get("title")
+        if isinstance(row, dict) and str(row.get("title") or "").strip()
     }
     create: list[dict] = []
     skip: list[dict] = []
@@ -1183,8 +1188,8 @@ def reconcile_catalog_import(plan_songs, existing_songs) -> dict:
                 {"sourceKey": key, "title": title, "reason": SKIP_SOURCE_KEY_EXISTS}
             )
             continue
-        title_l = str(title or "").lower()
-        if title_l in by_title:
+        title_l = str(title or "").strip().lower()
+        if title_l and title_l in by_title:
             skip.append(
                 {"sourceKey": key, "title": title, "reason": SKIP_TITLE_EXISTS}
             )
