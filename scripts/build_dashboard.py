@@ -88,8 +88,8 @@ def validate_dashboard_inputs(cat, app_api):
                 raise ValueError(f"{sid}: live_presence[{index}] needs non-empty band and date")
 
 
-def build_payload(cat, app_api, chains, joined, matches_by_song) -> dict:
-    """Project the same slim song rows and memo index for writing and checking."""
+def build_payload(cat, app_api, chains, joined, matches_by_song):
+    """Project loaded metadata into dashboard payloads without file I/O."""
     slim = []
     for s in cat['songs']:
         row = dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
@@ -109,12 +109,40 @@ def build_payload(cat, app_api, chains, joined, matches_by_song) -> dict:
             row['aka'] = aliases
         slim.append(row)
     overlay_feed_scopes(slim, app_api)
-    # Keep source totals separate from the compact, searchable transcript index.
+
+    # Overlay current memo matches and keep source totals separate from the
+    # compact search index (cleaned transcripts capped at 1500 characters).
     tx, memo_counts = build_memo_search_index(joined, matches_by_song)
-    return {"DATA": slim, "TX": tx, "memo_counts": memo_counts}
+    return {
+        "data": slim,
+        "tx": tx,
+        "memo_counts": memo_counts,
+        "cover_count": catalog_cover_count(cat),
+        "recovered_count": catalog_recovered_count(cat),
+        "catalog_version": str(cat.get("version") or ""),
+    }
 
 
-def check_committed(payload: dict, path: str = OUT_PATH) -> list[str]:
+def _read_json(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def load_payload():
+    """Read repo-relative inputs only when a build is explicitly requested."""
+    cat = load_dashboard_json(CAT_PATH)
+    app_api = load_dashboard_json(API_PATH)
+    validate_dashboard_inputs(cat, app_api)
+    return build_payload(
+        cat,
+        app_api,
+        _read_json(CHAIN_PATH) if os.path.exists(CHAIN_PATH) else {},
+        _read_json(TX_PATH),
+        _read_json(VM_MATCHES_PATH) if os.path.exists(VM_MATCHES_PATH) else {},
+    )
+
+
+def check_committed(payload, path=OUT_PATH):
     """Compare embedded JSON with a fresh projection, without touching the HTML."""
     if not os.path.exists(path):
         return [f"missing dashboard at {path} — re-run python3.12 scripts/build_dashboard.py"]
@@ -124,45 +152,45 @@ def check_committed(payload: dict, path: str = OUT_PATH) -> list[str]:
     except (OSError, UnicodeError) as exc:
         return [f"cannot read dashboard at {path}: {exc}"]
     errors = []
-    for name in ("DATA", "TX"):
+    for name, key in (("DATA", "data"), ("TX", "tx")):
         try:
             actual = json.loads(committed[name])
         except json.JSONDecodeError:
             errors.append(f"dashboard {name} payload is missing or invalid")
             continue
-        if actual != payload[name]:
+        if actual != payload[key]:
             errors.append(f"dashboard {name} payload is stale vs its source metadata")
     if errors:
         errors.append("re-run python3.12 scripts/build_dashboard.py")
     return errors
 
 
-def render_dashboard(cat: dict, payload: dict) -> str:
-    slim, tx = payload["DATA"], payload["TX"]
-    memo_counts = payload["memo_counts"]
+def _lane_work_pill(slim, song_id: str) -> str:
+    row = next((item for item in slim if item.get("id") == song_id), None)
+    kind = song_work_kind((row or {}).get("nx"))
+    if not kind or kind == "unknown":
+        return ""
+    return f'<span class="pill wk-{kind} lane-work">{kind}</span>'
 
-    def _lane_work_pill(song_id: str) -> str:
-        row = next((item for item in slim if item.get("id") == song_id), None)
-        kind = song_work_kind((row or {}).get("nx"))
-        if not kind or kind == "unknown":
-            return ""
-        return f'<span class="pill wk-{kind} lane-work">{kind}</span>'
 
+def render_dashboard(payload):
+    """Render a prepared payload in memory, without reading or writing files."""
+    slim = payload["data"]
     DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
     LOGIC_READY = json.dumps(logic_ready_maps(), ensure_ascii=False).replace('</', '<\\/')
     LOGIC_READY_FILTER = "".join(
         f'<option value="{cluster}">{LOGIC_READY_LABELS[cluster]}</option>'
         for cluster in LOGIC_READY_CLUSTERS
     )
-
+    memo_counts = payload["memo_counts"]
     TX_TOTAL = memo_counts["transcribed"]
     TX_MATCHED_TOTAL = memo_counts["matched"]
     TX_SEARCHABLE_TOTAL = memo_counts["searchable"]
     TX_SEARCHABLE_MATCHED = memo_counts["searchable_matched"]
-    TX = json.dumps(tx, ensure_ascii=False).replace('</', '<\\/')
-    COVER_COUNT = catalog_cover_count(cat)
-    RECOVERED_COUNT = catalog_recovered_count(cat)
-    CATALOG_VERSION = str(cat.get("version") or "")
+    TX = json.dumps(payload["tx"], ensure_ascii=False).replace('</', '<\\/')
+    COVER_COUNT = payload["cover_count"]
+    RECOVERED_COUNT = payload["recovered_count"]
+    CATALOG_VERSION = payload["catalog_version"]
 
     page = r'''<!DOCTYPE html>
 <html lang="en" data-theme="dark"><head><meta charset="utf-8">
@@ -324,11 +352,11 @@ input{flex:1;min-width:0;width:100%}
 </details>
 <section class="lanes" aria-labelledby="lanesTitle">
  <h2 id="lanesTitle">The three lanes (+ on deck)</h2>
- <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button> ''' + _lane_work_pill("ST-0001") + r'''<span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
- <div class="lane"><span class="tag q">Quick win</span><button type="button" class="song-link" data-open-song="ST-0004">Manic</button> ''' + _lane_work_pill("ST-0004") + r'''<span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
- <div class="lane"><span class="tag x">Experimental</span><button type="button" class="song-link" data-open-song="ST-0009">Long Long Drive</button> ''' + _lane_work_pill("ST-0009") + r'''<span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
- <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button> ''' + _lane_work_pill("JS-0128") + r'''<span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
- <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button> ''' + _lane_work_pill("JS-0107") + r'''<span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
+ <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button> ''' + _lane_work_pill(slim, "ST-0001") + r'''<span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
+ <div class="lane"><span class="tag q">Quick win</span><button type="button" class="song-link" data-open-song="ST-0004">Manic</button> ''' + _lane_work_pill(slim, "ST-0004") + r'''<span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
+ <div class="lane"><span class="tag x">Experimental</span><button type="button" class="song-link" data-open-song="ST-0009">Long Long Drive</button> ''' + _lane_work_pill(slim, "ST-0009") + r'''<span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
+ <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button> ''' + _lane_work_pill(slim, "JS-0128") + r'''<span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
+ <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button> ''' + _lane_work_pill(slim, "JS-0107") + r'''<span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
 </section>
 <nav class="tabs" role="tablist" aria-label="Vault views" aria-orientation="horizontal">
  <button type="button" class="tab on" id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0">Songs</button>
@@ -1541,7 +1569,7 @@ if(typeof document!=='undefined')document.addEventListener('keydown',handleVault
 if(typeof window!=='undefined'){window.addEventListener('hashchange',applyVaultHash);applyVaultHash();}
 </script></body></html>'''
 
-    page = (page.replace('__DATA__', DATA)
+    return (page.replace('__DATA__', DATA)
         .replace('__LOGIC_READY__', LOGIC_READY)
         .replace('__LOGIC_READY_FILTER__', LOGIC_READY_FILTER)
         .replace('__TX__', TX)
@@ -1551,30 +1579,26 @@ if(typeof window!=='undefined'){window.addEventListener('hashchange',applyVaultH
         .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED))
         .replace('__COVER_COUNT__', str(COVER_COUNT))
         .replace('__RECOVERED_COUNT__', str(RECOVERED_COUNT)))
+
+
+def write_dashboard(payload, out_path=None):
+    """Write one dashboard to OUT_PATH (or an explicitly supplied destination)."""
+    page = render_dashboard(payload)
+    with open(OUT_PATH if out_path is None else out_path, "w", encoding="utf-8") as handle:
+        handle.write(page)
     return page
 
 
-def write_dashboard(page: str, path: str = OUT_PATH) -> None:
-    with open(path, "w", encoding="utf-8") as handle:
-        handle.write(page)
-
-
-def _read_json(path):
-    with open(path, encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def main(argv: list[str] | None = None) -> int:
+def main(argv=None):
     parser = argparse.ArgumentParser(description="Build the song vault dashboard")
     parser.add_argument(
-        "--check", action="store_true",
+        "--check",
+        action="store_true",
         help="fail if committed HTML DATA/TX payloads differ from a fresh projection; do not write",
     )
     args = parser.parse_args(argv)
     try:
-        cat = load_dashboard_json(CAT_PATH)
-        app_api = load_dashboard_json(API_PATH)
-        validate_dashboard_inputs(cat, app_api)
+        payload = load_payload()
     except ValueError as exc:
         if args.check:
             print("dashboard CHECK FAILED", file=sys.stderr)
@@ -1582,28 +1606,24 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"dashboard INVALID: {exc}", file=sys.stderr)
         return 1
-    try:
-        chains = _read_json(CHAIN_PATH) if os.path.exists(CHAIN_PATH) else {}
-        joined = _read_json(TX_PATH)
-        matches = _read_json(VM_MATCHES_PATH) if os.path.exists(VM_MATCHES_PATH) else {}
-        payload = build_payload(cat, app_api, chains, joined, matches)
-        if args.check:
-            errors = check_committed(payload)
-            if errors:
-                print("dashboard CHECK FAILED", file=sys.stderr)
-                for error in errors:
-                    print(f"  • {error}", file=sys.stderr)
-                return 1
-            print(f"dashboard OK — {OUT_PATH} DATA/TX match source metadata")
-            return 0
-        page = render_dashboard(cat, payload)
-        write_dashboard(page)
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        print(f"dashboard {'CHECK FAILED' if args.check else 'BUILD FAILED'}: {exc}", file=sys.stderr)
-        return 1
+        if args.check:
+            print(f"dashboard CHECK FAILED: {exc}", file=sys.stderr)
+            return 1
+        raise
+    if args.check:
+        errors = check_committed(payload)
+        if errors:
+            print("dashboard CHECK FAILED", file=sys.stderr)
+            for error in errors:
+                print(f"  • {error}", file=sys.stderr)
+            return 1
+        print(f"dashboard OK — {OUT_PATH} DATA/TX match source metadata")
+        return 0
+    page = write_dashboard(payload)
     counts = payload["memo_counts"]
     print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,',
-          counts['searchable'], 'searchable transcripts from', counts['transcribed'], 'transcribed')
+          counts["searchable"], 'searchable transcripts from', counts["transcribed"], 'transcribed')
     return 0
 
 
