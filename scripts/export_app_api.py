@@ -170,7 +170,11 @@ def build_payload(cat: dict, generated: str | None = None) -> dict:
         "counts": {
             "entities": len(songs),
             "originals": len(originals),
-            "scored": sum(1 for s in songs if s["potential"]),
+            # Empty strings are legacy blanks accepted by score_ok; zero is scored.
+            "scored": sum(
+                1 for s in songs
+                if s["potential"] is not None and s["potential"] != ""
+            ),
             "ai_upload_ok": sum(1 for s in songs if s["ai_upload_ok"]),
             "storyboard_default_live": scope_counts[SCOPE_DEFAULT_LIVE],
             "storyboard_default_live_parked_named": len(parked_named_ids),

@@ -1258,7 +1258,10 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         "originals": sum(
             1 for src in by_id.values() if src.get("classification") == "original"
         ),
-        "scored": sum(1 for src in by_id.values() if src.get("potential")),
+        "scored": sum(
+            1 for src in by_id.values()
+            if src.get("potential") is not None and src.get("potential") != ""
+        ),
         "ai_upload_ok": sum(
             1
             for src in by_id.values()
