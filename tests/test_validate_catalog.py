@@ -332,6 +332,7 @@ def extras_ok(cat=None):
             'ArrowDown ArrowUp aria-activedescendant search-focus '
             '.row.search-focus .rhead,.mrow.search-focus '
             'outline:2px solid var(--pot) '
+            'if(!term&&!(cursor>=0))return false '
             'function handleVaultKey( activeMemoSong|| mq.value||\'\' '
             'closest name first titles, aliases, hooks memo lyric aka '
             'function emptyMemosCopy( press Escape or Show all memos '
@@ -755,6 +756,16 @@ class ValidateCatalogTests(unittest.TestCase):
         extra["app_api"]["storyboard"]["import_is_idempotent"] = False
         errors = validate(fixture(), extra)
         self.assertTrue(any("import_is_idempotent" in e for e in errors), errors)
+
+    def test_import_idempotent_true_claim_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["import_is_idempotent"] = True
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("import_is_idempotent" in e for e in errors), errors)
+        self.assertTrue(
+            any("must not be published" in e or "do not hardcode" in e for e in errors),
+            errors,
+        )
 
     def test_old_schema_version_fails(self):
         extra = extras_ok()
@@ -1421,6 +1432,18 @@ class ValidateCatalogTests(unittest.TestCase):
         extra["dashboard_html"] = extra["dashboard_html"].replace(
             "function handleMemoSearchKey(", ""
         ).replace(".row.search-focus .rhead,.mrow.search-focus", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_empty_search_enter_focus_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "if(!term&&!(cursor>=0))return false", ""
+        )
         errors = validate(fixture(), extra)
         self.assertTrue(
             any("arrow keys, Enter, and" in e for e in errors),
@@ -3218,7 +3241,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(
             apps_md_claims_catalog_is_official_set(extra["apps_md"])
         )
-        self.assertTrue(extra["app_api"]["storyboard"]["import_is_idempotent"])
+        self.assertNotIn("import_is_idempotent", extra["app_api"]["storyboard"])
         self.assertTrue(extra["app_api"]["storyboard"]["catalog_rows_are_not_the_official_set"])
         self.assertTrue(
             extra["app_api"]["storyboard"]["vault_default_live_is_not_the_official_set"]

@@ -1141,7 +1141,7 @@ def vault_song_draft(song: dict) -> dict | None:
 
 
 def upsert_catalog_song(songs: list[dict], draft: dict) -> str:
-    """StoryBoard upsertSong: existing sourceKey is a no-op (first write wins)."""
+    """StoryBoard upsertSong: existing sourceKey or title is skipped (first write wins)."""
     key = str((draft or {}).get("sourceKey") or "")
     if not key:
         return ""
@@ -1154,11 +1154,6 @@ def upsert_catalog_song(songs: list[dict], draft: dict) -> str:
         None,
     )
     if duplicate_title:
-        if draft.get("origin") == "vault" and duplicate_title.get("origin") != "vault":
-            songs[songs.index(duplicate_title)] = {
-                **draft,
-                "sourceKey": duplicate_title["sourceKey"],
-            }
         return str(duplicate_title["sourceKey"])
     songs.append(dict(draft))
     return key
@@ -1320,7 +1315,6 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "set-list, and catalog calls."
         ),
         "merge_key": f"vault:{CATALOG_IMPORT_POLICY_VERSION}:{{vault_id ?? id}}",
-        "import_is_idempotent": True,
         "reconcile_skips_existing_source_key": True,
         "reconcile_skips_existing_title": True,
         "bpm_note": (

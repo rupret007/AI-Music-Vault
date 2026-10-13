@@ -1506,6 +1506,7 @@ def dashboard_search_results_keyboard_ready(html: str) -> bool:
         "search-focus",
         ".row.search-focus .rhead,.mrow.search-focus",
         "outline:2px solid var(--pot)",
+        "if(!term&&!(cursor>=0))return false",
     )
     return all(marker in chrome for marker in required)
 

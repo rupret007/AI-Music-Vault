@@ -65,6 +65,7 @@ for (const marker of [
   "search-focus",
   "aria-activedescendant",
   ".row.search-focus .rhead,.mrow.search-focus",
+  "if(!term&&!(cursor>=0))return false",
   "function songResultsStatus(",
   "function emptySongsCopy(",
   "closest name first",
@@ -1439,6 +1440,46 @@ if (!searchKey({ key: "ArrowDown", preventDefault() {} }) || searchAttrs["aria-a
 }
 if (!searchKey({ key: "Enter", preventDefault() {} }) || searchFocus.id !== "JS-9998") {
   fail("Enter after arrows must open the focused search result");
+}
+
+const emptySearchFocus = { id: "", focused: 0 };
+const emptySearchAttrs = { "aria-activedescendant": "" };
+const emptySearchBox = {
+  value: "",
+  setAttribute(name, value) { emptySearchAttrs[name] = String(value); },
+};
+const emptySearchKey = new Function(
+  "q",
+  "visibleSongIds",
+  "work",
+  "focusWorkSong",
+  "focusFoundSong",
+  "list",
+  "paintSearchFocus",
+  "nextSearchCursor",
+  "searchActivateId",
+  "let songSearchCursor = -1;" +
+    extractFunction(script, "handleSongSearchKey") +
+    "; return function(e){ return handleSongSearchKey(e); };",
+)(
+  emptySearchBox,
+  ["ST-0001", "ST-0004"],
+  { value: "" },
+  () => { emptySearchFocus.id = "work"; return true; },
+  (id) => { emptySearchFocus.id = id; emptySearchFocus.focused += 1; return true; },
+  fakeList,
+  paintSearchFocus,
+  nextSearchCursor,
+  searchActivateId,
+);
+if (emptySearchKey({ key: "Enter", preventDefault() {} }) || emptySearchFocus.focused !== 0) {
+  fail("Enter with an empty Songs search and no arrow cursor must not open a row");
+}
+if (!emptySearchKey({ key: "ArrowDown", preventDefault() {} }) || emptySearchAttrs["aria-activedescendant"] !== "song-row-ST-0001") {
+  fail("ArrowDown with an empty Songs search must highlight the first visible row");
+}
+if (!emptySearchKey({ key: "Enter", preventDefault() {} }) || emptySearchFocus.id !== "ST-0001") {
+  fail("Enter after ArrowDown with an empty Songs search must open the focused row");
 }
 
 const memoOpened = { id: "" };

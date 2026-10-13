@@ -912,11 +912,11 @@ function handleSongSearchKey(e){
   return true;
  }
  if(e.key!=='Enter')return false;
+ const cursor=typeof songSearchCursor==='number'?songSearchCursor:-1;
  const term=q&&String(q.value||'').trim();
- if(!term)return false;
+ if(!term&&!(cursor>=0))return false;
  if(!ids.length)return false;
  if(e.preventDefault)e.preventDefault();
- const cursor=typeof songSearchCursor==='number'?songSearchCursor:-1;
  const id=searchActivateId(ids,cursor);
  if(typeof work!=='undefined'&&work&&work.value&&typeof focusWorkSong==='function')return focusWorkSong(id);
  return focusFoundSong(id);

@@ -124,7 +124,6 @@ from storyboard_contract import (
     VAULT_STORYBOARD_FIELD_MAP,
     bpm_int,
     bpm_raw_string,
-    catalog_import_is_idempotent,
     catalog_locator_looks_remote,
     default_decisions,
     imported_active,
@@ -1168,10 +1167,11 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.merge_key must be vault:catalog_import_v1:{vault_id ?? id} "
                 "(StoryBoard sourceKey)"
             )
-        if sb.get("import_is_idempotent") is not True:
+        if "import_is_idempotent" in sb:
             errors.append(
-                "storyboard.import_is_idempotent must be true — "
-                "re-importing the same payload must not mint a second copy"
+                "storyboard.import_is_idempotent must not be published — "
+                "this repo does not test StoryBoard's importer; "
+                "do not hardcode import_is_idempotent"
             )
         if sb.get("reconcile_skips_existing_source_key") is not True:
             errors.append(
@@ -1179,12 +1179,6 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
             )
         if sb.get("reconcile_skips_existing_title") is not True:
             errors.append("storyboard.reconcile_skips_existing_title must be true")
-        songs_for_import = api.get("songs") if isinstance(api.get("songs"), list) else []
-        if songs_for_import and not catalog_import_is_idempotent([], songs_for_import):
-            errors.append(
-                "catalog import must be idempotent: applying songs[] twice "
-                "must keep one row per sourceKey"
-            )
         if list(sb.get("reads") or []) != list(IMPORTER_READS):
             errors.append(
                 "storyboard.reads must list exactly the fields StoryBoard reads: "

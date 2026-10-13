@@ -267,7 +267,8 @@ class ExportHonestyTests(unittest.TestCase):
     def test_catalog_import_is_idempotent(self):
         payload = build_payload(fixture())
         mapping = storyboard_mapping()
-        self.assertTrue(mapping["import_is_idempotent"])
+        self.assertNotIn("import_is_idempotent", mapping)
+        self.assertNotIn("import_is_idempotent", payload["storyboard"])
         self.assertTrue(mapping["reconcile_skips_existing_source_key"])
         self.assertTrue(mapping["reconcile_skips_existing_title"])
         self.assertTrue(catalog_import_is_idempotent([], payload["songs"]))
@@ -326,6 +327,33 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertEqual(upsert_catalog_song(songs, changed), draft["sourceKey"])
         self.assertEqual(len(songs), 1)
         self.assertEqual(songs[0]["title"], "Manic")
+
+    def test_upsert_title_collision_skips_existing_non_vault_song(self):
+        songs = [
+            {
+                "sourceKey": "manual:existing",
+                "title": "Turn Over The Flag",
+                "origin": "manual",
+                "notes": "keep me",
+                "bpm": 100,
+            }
+        ]
+        draft = vault_song_draft(
+            {
+                "id": "ST-0001",
+                "vault_id": "ST-0001",
+                "title": "Turn Over The Flag",
+                "is_original": True,
+            }
+        )
+        self.assertEqual(draft["origin"], "vault")
+        self.assertEqual(upsert_catalog_song(songs, draft), "manual:existing")
+        self.assertEqual(len(songs), 1)
+        self.assertEqual(songs[0]["sourceKey"], "manual:existing")
+        self.assertEqual(songs[0]["origin"], "manual")
+        self.assertEqual(songs[0]["notes"], "keep me")
+        self.assertEqual(songs[0]["bpm"], 100)
+        self.assertEqual(songs[0]["title"], "Turn Over The Flag")
 
     def test_duration_stays_null(self):
         for rec in build_payload(fixture())["songs"]:
