@@ -24,6 +24,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_memo_search_folds_punctuation,
     dashboard_catalog_overview_starts_collapsed,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
@@ -622,6 +623,31 @@ class DashboardSongFindTests(unittest.TestCase):
         )
         self.assertEqual(normalize_search_text("Manic?  No way!"), "manic no way")
         self.assertEqual(normalize_search_text("  Candy   Lane  "), "candy lane")
+        self.assertEqual(
+            normalize_search_text("It’s Alright"),
+            normalize_search_text("its alright"),
+        )
+
+    def test_committed_dashboard_memo_search_folds_punctuation(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_memo_search_folds_punctuation(dashboard))
+        self.assertIn("function normalizedMatchRange(", dashboard)
+        self.assertIn("function memoSnippet(", dashboard)
+        self.assertIn("normalizeSearch(field)", dashboard)
+        self.assertIn("try: its alright", dashboard)
+        self.assertNotIn("String(m.x||'').toLowerCase().includes(term)", dashboard)
+        self.assertFalse(
+            dashboard_memo_search_folds_punctuation(
+                dashboard.replace("function normalizedMatchRange(", "").replace(
+                    "normalizeSearch(field)",
+                    "String(m.x||'').toLowerCase().includes(term)",
+                )
+            )
+        )
 
     def test_song_aliases_use_existing_titles_only(self):
         self.assertEqual(

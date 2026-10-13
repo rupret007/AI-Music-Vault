@@ -36,6 +36,7 @@ from catalog_surface import (
     dashboard_escape_clears_memo_search,
     dashboard_empty_memo_search_honest,
     dashboard_empty_search_honest,
+    dashboard_memo_search_folds_punctuation,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
@@ -2142,6 +2143,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard zero memo hits must not tell the user to clear "
                 "a song filter that is not set"
+            )
+        if not dashboard_memo_search_folds_punctuation(dash):
+            errors.append(
+                "dashboard Memo Search must fold apostrophes and punctuation "
+                "the same way Songs search does — raw toLowerCase includes "
+                "miss It's Alright when Jeff types its alright"
             )
         if not dashboard_empty_search_honest(dash):
             errors.append(

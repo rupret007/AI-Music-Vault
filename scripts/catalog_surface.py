@@ -1237,6 +1237,37 @@ def dashboard_empty_memo_search_honest(html: str) -> bool:
     return all(marker in chrome for marker in required)
 
 
+_MEMO_RAW_INCLUDES_RE = re.compile(
+    r"String\(m\.x\|\|''\)\.toLowerCase\(\)\.includes\(term\)"
+)
+_MEMO_RAW_SNIPPET_RE = re.compile(r"lx\s*=\s*m\.x\.toLowerCase\(\)")
+
+
+def dashboard_memo_search_folds_punctuation(html: str) -> bool:
+    """Memo Search must fold apostrophes and punctuation the same way Songs does.
+
+    Raw toLowerCase includes miss curly-apostrophe titles such as It's Alright
+    when Jeff types the README-taught query without apostrophes.
+    """
+    chrome = dashboard_markup_chrome(html)
+    if _MEMO_RAW_INCLUDES_RE.search(chrome):
+        return False
+    if _MEMO_RAW_SNIPPET_RE.search(chrome):
+        return False
+    required = (
+        "function memoMatches(",
+        "function normalizeSearch(",
+        "function normalizedMatchRange(",
+        "function memoSnippet(",
+        "normalizeSearch(term)",
+        "normalizeSearch(field)",
+        "function markHay(",
+        "markNormalized(text,term)",
+        "try: its alright",
+    )
+    return all(marker in chrome for marker in required)
+
+
 _DISHONEST_TERM_STATUS_RE = re.compile(r"textContent\s*=\s*term\s*\?")
 
 

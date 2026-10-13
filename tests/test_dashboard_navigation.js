@@ -39,6 +39,11 @@ for (const marker of [
   "function openSongMemos(",
   "function emptyMemosCopy(",
   "function memoMatches(",
+  "function normalizedMatchRange(",
+  "function memoSnippet(",
+  "normalizeSearch(field)",
+  "markNormalized(text,term)",
+  "try: its alright",
   "press Escape or Show all memos",
   "try a different word",
   "function parseVaultHash(",
@@ -296,10 +301,14 @@ for (const cluster of Object.keys(logicReadyMaps.next || {})) {
 }
 
 const names = { "JS-0001": "First Song", "JS-0002": "Second Song" };
+const normalizeSearch = new Function(
+  "return (" + extractFunction(script, "normalizeSearch") + ");",
+)();
 const memoMatches = new Function(
   "sname",
+  "normalizeSearch",
   "return (" + extractFunction(script, "memoMatches") + ");",
-)(names);
+)(names, normalizeSearch);
 const memo = { s: "JS-0001", n: "Phone idea", x: "a lyric fragment lives here" };
 if (!memoMatches(memo, "", "JS-0001")) fail("song scope must show every linked memo");
 if (memoMatches(memo, "", "JS-0002")) fail("song scope must reject a different song");
@@ -307,6 +316,22 @@ if (!memoMatches(memo, "fragment", "")) fail("global search must match transcrip
 if (!memoMatches(memo, "phone", "")) fail("global search must match memo title");
 if (!memoMatches(memo, "first song", "")) fail("global search must match linked catalog title");
 if (memoMatches(memo, "missing", "")) fail("unmatched terms must stay out");
+const alrightMemo = { s: "JS-0128", n: "It’s Alright", x: "Don't you know it's alright tonight" };
+if (!memoMatches(alrightMemo, "its alright", "")) {
+  fail("Memo Search must fold curly apostrophes so its alright finds It’s Alright");
+}
+if (!memoMatches(alrightMemo, "dont", "")) {
+  fail("Memo Search must fold apostrophes so dont finds Don't");
+}
+if (!memoMatches(alrightMemo, "it's", "")) {
+  fail("Memo Search must fold a typed straight apostrophe onto curly catalog text");
+}
+if (memoMatches(alrightMemo, "!!!", "")) {
+  fail("punctuation-only Memo Search must fail closed instead of matching everything");
+}
+if (extractFunction(script, "memoMatches").includes("toLowerCase().includes(term)")) {
+  fail("memoMatches must not use raw toLowerCase includes");
+}
 
 const memoUi = { value: "old", focused: false, focus() { this.focused = true; } };
 const memoCalls = [];
@@ -450,14 +475,43 @@ if (ordered[0].m.f !== "new.m4a") fail("newest memo must come first");
 if (ordered[2].m.d !== "") fail("undated memo must sink");
 
 const esc = new Function("return (" + extractFunction(script, "esc") + ");")();
-const markHay = new Function(
+const normalizedMatchRange = new Function(
+  "normalizeSearch",
+  "return (" + extractFunction(script, "normalizedMatchRange") + ");",
+)(normalizeSearch);
+const markNormalizedEarly = new Function(
   "esc",
+  "normalizedMatchRange",
+  "return (" + extractFunction(script, "markNormalized") + ");",
+)(esc, normalizedMatchRange);
+const markHay = new Function(
+  "markNormalized",
   "return (" + extractFunction(script, "markHay") + ");",
-)(esc);
+)(markNormalizedEarly);
 if (markHay("Hello Garden", "garden") !== "Hello <mark>Garden</mark>") {
   fail("title match must highlight without changing catalog feel");
 }
 if (markHay("<x>", "x") !== "&lt;<mark>x</mark>&gt;") fail("markHay must escape");
+if (markHay("It’s Alright", "its alright") !== "<mark>It’s Alright</mark>") {
+  fail("memo title highlight must fold curly apostrophes");
+}
+if (markHay("Don't worry", "dont") !== "<mark>Don&#39;t</mark> worry") {
+  fail("memo title highlight must fold straight apostrophes");
+}
+const memoSnippet = new Function(
+  "esc",
+  "normalizedMatchRange",
+  "return (" + extractFunction(script, "memoSnippet") + ");",
+)(esc, normalizedMatchRange);
+if (!memoSnippet("Don't you know it's alright tonight", "its alright").includes("<mark>it&#39;s alright</mark>")) {
+  fail("memo snippet must highlight a folded apostrophe hit");
+}
+if (extractFunction(script, "mrender").includes("lx=m.x.toLowerCase()") || extractFunction(script, "mrender").includes("lx = m.x.toLowerCase()")) {
+  fail("memo snippets must not use raw toLowerCase indexOf");
+}
+if (!extractFunction(script, "mrender").includes("memoSnippet(m.x,term)")) {
+  fail("mrender must reuse memoSnippet for folded highlights");
+}
 if (!extractFunction(script, "copyVaultText").includes("execCommand")) {
   fail("copy must fall back when the clipboard API is blocked");
 }
@@ -1170,9 +1224,6 @@ if (memoIdleEscape({ key: "Escape" })) {
 const stripForSearch = new Function(
   "return (" + extractFunction(script, "stripPrivateLocators") + ");",
 )();
-const normalizeSearch = new Function(
-  "return (" + extractFunction(script, "normalizeSearch") + ");",
-)();
 if (normalizeSearch("Don't Put Your Life Away") !== normalizeSearch("dont put your life away")) {
   fail("song search must fold apostrophes");
 }
@@ -1263,9 +1314,9 @@ if (logicSorted[0].row.id !== "ST-DROP" || logicSorted[1].row.id !== "JS-KEY" ||
 }
 const markNormalized = new Function(
   "esc",
-  "normalizeSearch",
+  "normalizedMatchRange",
   "return (" + extractFunction(script, "markNormalized") + ");",
-)(esc, normalizeSearch);
+)(esc, normalizedMatchRange);
 if (markNormalized("Don't Put Your Life Away", "dont put") !== "<mark>Don&#39;t Put</mark> Your Life Away") {
   fail("title highlight must survive apostrophe folding");
 }
