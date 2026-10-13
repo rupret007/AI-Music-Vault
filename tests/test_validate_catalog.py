@@ -16,17 +16,25 @@ from catalog_surface import (  # noqa: E402
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_escape_clears_memo_search,
+    dashboard_empty_memo_search_honest,
+    dashboard_empty_search_honest,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
     dashboard_catalog_overview_starts_collapsed,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
+    dashboard_work_starts_name_the_action,
     dashboard_opens_owner_audio,
     dashboard_resume_leads_first_paint,
+    dashboard_start_copy_omits_resume_preview,
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_tablist_keyboard_ready,
+    dashboard_skip_link_contrast_ready,
+    dashboard_search_mark_contrast_ready,
     readme_click_test_does_not_claim_private,
     readme_click_test_uses_browser_local_heading,
     readme_documents_session_click_test,
@@ -99,6 +107,10 @@ from validate_catalog import (  # noqa: E402
     apps_md_claims_suggestion_dump_is_official_set,
     catalog_ok_report,
     catalog_ok_report_leaks_published_ids,
+    feed_admits_public_catalog,
+    feed_claims_private_catalog,
+    public_doc_admits_public_repo,
+    public_doc_claims_private_catalog,
     duplicate_session_log_headings,
     latest_session_log_has_logic_export_handoff,
     latest_session_log_has_continuation,
@@ -171,6 +183,7 @@ def fixture():
 
 
 APPS_MD_HONEST = (
+    "This repository is public. This public catalog is not a remote fetch. "
     "Local python3 scripts/validate_catalog.py fails closed "
     "if this file drifts. Hosted catalog-validate may be a "
     "0-step empty-runner — not a catalog fail. "
@@ -272,6 +285,9 @@ def extras_ok(cat=None):
             'id="forgetWorkSession" Forget class="resume-actions" has-resume '
             'id="workStarts" id="catalogOverview" id="catalogOverviewSummary" '
             'catalogOverviewSummary.hidden=false '
+            '<p class="work-now-copy">Pick Write, Produce, or Listen. '
+            "The Vault opens the highest-momentum match. "
+            "Refresh keeps that exact song in this browser.</p> "
             'id="statsFold" <details id="statsLine" id="stats" '
             'const COVER_COUNT const RECOVERED_COUNT no audio in this repo '
             'id="advancedFilters" '
@@ -283,7 +299,10 @@ def extras_ok(cat=None):
             'id="copyWorkNext" id="openWorkEvidence" '
             'function latestMemoForSong( data-open-work="listen" '
             'Start a work session More filters Sit-down '
-            'function workKindLabel( Listen in Logic '
+            'function workKindLabel( function workStartLabel( '
+            'Listen in Logic highest-momentum match '
+            'aria-label="${workStartLabel(kind,workCounts[kind])}" '
+            '${workCounts[kind]} in queue data-open-work="${kind}" '
             "scrollIntoView({block:'nearest'}) "
             '#workSession{position:sticky overflow-x:clip '
             'sessionEl.scrollIntoView({block:\'nearest\'}) '
@@ -303,7 +322,12 @@ def extras_ok(cat=None):
             'function normalizeSearch( function songAliases( '
             'function songSearchHit( function markNormalized( '
             'function focusFoundSong( function handleSongSearchKey( '
+            'function handleVaultKey( activeMemoSong|| mq.value||\'\' '
             'closest name first titles, aliases, hooks memo lyric aka '
+            'function emptyMemosCopy( press Escape or Show all memos '
+            'try a different word '
+            'function songResultsStatus( function emptySongsCopy( '
+            'press Escape or Clear filters '
             'id="logicReady" Sort: Logic-ready Any Logic-ready '
             'function logicReadyNext( function logicReadyLabel( '
             'Copy Logic-ready next id="workSessionLogic" id="copyWorkLogic" '
@@ -315,8 +339,17 @@ def extras_ok(cat=None):
             'class="skip-link" href="#workNowTitle" <header> <main id="main" <footer '
             '<h2 id="workNowTitle" tabindex="-1"> class="row-heading" aria-controls="song-detail- '
             'role="tablist" aria-label="Sort songs" '
+            'aria-orientation="horizontal" '
+            'id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0" '
+            'id="tabM" role="tab" aria-controls="paneM" aria-selected="false" tabindex="-1" '
+            'function nextVaultTab( function activateVaultTab( function handleVaultTabKey( '
+            'ArrowRight ArrowLeft tabS.tabIndex= tabM.tabIndex= '
             'aria-label="Search memo transcripts" '
-            '<style>@media(max-width:640px){body{padding:12px;font-size:16px}'
+            '<style>:root{--bg:#1a1a19;--ink:#ffffff}'
+            '@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;}}'
+            '.skip-link{background:var(--ink);color:var(--bg)}'
+            '.msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}'
+            '@media(max-width:640px){body{padding:12px;font-size:16px}'
             '.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}</style> '
             'min-height:44px overflow-x:hidden :focus-visible class="score-lab" '
             '--ink3:#a8a79c --ink3:#5c5b54 '
@@ -795,6 +828,81 @@ class ValidateCatalogTests(unittest.TestCase):
         errors = validate(fixture(), extra)
         self.assertTrue(any("remote_catalog_urls" in e for e in errors), errors)
 
+    def test_claiming_private_catalog_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["default_import"] = (
+            extra["app_api"]["storyboard"]["default_import"].replace(
+                "This public catalog is not a remote fetch.",
+                "This private catalog is not a public fetch.",
+            )
+        )
+        extra["app_api"]["notes"]["storyboard_import"] = extra["app_api"]["notes"][
+            "storyboard_import"
+        ].replace(
+            "This public catalog is not a remote fetch.",
+            "This private catalog is not a public fetch.",
+        )
+        self.assertTrue(feed_claims_private_catalog(extra["app_api"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("must not claim this private catalog" in e for e in errors),
+            errors,
+        )
+
+    def test_missing_public_catalog_admission_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["default_import"] = extra["app_api"][
+            "storyboard"
+        ]["default_import"].replace(
+            "This public catalog is not a remote fetch. ",
+            "",
+        )
+        extra["app_api"]["notes"]["storyboard_import"] = extra["app_api"]["notes"][
+            "storyboard_import"
+        ].replace(
+            "This public catalog is not a remote fetch. ",
+            "",
+        )
+        self.assertFalse(feed_admits_public_catalog(extra["app_api"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("must admit this public catalog is not a remote fetch" in e for e in errors),
+            errors,
+        )
+
+    def test_jeff_facing_docs_cannot_claim_private_catalog(self):
+        extra = extras_ok()
+        extra["readme"] = (
+            "This repository is public. Click Write, Produce, or Listen. "
+            "This private catalog is not a public fetch."
+        )
+        extra["apps_md"] = extra["readme"]
+        self.assertTrue(public_doc_claims_private_catalog(extra["readme"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("README.md still claims this private catalog" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            any("APPS.md still claims this private catalog" in e for e in errors),
+            errors,
+        )
+
+    def test_jeff_facing_docs_must_admit_public_repo(self):
+        extra = extras_ok()
+        extra["readme"] = "Click Write, Produce, or Listen. Resume Forget."
+        extra["apps_md"] = extra["readme"]
+        self.assertFalse(public_doc_admits_public_repo(extra["readme"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("README.md must say this repository is public" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            any("APPS.md must say this repository is public" in e for e in errors),
+            errors,
+        )
+
     def test_missing_band_operations_import_fails_closed(self):
         extra = extras_ok()
         extra["app_api"]["storyboard"]["band_operations_import"] = "fetch from GitHub"
@@ -1158,6 +1266,60 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertFalse(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
 
+    def test_dashboard_without_memo_escape_search_clear_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "activeMemoSong||", ""
+        ).replace("mq.value||''", "") + "paneM&&!paneM.hidden&&activeMemoSong)"
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("Escape on Memo Search must clear a typed query" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_escape_clears_memo_search(extra["dashboard_html"]))
+
+    def test_dashboard_without_empty_memo_search_honesty_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function emptyMemosCopy(", ""
+        ).replace(
+            "press Escape or Show all memos",
+            "clear the song filter or try a different word",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("zero memo hits must not tell the user" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_empty_memo_search_honest(extra["dashboard_html"]))
+
+    def test_dashboard_without_empty_search_honesty_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function songResultsStatus(", ""
+        ).replace("press Escape or Clear filters", "clear a filter?")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("zero song hits must not claim" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_empty_search_honest(extra["dashboard_html"]))
+
+    def test_dashboard_zero_hit_closest_name_claim_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function songResultsStatus(", ""
+        ) + (
+            "songResults.textContent=term "
+            "?`Showing ${rows.length} of ${DATA.length} songs · closest name first`"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("zero song hits must not claim" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_empty_search_honest(extra["dashboard_html"]))
+
     def test_dashboard_without_logic_ready_fails_closed(self):
         extra = extras_ok()
         extra["dashboard_html"] = extra["dashboard_html"].replace(
@@ -1173,8 +1335,8 @@ class ValidateCatalogTests(unittest.TestCase):
     def test_dashboard_without_phone_a11y_fails_closed(self):
         extra = extras_ok()
         extra["dashboard_html"] = extra["dashboard_html"].replace(
-            "<style>@media(max-width:640px){body{padding:12px;font-size:16px}"
-            ".rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}</style>",
+            "@media(max-width:640px){body{padding:12px;font-size:16px}"
+            ".rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}",
             "",
         ).replace("min-height:44px", "")
         errors = validate(fixture(), extra)
@@ -1183,6 +1345,44 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_tablist_keyboard_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function handleVaultTabKey(", ""
+        ).replace("aria-orientation=\"horizontal\"", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("APG arrow-key tablist" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_white_on_pot_skip_link_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            ".skip-link{background:var(--ink);color:var(--bg)}",
+            ".skip-link{background:var(--pot);color:#fff}",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("skip link must meet WCAG AA" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
+
+    def test_dashboard_white_on_pot_search_marks_fail_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}",
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff}",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("search-hit marks must meet WCAG AA" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
 
     def test_dashboard_without_first_paint_fails_closed(self):
         extra = extras_ok()
@@ -1226,6 +1426,38 @@ class ValidateCatalogTests(unittest.TestCase):
             dashboard_catalog_overview_starts_collapsed(extra["dashboard_html"])
         )
 
+    def test_dashboard_start_copy_resume_preview_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "Refresh keeps that exact song in this browser.",
+            "Resume names it. Forget clears the local record.",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("not preview Resume or Forget" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_start_copy_omits_resume_preview(extra["dashboard_html"])
+        )
+
+    def test_dashboard_start_copy_without_work_kinds_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            '<p class="work-now-copy">Pick Write, Produce, or Listen. '
+            "The Vault opens the highest-momentum match. "
+            "Refresh keeps that exact song in this browser.</p>",
+            "",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("not preview Resume or Forget" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_start_copy_omits_resume_preview(extra["dashboard_html"])
+        )
+
     def test_dashboard_without_resume_lead_fails_closed(self):
         extra = extras_ok()
         extra["dashboard_html"] = extra["dashboard_html"].replace(
@@ -1263,6 +1495,21 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_listen_is_not_playback(extra["dashboard_html"]))
+
+    def test_dashboard_work_starts_song_count_label_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function workStartLabel(", ""
+        ).replace(
+            "${workCounts[kind]} in queue",
+            "${workCounts[kind]} songs",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("highest-momentum match, not a song-count instruction" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_work_starts_name_the_action(extra["dashboard_html"]))
 
     def test_dashboard_owner_audio_index_fails_closed(self):
         extra = extras_ok()
@@ -2432,6 +2679,7 @@ class ValidateCatalogTests(unittest.TestCase):
     def test_public_docs_roles_counts_only_pass(self):
         extras = extras_ok()
         extras["readme"] = (
+            "This repository is public. This public catalog is not a remote fetch. "
             "Vault is the catalog brain. 150 entities. "
             "Flagship, Quick win, Experimental, On deck, The Opus. "
             "128 YES / 20 NO / 2 NEEDS-CONSENT. "
@@ -2444,6 +2692,7 @@ class ValidateCatalogTests(unittest.TestCase):
             "Logic-ready next. Copy Logic-ready next.\n"
         )
         extras["apps_md"] = (
+            "This repository is public. This public catalog is not a remote fetch. "
             "Local python3 scripts/validate_catalog.py fails closed "
             "if this file drifts. Hosted catalog-validate may be a "
             "0-step empty-runner — not a catalog fail. "
@@ -2645,6 +2894,29 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(api["storyboard"]["ops"]["show_night_guest_sets_stay_opt_in"])
         self.assertTrue(api["storyboard"]["local_json_only"])
         self.assertIs(api["storyboard"]["remote_catalog_urls"], False)
+        self.assertFalse(feed_claims_private_catalog(api))
+        self.assertTrue(feed_admits_public_catalog(api))
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["storyboard"]["default_import"],
+        )
+        self.assertNotIn("This private catalog", api["storyboard"]["default_import"])
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["notes"]["storyboard_import"],
+        )
+        self.assertTrue(public_doc_admits_public_repo(extra["readme"]))
+        self.assertTrue(public_doc_admits_public_repo(extra["apps_md"]))
+        self.assertFalse(public_doc_claims_private_catalog(extra["readme"]))
+        self.assertFalse(public_doc_claims_private_catalog(extra["apps_md"]))
+        self.assertIn(
+            "this public catalog is not a remote fetch",
+            " ".join(extra["readme"].lower().split()),
+        )
+        self.assertIn(
+            "this public catalog is not a remote fetch",
+            " ".join(extra["apps_md"].lower().split()),
+        )
         self.assertEqual(
             api["storyboard"]["band_operations_import"], BAND_OPERATIONS_IMPORT
         )
@@ -2872,13 +3144,21 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
         self.assertTrue(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+        self.assertTrue(dashboard_escape_clears_memo_search(extra["dashboard_html"]))
+        self.assertTrue(dashboard_empty_memo_search_honest(extra["dashboard_html"]))
+        self.assertTrue(dashboard_empty_search_honest(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_catalog_overview_starts_collapsed(extra["dashboard_html"]))
+        self.assertTrue(dashboard_start_copy_omits_resume_preview(extra["dashboard_html"]))
         self.assertTrue(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
         self.assertTrue(dashboard_work_next_stays_in_view(extra["dashboard_html"]))
         self.assertTrue(dashboard_listen_is_not_playback(extra["dashboard_html"]))
+        self.assertTrue(dashboard_work_starts_name_the_action(extra["dashboard_html"]))
         self.assertTrue(readme_documents_session_click_test(extra["readme"]))
         self.assertTrue(readme_click_test_does_not_claim_private(extra["readme"]))
         self.assertTrue(readme_click_test_uses_browser_local_heading(extra["readme"]))

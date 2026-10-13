@@ -4,13 +4,13 @@
 <title>Jeff Story Song Vault</title>
 <style>
 :root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;
- --pot:#3987e5;--rdy:#ee7a3a;--mom:#199e70;--line:#3a3a38;--good:#199e70;}
+ --pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;}
 @media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;
- --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--rdy:#b84414;--mom:#1baf7a;--line:#e3e2dc;--good:#1baf7a;}}
+ --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--write:#2466b8;--rdy:#b84414;--mom:#1baf7a;--listen:#187a56;--line:#e3e2dc;--good:#187a56;}}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{overflow-x:hidden;overflow-x:clip}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
-.skip-link{position:absolute;left:-999px;top:8px;z-index:20;background:var(--pot);color:#fff;padding:8px 12px;border-radius:8px}
+.skip-link{position:absolute;left:-999px;top:8px;z-index:20;background:var(--ink);color:var(--bg);padding:8px 12px;border-radius:8px}
 .skip-link:focus,.skip-link:focus-visible{left:8px}
 :focus-visible{outline:2px solid var(--pot);outline-offset:2px}
 h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
@@ -48,7 +48,7 @@ h1{font-size:22px;letter-spacing:.4px} .sub{color:var(--ink2);margin:4px 0 12px}
 .lane{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px dashed var(--line)}
 .lane:last-child{border:none}
 .tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:99px;background:var(--card2);color:var(--ink2);white-space:nowrap}
-.tag.f{color:var(--pot)} .tag.q{color:var(--good)} .tag.x{color:var(--rdy)}
+.tag.f{color:var(--write)} .tag.q{color:var(--good)} .tag.x{color:var(--rdy)}
 .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .tab{padding:8px 16px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink2);cursor:pointer;font-size:15px;font-weight:600;min-height:44px}
 .tab.on{background:var(--card2);color:var(--ink);border-color:var(--ink3)}
@@ -90,19 +90,19 @@ input{flex:1;min-width:0;width:100%}
 .empty{color:var(--ink3);text-align:center;padding:30px}
 .mrow{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;padding:10px 14px}
 .mrow b{font-size:15px} .mmeta{color:var(--ink3);font-size:12px;margin-bottom:4px}
-.msnip{color:var(--ink2);font-size:14px} .msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff;border-radius:3px;padding:0 2px}
+.msnip{color:var(--ink2);font-size:14px} .msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg);border-radius:3px;padding:0 2px}
 .mhint{color:var(--ink3);font-size:13px;padding:16px;text-align:center;overflow-wrap:anywhere}
 .resultbar,.memo-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink3);font-size:13px;margin:0 0 10px;flex-wrap:wrap}
 .memo-scope{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink2)}
 #workSession{position:sticky;top:0;z-index:6;background:var(--card)}
 [data-song-id]{scroll-margin-top:var(--work-session-gap,0px)}
 .subtle-btn,.memo-link,.song-link{cursor:pointer;font-weight:600}
-.subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:8px 10px;color:var(--pot)}
+.subtle-btn:disabled{opacity:.45;cursor:default}.memo-link,.song-link{padding:8px 10px;color:var(--write)}
 .song-link{border:0;background:transparent;padding:8px 4px;font-size:inherit;text-decoration:underline;text-underline-offset:2px;min-height:44px}
 .lane .song-link{font-weight:700;color:var(--ink)}
 .memo-next{color:var(--ink3);font-size:13px;margin-top:3px;overflow-wrap:anywhere}
 .copied{color:var(--good)}
-.pill.wk-write{color:var(--pot)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--mom)}
+.pill.wk-write{color:var(--write)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--listen)}
 .work-copy,.sit-down{margin-top:8px}
 .sit-memo{margin-top:4px}
 .sit-logic{margin-top:6px}
@@ -138,7 +138,7 @@ input{flex:1;min-width:0;width:100%}
 <section class="work-now" id="startWork" aria-labelledby="workNowTitle">
  <h2 id="workNowTitle" tabindex="-1">Start a work session</h2>
  <div class="work-starts" id="workStarts"></div>
- <p class="work-now-copy">Pick one intention. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser. Resume names it and puts its sanitized catalog next step and Logic-ready next in front of you. Forget clears the local record.</p>
+ <p class="work-now-copy">Pick Write, Produce, or Listen. The Vault opens one highest-momentum match and keeps the rest in a bounded queue. Refresh keeps that exact song in this browser.</p>
 </section>
 <details class="catalog-overview" id="catalogOverview">
  <summary id="catalogOverviewSummary">Catalog details and counts</summary>
@@ -156,9 +156,9 @@ input{flex:1;min-width:0;width:100%}
  <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button> <span class="pill wk-write lane-work">write</span><span style="color:var(--ink3)">— catalog, not the official set; lyric 85% recovered; takes Manic's slot next</span></div>
  <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button> <span class="pill wk-inventory lane-work">inventory</span><span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
 </section>
-<nav class="tabs" role="tablist" aria-label="Vault views">
- <button type="button" class="tab on" id="tabS" role="tab" aria-controls="paneS" aria-selected="true">Songs</button>
- <button type="button" class="tab" id="tabM" role="tab" aria-controls="paneM" aria-selected="false">Memo Search (807 searchable)</button>
+<nav class="tabs" role="tablist" aria-label="Vault views" aria-orientation="horizontal">
+ <button type="button" class="tab on" id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0">Songs</button>
+ <button type="button" class="tab" id="tabM" role="tab" aria-controls="paneM" aria-selected="false" tabindex="-1">Memo Search (807 searchable)</button>
 </nav>
 <main id="main">
 <div id="paneS" role="tabpanel" aria-labelledby="tabS">
@@ -247,11 +247,49 @@ TX.forEach(m=>{
  }
 });
 let activeMemoSong='';
+function nextVaultTab(current,key){
+ const here=current==='M'?'M':'S';
+ if(key==='Home')return 'S';
+ if(key==='End')return 'M';
+ if(key==='ArrowRight'||key==='ArrowLeft')return here==='S'?'M':'S';
+ return '';
+}
 function showTab(w){
  const memo=w==='M';
- paneS.hidden=memo;paneM.hidden=!memo;
- tabS.classList.toggle('on',!memo);tabM.classList.toggle('on',memo);
- tabS.setAttribute('aria-selected',String(!memo));tabM.setAttribute('aria-selected',String(memo));
+ if(typeof paneS!=='undefined'&&paneS)paneS.hidden=memo;
+ if(typeof paneM!=='undefined'&&paneM)paneM.hidden=!memo;
+ if(tabS){
+  tabS.classList.toggle('on',!memo);
+  tabS.setAttribute('aria-selected',String(!memo));
+  tabS.tabIndex=memo?-1:0;
+ }
+ if(tabM){
+  tabM.classList.toggle('on',memo);
+  tabM.setAttribute('aria-selected',String(memo));
+  tabM.tabIndex=memo?0:-1;
+ }
+}
+function activateVaultTab(w,opts){
+ const next=w==='M'?'M':'S';
+ showTab(next);
+ if(next==='M'){
+  if(typeof mrender==='function')mrender();
+ }else if(typeof lastWorkKind!=='undefined'&&lastWorkKind&&typeof work!=='undefined'&&work&&!work.value&&typeof q!=='undefined'&&q&&!q.value&&typeof openWork==='function'){
+  openWork(lastWorkKind);
+ }
+ if(opts&&opts.focus){
+  const tab=next==='M'?tabM:tabS;
+  if(tab&&typeof tab.focus==='function')tab.focus();
+ }
+ return next;
+}
+function handleVaultTabKey(e,current){
+ if(!e)return '';
+ const from=current==='M'||current==='S'?current:(tabM&&tabM.getAttribute&&tabM.getAttribute('aria-selected')==='true'?'M':'S');
+ const next=nextVaultTab(from,e.key);
+ if(!next)return '';
+ if(e.preventDefault)e.preventDefault();
+ return activateVaultTab(next,{focus:true});
 }
 const projects=[...new Set(DATA.map(d=>d.p))].sort();
 projects.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;proj.appendChild(o);});
@@ -278,8 +316,14 @@ function workKindLabel(kind){
  if(k==='listen')return 'Listen in Logic';
  return k?k[0].toUpperCase()+k.slice(1):'';
 }
+function workStartLabel(kind,count){
+ const label=workKindLabel(kind);
+ const n=Number(count);
+ const queued=Number.isFinite(n)?n:0;
+ return `Start ${label} on the highest-momentum match (${queued} in queue)`;
+}
 workStarts.innerHTML=['write','produce','listen'].map(kind=>
- `<button type="button" class="work-start" data-open-work="${kind}">${workKindLabel(kind)} <span>${workCounts[kind]} songs</span></button>`
+ `<button type="button" class="work-start" data-open-work="${kind}" aria-label="${workStartLabel(kind,workCounts[kind])}">${workKindLabel(kind)} <span>${workCounts[kind]} in queue</span></button>`
 ).join('');
 function esc(s){return (s===null||s===undefined?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function flattenWorkField(value){
@@ -602,6 +646,14 @@ function markNormalized(text,term){
  const end=units[at+needle.length-1].end||units[at+needle.length-1].start;
  return esc(src.slice(0,start))+'<mark>'+esc(src.slice(start,end))+'</mark>'+esc(src.slice(end));
 }
+function songResultsStatus(term,shown,total){
+ const n=Number(shown)||0, all=Number(total)||0;
+ const base=`Showing ${n} of ${all} songs`;
+ return String(term||'').trim() && n ? `${base} · closest name first` : base;
+}
+function emptySongsCopy(){
+ return 'No songs match — press Escape or Clear filters.';
+}
 function sortSongRows(rows,term,sortKey){
  const decorated=rows.map(row=>({row,hit:term?songSearchHit(row,term):{hit:true,rank:99,via:''}}));
  decorated.sort((a,b)=>{
@@ -655,9 +707,7 @@ function render(){
  const rows=decorated.map(item=>item.row);
  const viaById={};
  decorated.forEach(item=>{viaById[item.row.id]=item.hit.via;});
- songResults.textContent=term
-  ?`Showing ${rows.length} of ${DATA.length} songs · closest name first`
-  :`Showing ${rows.length} of ${DATA.length} songs`;
+ songResults.textContent=songResultsStatus(term,rows.length,DATA.length);
  clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||lrv||k!=='mom');
  if(typeof visibleSongIds!=='undefined')visibleSongIds=rows.map(d=>d.id);
  list.innerHTML=rows.length?rows.map((d,i)=>{
@@ -693,7 +743,7 @@ function render(){
   ${questions?`<h4>Open questions</h4>${esc(questions)}`:''}
   <div class="work-copy"><button type="button" class="subtle-btn" data-copy-work="${esc(d.id)}">Copy work card</button></div>
   ${memoCountBySong[d.id]?`<h4>Matched memo evidence</h4><button type="button" class="memo-link" data-open-memos="${esc(d.id)}">Open ${memoCountBySong[d.id]} searchable memo${memoCountBySong[d.id]===1?'':'s'}</button>`:''}
- </div></div>`;}).join(''):'<div class="empty">No songs match — clear a filter?</div>';
+ </div></div>`;}).join(''):`<div class="empty">${emptySongsCopy()}</div>`;
  if(wv&&visibleSongIds.length){
   if(!visibleSongIds.includes(activeWorkSongId))activeWorkSongId=visibleSongIds[0];
   focusWorkSong(activeWorkSongId,false);
@@ -903,7 +953,7 @@ function openSongMemos(songId){
 }
 function handleVaultKey(e){
  if(!e||e.key!=='Escape')return false;
- if(typeof paneM!=='undefined'&&paneM&&!paneM.hidden&&activeMemoSong){
+ if(typeof paneM!=='undefined'&&paneM&&!paneM.hidden&&(activeMemoSong||(mq&&String(mq.value||'').trim()))){
   activeMemoSong='';mq.value='';
   if(typeof lastWorkKind!=='undefined'&&lastWorkKind){
    if(typeof writeVaultHash==='function')writeVaultHash('work',lastWorkKind);
@@ -1079,14 +1129,17 @@ if(copyWorkLogic)copyWorkLogic.addEventListener('click',()=>copyCurrentWorkLogic
 if(copyResumeNext)copyResumeNext.addEventListener('click',()=>copyResumeWorkNext(copyResumeNext));
 if(copyResumeLogic)copyResumeLogic.addEventListener('click',()=>copyResumeLogicNext(copyResumeLogic));
 if(openWorkEvidence)openWorkEvidence.addEventListener('click',()=>reviewCurrentWorkEvidence(openWorkEvidence));
-tabS.addEventListener('click',()=>{
- showTab('S');
- if(typeof lastWorkKind!=='undefined'&&lastWorkKind&&work&&!work.value&&!q.value)openWork(lastWorkKind);
-});
-tabM.addEventListener('click',()=>{showTab('M');mrender();});
+tabS.addEventListener('click',()=>activateVaultTab('S'));
+tabM.addEventListener('click',()=>activateVaultTab('M'));
+if(tabS&&tabS.parentElement)tabS.parentElement.addEventListener('keydown',e=>handleVaultTabKey(e));
 render();
 updateResumeWork();
 // ---- memo transcript search ----
+function emptyMemosCopy(songScoped){
+ return songScoped
+  ? 'No matched memo evidence found — press Escape or Show all memos.'
+  : 'No matched memo evidence found — try a different word.';
+}
 function memoMatches(m,term,songId){
  if(songId&&m.s!==songId)return false;
  if(!term)return !!songId;
@@ -1161,7 +1214,7 @@ function mrender(){
   <div class="mrow"><div class="mmeta">${esc(m.d)} · ${Math.round((Number(m.u)||0)/60)}min${m.s&&sname[m.s]?` · matched to <button type="button" class="song-link" data-open-song="${esc(m.s)}">${esc(sname[m.s])}</button>`:' · unmatched'}</div>
   <b>${markHay(m.n,term)}</b><div class="msnip">${snip}</div>
   <div class="mmeta" style="margin-top:4px">file: ${esc(intake.label)} (Voice Memo Intake)${intake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(intake.copy)}">Copy intake name</button>`:' · no copy-safe intake name yet'}</div></div>`;}).join('')
-  :'<div class="empty">No matched memo evidence found — clear the song filter or try a different word.</div>';
+  :`<div class="empty">${emptyMemosCopy(activeMemoSong)}</div>`;
 }
 mq.addEventListener('input',mrender);
 mlist.addEventListener('click',e=>{
