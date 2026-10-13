@@ -640,12 +640,22 @@ class DashboardSongFindTests(unittest.TestCase):
         self.assertIn("function memoSnippet(", dashboard)
         self.assertIn("normalizeSearch(field)", dashboard)
         self.assertIn("try: its alright", dashboard)
+        self.assertIn("!String(term||'').trim()&&!!songId", dashboard)
+        self.assertNotIn("if(!needle)return !!songId;", dashboard)
         self.assertNotIn("String(m.x||'').toLowerCase().includes(term)", dashboard)
         self.assertFalse(
             dashboard_memo_search_folds_punctuation(
                 dashboard.replace("function normalizedMatchRange(", "").replace(
                     "normalizeSearch(field)",
                     "String(m.x||'').toLowerCase().includes(term)",
+                )
+            )
+        )
+        self.assertFalse(
+            dashboard_memo_search_folds_punctuation(
+                dashboard.replace(
+                    "if(!needle)return !String(term||'').trim()&&!!songId;",
+                    "if(!needle)return !!songId;",
                 )
             )
         )
