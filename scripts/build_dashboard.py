@@ -83,70 +83,88 @@ def validate_dashboard_inputs(cat, app_api):
                 raise ValueError(f"{sid}: live_presence[{index}] needs non-empty band and date")
 
 
-try:
+def build_payload(cat, app_api, chains, joined, matches_by_song):
+    """Project loaded metadata into dashboard payloads without file I/O."""
+    slim = []
+    for s in cat['songs']:
+        row = dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
+            c=s['classification'], st=surface_stage_label(s.get('stage','')), key=s.get('key',''), bpm=s.get('bpm',''),
+            pot=s.get('potential'), rdy=s.get('readiness'), mom=s.get('momentum'),
+            la=s.get('last_activity',''), conf=s.get('confidence',''),
+            th=s.get('theme',''), hk=s.get('hook',''), nx=s.get('next_action',''),
+            ly=s.get('lyric_status',''), au=s.get('audio_status',''),
+            src=s.get('sources',[]), sc=s.get('soundcloud',[]), oq=s.get('open_questions',''),
+            wr=', '.join(s.get('writers',[])),
+            live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
+            gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''),
+            lr=song_logic_ready_cluster(s, chains.get(s['song_id'])),
+            lrf=song_logic_ready_evidence_tags(s, chains.get(s['song_id'])))
+        aliases = song_aliases(s)
+        if aliases:
+            row['aka'] = aliases
+        slim.append(row)
+    overlay_feed_scopes(slim, app_api)
+
+    # Overlay current memo matches and keep source totals separate from the
+    # compact search index (cleaned transcripts capped at 1500 characters).
+    tx, memo_counts = build_memo_search_index(joined, matches_by_song)
+    return {
+        "data": slim,
+        "tx": tx,
+        "memo_counts": memo_counts,
+        "cover_count": catalog_cover_count(cat),
+        "recovered_count": catalog_recovered_count(cat),
+        "catalog_version": str(cat.get("version") or ""),
+    }
+
+
+def _read_json(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def load_payload():
+    """Read repo-relative inputs only when a build is explicitly requested."""
     cat = load_dashboard_json(CAT_PATH)
     app_api = load_dashboard_json(API_PATH)
     validate_dashboard_inputs(cat, app_api)
-except ValueError as exc:
-    print(f"dashboard INVALID: {exc}", file=sys.stderr)
-    sys.exit(1)
-
-chains = json.load(open(CHAIN_PATH)) if os.path.exists(CHAIN_PATH) else {}
-slim = []
-for s in cat['songs']:
-    row = dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
-        c=s['classification'], st=surface_stage_label(s.get('stage','')), key=s.get('key',''), bpm=s.get('bpm',''),
-        pot=s.get('potential'), rdy=s.get('readiness'), mom=s.get('momentum'),
-        la=s.get('last_activity',''), conf=s.get('confidence',''),
-        th=s.get('theme',''), hk=s.get('hook',''), nx=s.get('next_action',''),
-        ly=s.get('lyric_status',''), au=s.get('audio_status',''),
-        src=s.get('sources',[]), sc=s.get('soundcloud',[]), oq=s.get('open_questions',''),
-        wr=', '.join(s.get('writers',[])),
-        live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
-        gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''),
-        lr=song_logic_ready_cluster(s, chains.get(s['song_id'])),
-        lrf=song_logic_ready_evidence_tags(s, chains.get(s['song_id'])))
-    aliases = song_aliases(s)
-    if aliases:
-        row['aka'] = aliases
-    slim.append(row)
-overlay_feed_scopes(slim, app_api)
+    return build_payload(
+        cat,
+        app_api,
+        _read_json(CHAIN_PATH) if os.path.exists(CHAIN_PATH) else {},
+        _read_json(TX_PATH),
+        _read_json(VM_MATCHES_PATH) if os.path.exists(VM_MATCHES_PATH) else {},
+    )
 
 
-def _lane_work_pill(song_id: str) -> str:
+def _lane_work_pill(slim, song_id: str) -> str:
     row = next((item for item in slim if item.get("id") == song_id), None)
     kind = song_work_kind((row or {}).get("nx"))
     if not kind or kind == "unknown":
         return ""
     return f'<span class="pill wk-{kind} lane-work">{kind}</span>'
 
-DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
-LOGIC_READY = json.dumps(logic_ready_maps(), ensure_ascii=False).replace('</', '<\\/')
-LOGIC_READY_FILTER = "".join(
-    f'<option value="{cluster}">{LOGIC_READY_LABELS[cluster]}</option>'
-    for cluster in LOGIC_READY_CLUSTERS
-)
 
-# Transcripts: compact index (title, date, duration, cleaned text capped at 1500
-# chars). Overlay song_id from vm_matches.json (372/88); the transcript file
-# still carries the first-pass 326 matches. Source totals and searchable-index
-# totals stay separate because short collapsed text is intentionally not useful
-# enough to embed for search.
-joined = json.load(open(TX_PATH))
-matches_by_song = {}
-if os.path.exists(VM_MATCHES_PATH):
-    matches_by_song = json.load(open(VM_MATCHES_PATH))
-tx, memo_counts = build_memo_search_index(joined, matches_by_song)
-TX_TOTAL = memo_counts["transcribed"]
-TX_MATCHED_TOTAL = memo_counts["matched"]
-TX_SEARCHABLE_TOTAL = memo_counts["searchable"]
-TX_SEARCHABLE_MATCHED = memo_counts["searchable_matched"]
-TX = json.dumps(tx, ensure_ascii=False).replace('</', '<\\/')
-COVER_COUNT = catalog_cover_count(cat)
-RECOVERED_COUNT = catalog_recovered_count(cat)
-CATALOG_VERSION = str(cat.get("version") or "")
+def render_dashboard(payload):
+    """Render a prepared payload in memory, without reading or writing files."""
+    slim = payload["data"]
+    DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
+    LOGIC_READY = json.dumps(logic_ready_maps(), ensure_ascii=False).replace('</', '<\\/')
+    LOGIC_READY_FILTER = "".join(
+        f'<option value="{cluster}">{LOGIC_READY_LABELS[cluster]}</option>'
+        for cluster in LOGIC_READY_CLUSTERS
+    )
+    memo_counts = payload["memo_counts"]
+    TX_TOTAL = memo_counts["transcribed"]
+    TX_MATCHED_TOTAL = memo_counts["matched"]
+    TX_SEARCHABLE_TOTAL = memo_counts["searchable"]
+    TX_SEARCHABLE_MATCHED = memo_counts["searchable_matched"]
+    TX = json.dumps(payload["tx"], ensure_ascii=False).replace('</', '<\\/')
+    COVER_COUNT = payload["cover_count"]
+    RECOVERED_COUNT = payload["recovered_count"]
+    CATALOG_VERSION = payload["catalog_version"]
 
-page = r'''<!DOCTYPE html>
+    page = r'''<!DOCTYPE html>
 <html lang="en" data-theme="dark"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
@@ -306,11 +324,11 @@ input{flex:1;min-width:0;width:100%}
 </details>
 <section class="lanes" aria-labelledby="lanesTitle">
  <h2 id="lanesTitle">The three lanes (+ on deck)</h2>
- <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button> ''' + _lane_work_pill("ST-0001") + r'''<span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
- <div class="lane"><span class="tag q">Quick win</span><button type="button" class="song-link" data-open-song="ST-0004">Manic</button> ''' + _lane_work_pill("ST-0004") + r'''<span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
- <div class="lane"><span class="tag x">Experimental</span><button type="button" class="song-link" data-open-song="ST-0009">Long Long Drive</button> ''' + _lane_work_pill("ST-0009") + r'''<span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
- <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button> ''' + _lane_work_pill("JS-0128") + r'''<span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
- <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button> ''' + _lane_work_pill("JS-0107") + r'''<span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
+ <div class="lane"><span class="tag f">Flagship</span><button type="button" class="song-link" data-open-song="ST-0001">Turn Over The Flag</button> ''' + _lane_work_pill(slim, "ST-0001") + r'''<span style="color:var(--ink3)">— mix 1.6, two overdubs left</span></div>
+ <div class="lane"><span class="tag q">Quick win</span><button type="button" class="song-link" data-open-song="ST-0004">Manic</button> ''' + _lane_work_pill(slim, "ST-0004") + r'''<span style="color:var(--ink3)">— ONE overdub (lead guitar: choruses + solos)</span></div>
+ <div class="lane"><span class="tag x">Experimental</span><button type="button" class="song-link" data-open-song="ST-0009">Long Long Drive</button> ''' + _lane_work_pill(slim, "ST-0009") + r'''<span style="color:var(--ink3)">— Suno arrangement test queued</span></div>
+ <div class="lane"><span class="tag">On deck</span><button type="button" class="song-link" data-open-song="JS-0128">It's Alright</button> ''' + _lane_work_pill(slim, "JS-0128") + r'''<span style="color:var(--ink3)">— ''' + ON_DECK_NOTE + r'''; lyric 85% recovered; takes Manic's slot next</span></div>
+ <div class="lane"><span class="tag">The Opus</span><button type="button" class="song-link" data-open-song="JS-0107">Blue Skies Fade</button> ''' + _lane_work_pill(slim, "JS-0107") + r'''<span style="color:var(--ink3)">— Kimberly's suite; its own protected lane</span></div>
 </section>
 <nav class="tabs" role="tablist" aria-label="Vault views" aria-orientation="horizontal">
  <button type="button" class="tab on" id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0">Songs</button>
@@ -1523,16 +1541,38 @@ if(typeof document!=='undefined')document.addEventListener('keydown',handleVault
 if(typeof window!=='undefined'){window.addEventListener('hashchange',applyVaultHash);applyVaultHash();}
 </script></body></html>'''
 
-page = (page.replace('__DATA__', DATA)
-    .replace('__LOGIC_READY__', LOGIC_READY)
-    .replace('__LOGIC_READY_FILTER__', LOGIC_READY_FILTER)
-    .replace('__TX__', TX)
-    .replace('__TX_TOTAL__', str(TX_TOTAL))
-    .replace('__TX_MATCHED_TOTAL__', str(TX_MATCHED_TOTAL))
-    .replace('__TX_SEARCHABLE_TOTAL__', str(TX_SEARCHABLE_TOTAL))
-    .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED))
-    .replace('__COVER_COUNT__', str(COVER_COUNT))
-    .replace('__RECOVERED_COUNT__', str(RECOVERED_COUNT)))
-open(OUT_PATH,'w').write(page)
-print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,',
-      TX_SEARCHABLE_TOTAL, 'searchable transcripts from', TX_TOTAL, 'transcribed')
+    return (page.replace('__DATA__', DATA)
+        .replace('__LOGIC_READY__', LOGIC_READY)
+        .replace('__LOGIC_READY_FILTER__', LOGIC_READY_FILTER)
+        .replace('__TX__', TX)
+        .replace('__TX_TOTAL__', str(TX_TOTAL))
+        .replace('__TX_MATCHED_TOTAL__', str(TX_MATCHED_TOTAL))
+        .replace('__TX_SEARCHABLE_TOTAL__', str(TX_SEARCHABLE_TOTAL))
+        .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED))
+        .replace('__COVER_COUNT__', str(COVER_COUNT))
+        .replace('__RECOVERED_COUNT__', str(RECOVERED_COUNT)))
+
+
+def write_dashboard(payload, out_path=None):
+    """Write one dashboard to OUT_PATH (or an explicitly supplied destination)."""
+    page = render_dashboard(payload)
+    with open(OUT_PATH if out_path is None else out_path, "w", encoding="utf-8") as handle:
+        handle.write(page)
+    return page
+
+
+def main():
+    try:
+        payload = load_payload()
+    except ValueError as exc:
+        print(f"dashboard INVALID: {exc}", file=sys.stderr)
+        return 1
+    page = write_dashboard(payload)
+    counts = payload["memo_counts"]
+    print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,',
+          counts["searchable"], 'searchable transcripts from', counts["transcribed"], 'transcribed')
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
