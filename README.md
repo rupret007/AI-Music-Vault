@@ -58,6 +58,11 @@ python3.12 scripts/export_catalog_csv.py
 python3.12 scripts/build_dashboard.py
 ```
 
+Importing `scripts/build_dashboard.py` does not read catalog files or write HTML.
+Its `load_payload()` reads inputs explicitly; `build_payload()` and
+`render_dashboard()` work in memory. `write_dashboard()` writes the rendered
+page, and the guarded `main()` runs the CLI build.
+
 Run the full [catalog-validate workflow](.github/workflows/catalog-validate.yml)
 gate locally (CI uses `python` after selecting 3.12):
 
