@@ -1246,7 +1246,7 @@ function emptyMemosCopy(songScoped){
 function memoMatches(m,term,songId){
  if(songId&&m.s!==songId)return false;
  const needle=normalizeSearch(term);
- if(!needle)return !!songId;
+ if(!needle)return !String(term||'').trim()&&!!songId;
  return [m&&m.x,m&&m.n,typeof sname!=='undefined'?sname[m&&m.s]:''].some(field=>normalizeSearch(field).includes(needle));
 }
 function markHay(text,term){

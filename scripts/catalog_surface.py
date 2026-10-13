@@ -1241,18 +1241,23 @@ _MEMO_RAW_INCLUDES_RE = re.compile(
     r"String\(m\.x\|\|''\)\.toLowerCase\(\)\.includes\(term\)"
 )
 _MEMO_RAW_SNIPPET_RE = re.compile(r"lx\s*=\s*m\.x\.toLowerCase\(\)")
+_MEMO_EMPTY_FOLD_SONG_TRUE_RE = re.compile(r"if\(!needle\)return !!songId;")
 
 
 def dashboard_memo_search_folds_punctuation(html: str) -> bool:
     """Memo Search must fold apostrophes and punctuation the same way Songs does.
 
     Raw toLowerCase includes miss curly-apostrophe titles such as It's Alright
-    when Jeff types the README-taught query without apostrophes.
+    when Jeff types the README-taught query without apostrophes. An empty
+    folded query in song scope must fail closed — !!songId alone treats !!!
+    as show-every-memo.
     """
     chrome = dashboard_markup_chrome(html)
     if _MEMO_RAW_INCLUDES_RE.search(chrome):
         return False
     if _MEMO_RAW_SNIPPET_RE.search(chrome):
+        return False
+    if _MEMO_EMPTY_FOLD_SONG_TRUE_RE.search(chrome):
         return False
     required = (
         "function memoMatches(",
@@ -1264,6 +1269,7 @@ def dashboard_memo_search_folds_punctuation(html: str) -> bool:
         "function markHay(",
         "markNormalized(text,term)",
         "try: its alright",
+        "!String(term||'').trim()&&!!songId",
     )
     return all(marker in chrome for marker in required)
 
