@@ -5,8 +5,12 @@ First useful surface reuses data/app_api.json for StoryBoard import_scope.
 Catalog rows are not the official live set. Show Night owns official sets.
 Repo-relative paths (the old /home/claude/vault/... Cowork copies are gone).
 Run from anywhere:  python3 scripts/build_dashboard.py
+Check committed DATA/TX without writing:  python3.12 scripts/build_dashboard.py --check
 """
-import json, os, sys
+import argparse
+import json
+import os
+import sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -19,6 +23,7 @@ from catalog_surface import (  # noqa: E402
     build_memo_search_index,
     catalog_cover_count,
     catalog_recovered_count,
+    embedded_dashboard_payloads,
     logic_ready_maps,
     overlay_feed_scopes,
     played_badge_label,
@@ -135,6 +140,29 @@ def load_payload():
         _read_json(TX_PATH),
         _read_json(VM_MATCHES_PATH) if os.path.exists(VM_MATCHES_PATH) else {},
     )
+
+
+def check_committed(payload, path=OUT_PATH):
+    """Compare embedded JSON with a fresh projection, without touching the HTML."""
+    if not os.path.exists(path):
+        return [f"missing dashboard at {path} — re-run python3.12 scripts/build_dashboard.py"]
+    try:
+        with open(path, encoding="utf-8") as handle:
+            committed = embedded_dashboard_payloads(handle.read())
+    except (OSError, UnicodeError) as exc:
+        return [f"cannot read dashboard at {path}: {exc}"]
+    errors = []
+    for name, key in (("DATA", "data"), ("TX", "tx")):
+        try:
+            actual = json.loads(committed[name])
+        except json.JSONDecodeError:
+            errors.append(f"dashboard {name} payload is missing or invalid")
+            continue
+        if actual != payload[key]:
+            errors.append(f"dashboard {name} payload is stale vs its source metadata")
+    if errors:
+        errors.append("re-run python3.12 scripts/build_dashboard.py")
+    return errors
 
 
 def _lane_work_pill(slim, song_id: str) -> str:
@@ -1561,12 +1589,37 @@ def write_dashboard(payload, out_path=None):
     return page
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Build the song vault dashboard")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="fail if committed HTML DATA/TX payloads differ from a fresh projection; do not write",
+    )
+    args = parser.parse_args(argv)
     try:
         payload = load_payload()
     except ValueError as exc:
-        print(f"dashboard INVALID: {exc}", file=sys.stderr)
+        if args.check:
+            print("dashboard CHECK FAILED", file=sys.stderr)
+            print(f"  • {exc}", file=sys.stderr)
+        else:
+            print(f"dashboard INVALID: {exc}", file=sys.stderr)
         return 1
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        if args.check:
+            print(f"dashboard CHECK FAILED: {exc}", file=sys.stderr)
+            return 1
+        raise
+    if args.check:
+        errors = check_committed(payload)
+        if errors:
+            print("dashboard CHECK FAILED", file=sys.stderr)
+            for error in errors:
+                print(f"  • {error}", file=sys.stderr)
+            return 1
+        print(f"dashboard OK — {OUT_PATH} DATA/TX match source metadata")
+        return 0
     page = write_dashboard(payload)
     counts = payload["memo_counts"]
     print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,',

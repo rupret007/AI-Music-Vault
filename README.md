@@ -70,6 +70,7 @@ gate locally (CI uses `python` after selecting 3.12):
 
 ```bash
 python3.12 scripts/validate_catalog.py
+python3.12 scripts/build_dashboard.py --check
 python3.12 -m unittest discover -s tests -v
 node --experimental-strip-types tests/test_storyboard_catalog_import.mjs
 node tests/test_dashboard_navigation.js
@@ -77,6 +78,11 @@ node tests/test_dashboard_resume.js
 python3.12 scripts/export_app_api.py --check
 python3.12 scripts/export_catalog_csv.py --check
 ```
+
+The dashboard check rebuilds slim `DATA` and `TX` in memory and fails if either
+committed HTML payload is missing, invalid, or stale. It never rewrites the HTML;
+run the build commands above to refresh it. The existing payload SHA pins remain
+a separate check. This freshness check compares payloads, not the HTML layout.
 
 These commands read committed metadata and generated files; they do not open or
 upload audio or contact an AI service. Local validation is the catalog gate;
