@@ -43,9 +43,11 @@ permissions; blocked storage soft-fails.
 
 For development, use **Python 3.12** (the CI version) and **Node.js** for the
 navigation smoke test (verified locally with Node 22). The core build and checks
-use the standard libraries only. Where older docs use `python3`, ensure it selects
-the same Python version. There is no npm project, Makefile, required
-environment variable, `.env` file, or desktop packaging step.
+use the standard libraries only. The StoryBoard importer test loads
+`catalog-import.ts` from StoryBoard and installs `zod` into a temp directory.
+Where older docs use `python3`, ensure it selects the same Python version.
+There is no repo-level npm project, Makefile, required environment variable,
+`.env` file, or desktop packaging step.
 
 ## Build and test
 
@@ -69,6 +71,7 @@ gate locally (CI uses `python` after selecting 3.12):
 ```bash
 python3.12 scripts/validate_catalog.py
 python3.12 -m unittest discover -s tests -v
+node --experimental-strip-types tests/test_storyboard_catalog_import.mjs
 node tests/test_dashboard_navigation.js
 node tests/test_dashboard_resume.js
 python3.12 scripts/export_app_api.py --check
@@ -120,10 +123,11 @@ test; it does not establish that any audio has been heard or exported.
 5. Click **Forget**, then refresh. Resume stays gone and the work hash is cleared.
    Browser storage holds only schema version, work kind, and catalog ID. Extra
    fields, stale schemas, unknown IDs, and mismatched kinds are rejected.
-6. Search Songs by an alias or a title without apostrophes; Enter opens the
-   closest result and Escape clears search. Memo Search folds the same
-   punctuation (`its alright` finds It’s Alright). Memo lyric matches are
-   leads, not listens.
+6. Search Songs by an alias or a title without apostrophes; arrow keys move a
+   visible highlight among results and Enter opens the focused row (closest
+   result if none is highlighted). Escape clears search. Memo Search folds the
+   same punctuation (`its alright` finds It’s Alright) and uses the same
+   arrow/Enter focus. Memo lyric matches are leads, not listens.
 7. Check **Logic-ready next**, **Assets on file**, and **Copy Logic-ready next**
    when shown. Pair Voice Memo Intake name + **Copy next step** in your local
    Session Log handoff. Work in Logic (export honesty, WAVs/AIFF/MIDI preference,

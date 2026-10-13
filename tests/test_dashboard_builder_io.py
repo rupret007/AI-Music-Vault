@@ -27,7 +27,9 @@ def fixture_inputs():
             "covers": [],
         },
         "data/app_api.json": {
-            "songs": [{"id": "ST-0001", "import_scope": "default_live"}],
+            "schema_version": 3, "primary_consumer": "StoryBoard",
+            "songs": [{"id": "ST-0001", "title": "Fixture song",
+                       "import_scope": "default_live"}],
         },
         "data/version_chains.json": {},
         "data/vm_transcribed.json": [{
@@ -47,7 +49,7 @@ class DashboardBuilderIOTests(unittest.TestCase):
         self.root = Path(temporary.name)
         self.scripts = self.root / "scripts"
         self.scripts.mkdir()
-        for name in ("build_dashboard.py", "catalog_surface.py"):
+        for name in ("build_dashboard.py", "catalog_surface.py", "storyboard_contract.py"):
             shutil.copyfile(ROOT / "scripts" / name, self.scripts / name)
         self.cwd = self.root / "unrelated-working-directory"
         self.cwd.mkdir()
