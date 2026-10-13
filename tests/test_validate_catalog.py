@@ -36,6 +36,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_tablist_keyboard_ready,
     dashboard_skip_link_contrast_ready,
     dashboard_search_mark_contrast_ready,
+    dashboard_dark_theme_default,
     readme_click_test_does_not_claim_private,
     readme_click_test_uses_browser_local_heading,
     readme_documents_session_click_test,
@@ -349,8 +350,20 @@ def extras_ok(cat=None):
             'function nextVaultTab( function activateVaultTab( function handleVaultTabKey( '
             'ArrowRight ArrowLeft tabS.tabIndex= tabM.tabIndex= '
             'aria-label="Search memo transcripts" '
-            '<style>:root{--bg:#1a1a19;--ink:#ffffff}'
-            '@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;}}'
+            '<html lang="en" data-theme="dark">'
+            '<meta name="color-scheme" content="dark">'
+            '<style>:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;'
+            '--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;--write:#3993fd;'
+            '--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;'
+            '--good:#20b87e;color-scheme:dark}'
+            '@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;'
+            '--card2:#f3f3f0;--ink:#1a1a19;--ink2:#4a4a45;--ink3:#5c5b54;'
+            '--pot:#2a78d6;--write:#2466b8;--rdy:#b84414;--mom:#1baf7a;'
+            '--listen:#187a56;--line:#e3e2dc;--good:#187a56;color-scheme:light}}'
+            'html[data-theme="dark"]{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;'
+            '--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;'
+            '--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;'
+            '--line:#3a3a38;--good:#20b87e;color-scheme:dark}'
             '.skip-link{background:var(--ink);color:var(--bg)}'
             '.msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}'
             '@media(max-width:640px){body{padding:12px;font-size:16px}'
@@ -1404,6 +1417,24 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_dark_theme_lock_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'data-theme="dark"', ""
+        ).replace(
+            'html[data-theme="dark"]{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;'
+            '--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;'
+            '--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;'
+            '--line:#3a3a38;--good:#20b87e;color-scheme:dark}',
+            "",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("paint Jeff's dark theme by default" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_dark_theme_default(extra["dashboard_html"]))
 
     def test_dashboard_without_first_paint_fails_closed(self):
         extra = extras_ok()
@@ -3174,6 +3205,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_dark_theme_default(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_catalog_overview_starts_collapsed(extra["dashboard_html"]))
         self.assertTrue(dashboard_start_copy_omits_resume_preview(extra["dashboard_html"]))
