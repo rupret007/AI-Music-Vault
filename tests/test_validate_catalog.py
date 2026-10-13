@@ -27,6 +27,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_work_starts_name_the_action,
     dashboard_opens_owner_audio,
     dashboard_resume_leads_first_paint,
+    dashboard_start_copy_omits_resume_preview,
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
@@ -282,6 +283,9 @@ def extras_ok(cat=None):
             'id="resumeWorkNext" Do this now id="copyResumeNext" Copy next step '
             'id="forgetWorkSession" Forget class="resume-actions" has-resume '
             'id="workStarts" id="catalogOverview" id="catalogOverviewSummary" '
+            '<p class="work-now-copy">Pick Write, Produce, or Listen. '
+            "The Vault opens the highest-momentum match. "
+            "Refresh keeps that exact song in this browser.</p> "
             'id="statsFold" <details id="statsLine" id="stats" '
             'const COVER_COUNT const RECOVERED_COUNT no audio in this repo '
             'id="advancedFilters" '
@@ -1389,6 +1393,38 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_first_paint_ready(extra["dashboard_html"]))
+
+    def test_dashboard_start_copy_resume_preview_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "Refresh keeps that exact song in this browser.",
+            "Resume names it. Forget clears the local record.",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("not preview Resume or Forget" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_start_copy_omits_resume_preview(extra["dashboard_html"])
+        )
+
+    def test_dashboard_start_copy_without_work_kinds_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            '<p class="work-now-copy">Pick Write, Produce, or Listen. '
+            "The Vault opens the highest-momentum match. "
+            "Refresh keeps that exact song in this browser.</p>",
+            "",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("not preview Resume or Forget" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_start_copy_omits_resume_preview(extra["dashboard_html"])
+        )
 
     def test_dashboard_without_resume_lead_fails_closed(self):
         extra = extras_ok()
@@ -3085,6 +3121,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_start_copy_omits_resume_preview(extra["dashboard_html"]))
         self.assertTrue(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
         self.assertTrue(dashboard_work_next_stays_in_view(extra["dashboard_html"]))
         self.assertTrue(dashboard_listen_is_not_playback(extra["dashboard_html"]))
