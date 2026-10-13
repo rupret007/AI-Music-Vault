@@ -166,6 +166,8 @@ input{flex:1;min-width:0;width:100%}
 .row-heading>.memo-link{margin:8px 12px 8px 0}
 .rhead{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;padding:10px 12px;cursor:pointer}
 .rhead:hover,.rhead:focus-visible{background:var(--card2);outline:2px solid var(--pot);outline-offset:-2px}
+.rhead.search-focus,.mopt.search-focus{background:var(--card2);outline:2px solid var(--pot);outline-offset:-2px}
+.mopt{display:block}.mrow-actions{margin-top:6px}
 .scores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;grid-column:1/-1}
 .score{min-width:0}.score-lab{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3)}
 @media(min-width:641px){.rhead{grid-template-columns:64px minmax(0,1fr) 110px 110px 110px}.scores{display:contents;grid-column:auto}.score-lab{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}}
@@ -263,7 +265,7 @@ input{flex:1;min-width:0;width:100%}
 <main id="main">
 <div id="paneS" role="tabpanel" aria-labelledby="tabS">
 <div class="controls song-controls">
- <input id="q" placeholder="Search titles, aliases, hooks… (try: candy lane, only 18, garden)" autocomplete="off" aria-label="Search songs by title, alias, hook, or memo lyric">
+ <input id="q" placeholder="Search titles, aliases, hooks… (try: candy lane, only 18, garden)" autocomplete="off" aria-label="Search songs by title, alias, hook, or memo lyric" aria-controls="list" aria-autocomplete="list" aria-activedescendant="">
  <select id="sort" aria-label="Sort songs">
   <option value="mom">Sort: Momentum (what's alive)</option>
   <option value="pot">Sort: Potential</option><option value="rdy">Sort: Readiness</option>
@@ -284,14 +286,14 @@ input{flex:1;min-width:0;width:100%}
 <div class="legend"><span><span class="dot" style="background:var(--pot)"></span>Potential /100</span>
 <span><span class="dot" style="background:var(--rdy)"></span>Readiness /100</span>
 <span><span class="dot" style="background:var(--mom)"></span>Momentum /100 (how alive it is in your hands)</span></div>
-<div id="list"></div>
+<div id="list" role="listbox" aria-label="Song search results"></div>
 <div class="covers-note">__COVER_COUNT__ covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
-<div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: its alright, garden, better than now)" aria-label="Search memo transcripts"></div>
+<div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: its alright, garden, better than now)" aria-label="Search memo transcripts" aria-controls="mlist" aria-autocomplete="list" aria-activedescendant=""></div>
 <div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div><div class="memo-next" id="memoScopeHook" hidden></div></div><span><button type="button" class="subtle-btn" id="copyMemoWork" hidden data-copy-work="">Copy work card</button> <button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></span></div>
 <p id="memoWhisper" class="memo-whisper">Hits are leads, not gospel — Whisper mishears sung words.</p>
-<div id="mlist"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
+<div id="mlist" role="listbox" aria-label="Memo search results"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
 </div>
 </main>
 <footer class="foot">Catalog v''' + CATALOG_VERSION + r'''. Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio. Logic-ready next is catalog evidence, not a completed export.</footer>
@@ -335,6 +337,8 @@ const q=document.getElementById('q'),proj=document.getElementById('proj'),
 let lastWorkKind='';
 let visibleSongIds=[];
 let activeWorkSongId='';
+let songSearchCursor=-1;
+let memoSearchCursor=-1;
 const sname={}; DATA.forEach(d=>sname[d.id]=d.t);
 const memoEvidenceBySong={};
 const memoCountBySong={};
@@ -817,6 +821,8 @@ function render(){
  songResults.textContent=songResultsStatus(term,rows.length,DATA.length);
  clearSongFilters.disabled=!(term||pv||sv||scv||evv||wv||lrv||k!=='mom');
  if(typeof visibleSongIds!=='undefined')visibleSongIds=rows.map(d=>d.id);
+ songSearchCursor=-1;
+ if(q&&q.setAttribute)q.setAttribute('aria-activedescendant','');
  list.innerHTML=rows.length?rows.map((d,i)=>{
   const wk=songWorkKind(d.nx);
   const rawNx=flattenWorkField(d.nx);
@@ -835,7 +841,7 @@ function render(){
   const lrFormats=typeof logicReadyFormats==='function'?logicReadyFormats(d):[];
   const scoreLabel=`${esc(d.t)} ${esc(d.id)}. Potential ${d.pot||'unscored'}, readiness ${d.rdy||'unscored'}, momentum ${d.mom||'unscored'}`;
   return `
- <div class="row" data-song-id="${esc(d.id)}"><div class="row-heading"><div class="rhead" role="button" tabindex="0" aria-expanded="false" aria-controls="song-detail-${esc(d.id)}" aria-label="${scoreLabel}" data-toggle-song>
+ <div class="row" data-song-id="${esc(d.id)}"><div class="row-heading"><div class="rhead" role="option" aria-selected="false" id="song-row-${esc(d.id)}" tabindex="0" aria-expanded="false" aria-controls="song-detail-${esc(d.id)}" aria-label="${scoreLabel}" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
   <span><span class="rtitle">${markNormalized(d.t,term)}${d.live?` <span class="pill">${esc(d.live)}</span>`:''}${d.scope_label?` <span class="pill">${esc(d.scope_label)}</span>`:''}${wk&&wk!=='unknown'?` <span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?` <span class="pill">${esc(lrPill)}</span>`:''}${akaLabel?` <span class="pill aka-hit">aka ${markNormalized(akaLabel,term)}</span>`:''}${via==='memo'?` <span class="pill">memo lyric</span>`:''}</span><br><span class="rproj">${esc(d.p)} · ${esc(d.st)}${nxtShort?` · ${esc(nxtShort)}`:''}${d.la?` · last touched ${esc(d.la)}`:''}${memoEvidenceBySong[d.id]&&memoEvidenceBySong[d.id].last?` · latest memo ${esc(memoEvidenceBySong[d.id].last)}`:''}</span></span>
   <div class="scores" role="group" aria-label="Potential, readiness, and momentum scores"><div class="score"><span class="score-lab">Potential</span>${bar(d.pot,'pot')}</div><div class="score"><span class="score-lab">Readiness</span>${bar(d.rdy,'rdy')}</div><div class="score"><span class="score-lab">Momentum</span>${bar(d.mom,'mom')}</div></div>
@@ -874,16 +880,89 @@ function focusFoundSong(id){
  requestAnimationFrame(()=>{head.focus();head.scrollIntoView({block:'center'});});
  return true;
 }
+function nextSearchCursor(current,key,count){
+ if(!count||count<1)return -1;
+ if(key!=='ArrowDown'&&key!=='ArrowUp')return current;
+ if(!(current>=0))return key==='ArrowDown'?0:count-1;
+ return (current+(key==='ArrowDown'?1:-1)+count)%count;
+}
+function searchActivateId(ids,cursor){
+ if(!ids||!ids.length)return '';
+ const i=(cursor>=0&&cursor<ids.length)?cursor:0;
+ return ids[i]||'';
+}
+function searchActivateMemoSong(items,cursor){
+ if(!items||!items.length)return '';
+ const focused=cursor>=0&&cursor<items.length;
+ const start=focused?cursor:0;
+ const end=focused?cursor+1:items.length;
+ for(let i=start;i<end;i++){
+  const hit=items[i];
+  const sid=hit&&hit.dataset?String(hit.dataset.openSong||''):'';
+  if(sid)return sid;
+ }
+ return '';
+}
+function paintSearchFocus(root,selector,index,activeClass){
+ const items=root&&root.querySelectorAll?Array.prototype.slice.call(root.querySelectorAll(selector)):[];
+ const cls=activeClass||'search-focus';
+ items.forEach(function(el,i){
+  const on=i===index;
+  if(el.classList&&el.classList.toggle)el.classList.toggle(cls,on);
+  if(el.setAttribute)el.setAttribute('aria-selected',on?'true':'false');
+ });
+ const cur=items[index];
+ if(cur&&cur.scrollIntoView)cur.scrollIntoView({block:'nearest'});
+ return cur||null;
+}
 function handleSongSearchKey(e){
- if(!e||e.key!=='Enter')return false;
- const term=q&&String(q.value||'').trim();
- if(!term)return false;
+ if(!e)return false;
  const ids=typeof visibleSongIds!=='undefined'?visibleSongIds:[];
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+  if(!ids.length)return false;
+  if(e.preventDefault)e.preventDefault();
+  let cur=typeof songSearchCursor==='number'?songSearchCursor:-1;
+  cur=nextSearchCursor(cur,e.key,ids.length);
+  songSearchCursor=cur;
+  if(typeof paintSearchFocus==='function'&&typeof list!=='undefined')paintSearchFocus(list,'.rhead',cur,'search-focus');
+  if(typeof q!=='undefined'&&q&&q.setAttribute)q.setAttribute('aria-activedescendant',ids[cur]?'song-row-'+ids[cur]:'');
+  return true;
+ }
+ if(e.key!=='Enter')return false;
+ const cursor=typeof songSearchCursor==='number'?songSearchCursor:-1;
+ const term=q&&String(q.value||'').trim();
+ if(!term&&!(cursor>=0))return false;
  if(!ids.length)return false;
  if(e.preventDefault)e.preventDefault();
- const id=ids[0];
+ const id=searchActivateId(ids,cursor);
  if(typeof work!=='undefined'&&work&&work.value&&typeof focusWorkSong==='function')return focusWorkSong(id);
  return focusFoundSong(id);
+}
+function handleMemoSearchKey(e){
+ if(!e)return false;
+ const items=(typeof mlist!=='undefined'&&mlist&&mlist.querySelectorAll)?Array.prototype.slice.call(mlist.querySelectorAll('.mrow')):[];
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+  if(!items.length)return false;
+  if(e.preventDefault)e.preventDefault();
+  let cur=typeof memoSearchCursor==='number'?memoSearchCursor:-1;
+  cur=nextSearchCursor(cur,e.key,items.length);
+  memoSearchCursor=cur;
+  if(typeof paintSearchFocus==='function')paintSearchFocus(mlist,'.mopt',cur,'search-focus');
+  if(typeof mq!=='undefined'&&mq&&mq.setAttribute){
+   const hit=items[cur];
+   const opt=hit&&hit.querySelector?hit.querySelector('.mopt'):null;
+   mq.setAttribute('aria-activedescendant',opt&&opt.id?opt.id:(hit&&hit.id?hit.id:''));
+  }
+  return true;
+ }
+ if(e.key!=='Enter')return false;
+ if(!items.length)return false;
+ const cursor=typeof memoSearchCursor==='number'?memoSearchCursor:-1;
+ const sid=typeof searchActivateMemoSong==='function'?searchActivateMemoSong(items,cursor):'';
+ if(!sid)return false;
+ if(e.preventDefault)e.preventDefault();
+ if(typeof openSong==='function'){openSong(sid);return true;}
+ return false;
 }
 function toggleSong(head,forceOpen){
  const row=head&&head.closest('[data-song-id]');
@@ -1344,6 +1423,8 @@ function mrender(){
   copyMemoWork.hidden=!song;
   copyMemoWork.dataset.copyWork=song?song.id:'';
  }
+ memoSearchCursor=-1;
+ if(mq&&mq.setAttribute)mq.setAttribute('aria-activedescendant','');
  if((!activeMemoSong&&term.length<3)||(term.length>0&&term.length<3)){
   mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div>`;return;
  }
@@ -1361,14 +1442,15 @@ function mrender(){
   return;
  }
  const summary=`<div class="resultbar"><span>${memoResultsStatus(visible.length,ordered.length,!activeMemoSong&&!!term)}</span></div>`;
- mlist.innerHTML=namedHtml+summary+visible.map(({m,snip})=>{
+ mlist.innerHTML=namedHtml+summary+visible.map(({m,snip},i)=>{
  const intake=intakeNameSummary(m.f);
   return `
-  <div class="mrow"><div class="mmeta">${esc(m.d)} · ${Math.round((Number(m.u)||0)/60)}min${m.s&&sname[m.s]?` · matched to <button type="button" class="song-link" data-open-song="${esc(m.s)}">${esc(sname[m.s])}</button>`:' · unmatched'}</div>
+  <div class="mrow" data-memo-index="${i}"${m.s?` data-open-song="${esc(m.s)}"`:''}><div class="mopt" role="option" aria-selected="false" id="memo-hit-${i}"><div class="mmeta">${esc(m.d)} · ${Math.round((Number(m.u)||0)/60)}min${m.s&&sname[m.s]?` · matched to ${esc(sname[m.s])}`:' · unmatched'}</div>
   <b>${markHay(m.n,term)}</b><div class="msnip">${snip}</div>
-  ${memoIntakeLine(intake)}</div>`;}).join('');
+  <div class="mmeta mintake">file: ${esc(intake.label)} <span class="intake-loc">(Voice&nbsp;Memo&nbsp;Intake)</span>${intake.copy?'':' · no copy-safe intake name yet'}</div></div><div class="mrow-actions">${m.s&&sname[m.s]?`<button type="button" class="song-link" data-open-song="${esc(m.s)}">${esc(sname[m.s])}</button>`:''}${intake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(intake.copy)}">Copy intake name</button>`:''}</div></div>`;}).join('');
 }
 mq.addEventListener('input',mrender);
+if(mq)mq.addEventListener('keydown',handleMemoSearchKey);
 mlist.addEventListener('click',e=>{
  const copy=e.target.closest('[data-copy-file]');
  if(copy){copyMemoFile(copy.dataset.copyFile,copy);return;}

@@ -34,7 +34,10 @@ from catalog_surface import (  # noqa: E402
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_search_results_keyboard_ready,
     dashboard_tablist_keyboard_ready,
+    duplicate_memo_files,
+    duplicate_memo_uids,
     dashboard_skip_link_contrast_ready,
     dashboard_search_mark_contrast_ready,
     dashboard_dark_theme_default,
@@ -325,6 +328,16 @@ def extras_ok(cat=None):
             'function normalizeSearch( function songAliases( '
             'function songSearchHit( function markNormalized( '
             'function focusFoundSong( function handleSongSearchKey( '
+            'function nextSearchCursor( function searchActivateId( '
+            'function searchActivateMemoSong( function paintSearchFocus( '
+            'function handleMemoSearchKey( '
+            'ArrowDown ArrowUp aria-activedescendant search-focus '
+            '.rhead.search-focus,.mopt.search-focus '
+            'outline:2px solid var(--pot) '
+            'if(!term&&!(cursor>=0))return false '
+            "paintSearchFocus(list,'.rhead',cur,'search-focus') "
+            'id="list" role="listbox" id="mlist" role="listbox" '
+            'class="rhead" role="option" class="mopt" role="option" '
             'function handleVaultKey( activeMemoSong|| mq.value||\'\' '
             'closest name first titles, aliases, hooks memo lyric aka '
             'function emptyMemosCopy( press Escape or Show all memos '
@@ -727,6 +740,40 @@ class ValidateCatalogTests(unittest.TestCase):
         extra["vm_matches"] = None
         errors = validate(fixture(), extra)
         self.assertTrue(any("vm_matches.json is missing" in e for e in errors), errors)
+
+    def test_duplicate_memo_uid_fails_closed(self):
+        extra = extras_ok()
+        extra["vm_matches"] = {"ST-0001": ["uid-a", "uid-a"]}
+        extra["app_api"] = extras_ok()["app_api"]
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("duplicate memo uids" in e for e in errors), errors)
+        self.assertEqual(duplicate_memo_uids(extra["vm_matches"]), ["uid-a"])
+
+    def test_duplicate_memo_uid_across_songs_fails_closed(self):
+        cat = fixture()
+        cat["voice_memo_pool"] = {"matched": 2, "matched_songs": 2}
+        extra = extras_ok(cat)
+        extra["vm_matches"] = {"ST-0001": ["uid-a"], "ST-0004": ["uid-a"]}
+        errors = validate(cat, extra)
+        self.assertTrue(any("duplicate memo uids" in e for e in errors), errors)
+        self.assertEqual(duplicate_memo_uids(extra["vm_matches"]), ["uid-a"])
+        self.assertEqual(
+            duplicate_memo_files([{"f": "Clip.m4a"}, {"f": "Clip.m4a"}, {"f": "Other.m4a"}]),
+            ["clip.m4a"],
+        )
+        self.assertEqual(duplicate_memo_files([{"f": "Clip.m4a"}, {"f": "Other.m4a"}]), [])
+
+    def test_import_not_idempotent_flag_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["import_is_idempotent"] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("import_is_idempotent" in e for e in errors), errors)
+
+    def test_import_idempotent_missing_claim_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"].pop("import_is_idempotent", None)
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("import_is_idempotent" in e for e in errors), errors)
 
     def test_old_schema_version_fails(self):
         extra = extras_ok()
@@ -1415,6 +1462,64 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_search_results_keyboard_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function handleMemoSearchKey(", ""
+        ).replace(".rhead.search-focus,.mopt.search-focus", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_empty_search_enter_focus_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "if(!term&&!(cursor>=0))return false", ""
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_memo_activate_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function searchActivateMemoSong(", ""
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_listbox_search_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="list" role="listbox"', 'id="list"'
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_option_wrapping_row_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"] + ' class="row" role="option"'
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
 
     def test_dashboard_without_tablist_keyboard_fails_closed(self):
         extra = extras_ok()
@@ -3206,6 +3311,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(
             apps_md_claims_catalog_is_official_set(extra["apps_md"])
         )
+        self.assertTrue(extra["app_api"]["storyboard"]["import_is_idempotent"])
         self.assertTrue(extra["app_api"]["storyboard"]["catalog_rows_are_not_the_official_set"])
         self.assertTrue(
             extra["app_api"]["storyboard"]["vault_default_live_is_not_the_official_set"]
@@ -3239,6 +3345,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_empty_search_honest(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))

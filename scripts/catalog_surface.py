@@ -139,6 +139,35 @@ def build_memo_search_index(transcripts, matches_by_song) -> tuple[list[dict], d
     }
 
 
+def duplicate_memo_uids(vm_matches) -> list[str]:
+    """Memo UIDs listed more than once in vm_matches (same song or across songs)."""
+    counts: dict[str, int] = {}
+    if not isinstance(vm_matches, dict):
+        return []
+    for uids in vm_matches.values():
+        if not isinstance(uids, list):
+            continue
+        for uid in uids:
+            key = str(uid or "").strip()
+            if not key:
+                continue
+            counts[key] = counts.get(key, 0) + 1
+    return sorted(uid for uid, n in counts.items() if n > 1)
+
+
+def duplicate_memo_files(index_rows) -> list[str]:
+    """Search-index filenames that appear more than once."""
+    counts: dict[str, int] = {}
+    for row in index_rows or []:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("f") or row.get("file") or "").strip().lower()
+        if not name:
+            continue
+        counts[name] = counts.get(name, 0) + 1
+    return sorted(name for name, n in counts.items() if n > 1)
+
+
 def feed_scope_by_id(app_api) -> dict[str, str]:
     """Map export song id → import_scope. Missing feed stays empty."""
     out: dict[str, str] = {}
@@ -1489,6 +1518,36 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
         and dashboard_phone_layout_covers(chrome, 390)
         and phone["padding"] == PHONE_BODY_PADDING_VALUE
         and phone["stat_flex_basis"] == PHONE_STAT_FLEX_BASIS
+    )
+
+
+def dashboard_search_results_keyboard_ready(html: str) -> bool:
+    """Songs/Memo search results use arrow keys, Enter, and a visible dark-theme focus."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        "function nextSearchCursor(",
+        "function searchActivateId(",
+        "function searchActivateMemoSong(",
+        "function paintSearchFocus(",
+        "function handleSongSearchKey(",
+        "function handleMemoSearchKey(",
+        "ArrowDown",
+        "ArrowUp",
+        "aria-activedescendant",
+        "search-focus",
+        ".rhead.search-focus,.mopt.search-focus",
+        "outline:2px solid var(--pot)",
+        "if(!term&&!(cursor>=0))return false",
+        "paintSearchFocus(list,'.rhead',cur,'search-focus')",
+        'id="list" role="listbox"',
+        'id="mlist" role="listbox"',
+        'class="rhead" role="option"',
+        'class="mopt" role="option"',
+    )
+    return (
+        all(marker in chrome for marker in required)
+        and 'class="row" role="option"' not in chrome
+        and 'class="mrow" role="option"' not in chrome
     )
 
 
