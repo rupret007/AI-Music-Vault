@@ -5,8 +5,12 @@ First useful surface reuses data/app_api.json for StoryBoard import_scope.
 Catalog rows are not the official live set. Show Night owns official sets.
 Repo-relative paths (the old /home/claude/vault/... Cowork copies are gone).
 Run from anywhere:  python3 scripts/build_dashboard.py
+Check committed DATA/TX without writing:  python3.12 scripts/build_dashboard.py --check
 """
-import json, os, sys
+import argparse
+import json
+import os
+import sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -18,6 +22,7 @@ from catalog_surface import (  # noqa: E402
     build_memo_search_index,
     catalog_cover_count,
     catalog_recovered_count,
+    embedded_dashboard_payloads,
     logic_ready_maps,
     overlay_feed_scopes,
     played_badge_label,
@@ -35,64 +40,84 @@ CHAIN_PATH = os.path.join(HERE, "data", "version_chains.json")
 VM_MATCHES_PATH = os.path.join(HERE, "01_source_manifests", "voicememo", "vm_matches.json")
 OUT_PATH = os.path.join(HERE, "Jeff Story Song Vault Dashboard.html")
 
-cat = json.load(open(CAT_PATH))
-app_api = json.load(open(API_PATH)) if os.path.exists(API_PATH) else {}
-chains = json.load(open(CHAIN_PATH)) if os.path.exists(CHAIN_PATH) else {}
-slim = []
-for s in cat['songs']:
-    row = dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
-        c=s['classification'], st=surface_stage_label(s.get('stage','')), key=s.get('key',''), bpm=s.get('bpm',''),
-        pot=s.get('potential'), rdy=s.get('readiness'), mom=s.get('momentum'),
-        la=s.get('last_activity',''), conf=s.get('confidence',''),
-        th=s.get('theme',''), hk=s.get('hook',''), nx=s.get('next_action',''),
-        ly=s.get('lyric_status',''), au=s.get('audio_status',''),
-        src=s.get('sources',[]), sc=s.get('soundcloud',[]), oq=s.get('open_questions',''),
-        wr=', '.join(s.get('writers',[])),
-        live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
-        gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''),
-        lr=song_logic_ready_cluster(s, chains.get(s['song_id'])),
-        lrf=song_logic_ready_evidence_tags(s, chains.get(s['song_id'])))
-    aliases = song_aliases(s)
-    if aliases:
-        row['aka'] = aliases
-    slim.append(row)
-overlay_feed_scopes(slim, app_api)
+
+def build_payload(cat, app_api, chains, joined, matches_by_song) -> dict:
+    """Project the same slim song rows and memo index for writing and checking."""
+    slim = []
+    for s in cat['songs']:
+        row = dict(id=s['song_id'], t=s['canonical_title'], p=s['artist_project'],
+            c=s['classification'], st=surface_stage_label(s.get('stage','')), key=s.get('key',''), bpm=s.get('bpm',''),
+            pot=s.get('potential'), rdy=s.get('readiness'), mom=s.get('momentum'),
+            la=s.get('last_activity',''), conf=s.get('confidence',''),
+            th=s.get('theme',''), hk=s.get('hook',''), nx=s.get('next_action',''),
+            ly=s.get('lyric_status',''), au=s.get('audio_status',''),
+            src=s.get('sources',[]), sc=s.get('soundcloud',[]), oq=s.get('open_questions',''),
+            wr=', '.join(s.get('writers',[])),
+            live=played_badge_label(s.get('live_latest','')), lp=[f"{e['band']} ({e['date']})" for e in s.get('live_presence',[])],
+            gate=s.get('ai_upload_ok',''), bs=s.get('best_source_resolved',''),
+            lr=song_logic_ready_cluster(s, chains.get(s['song_id'])),
+            lrf=song_logic_ready_evidence_tags(s, chains.get(s['song_id'])))
+        aliases = song_aliases(s)
+        if aliases:
+            row['aka'] = aliases
+        slim.append(row)
+    overlay_feed_scopes(slim, app_api)
+    # Keep source totals separate from the compact, searchable transcript index.
+    tx, memo_counts = build_memo_search_index(joined, matches_by_song)
+    return {"DATA": slim, "TX": tx, "memo_counts": memo_counts}
 
 
-def _lane_work_pill(song_id: str) -> str:
-    row = next((item for item in slim if item.get("id") == song_id), None)
-    kind = song_work_kind((row or {}).get("nx"))
-    if not kind or kind == "unknown":
-        return ""
-    return f'<span class="pill wk-{kind} lane-work">{kind}</span>'
+def check_committed(payload: dict, path: str = OUT_PATH) -> list[str]:
+    """Compare embedded JSON with a fresh projection, without touching the HTML."""
+    if not os.path.exists(path):
+        return [f"missing dashboard at {path} — re-run python3.12 scripts/build_dashboard.py"]
+    try:
+        with open(path, encoding="utf-8") as handle:
+            committed = embedded_dashboard_payloads(handle.read())
+    except (OSError, UnicodeError) as exc:
+        return [f"cannot read dashboard at {path}: {exc}"]
+    errors = []
+    for name in ("DATA", "TX"):
+        try:
+            actual = json.loads(committed[name])
+        except json.JSONDecodeError:
+            errors.append(f"dashboard {name} payload is missing or invalid")
+            continue
+        if actual != payload[name]:
+            errors.append(f"dashboard {name} payload is stale vs its source metadata")
+    if errors:
+        errors.append("re-run python3.12 scripts/build_dashboard.py")
+    return errors
 
-DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
-LOGIC_READY = json.dumps(logic_ready_maps(), ensure_ascii=False).replace('</', '<\\/')
-LOGIC_READY_FILTER = "".join(
-    f'<option value="{cluster}">{LOGIC_READY_LABELS[cluster]}</option>'
-    for cluster in LOGIC_READY_CLUSTERS
-)
 
-# Transcripts: compact index (title, date, duration, cleaned text capped at 1500
-# chars). Overlay song_id from vm_matches.json (372/88); the transcript file
-# still carries the first-pass 326 matches. Source totals and searchable-index
-# totals stay separate because short collapsed text is intentionally not useful
-# enough to embed for search.
-joined = json.load(open(TX_PATH))
-matches_by_song = {}
-if os.path.exists(VM_MATCHES_PATH):
-    matches_by_song = json.load(open(VM_MATCHES_PATH))
-tx, memo_counts = build_memo_search_index(joined, matches_by_song)
-TX_TOTAL = memo_counts["transcribed"]
-TX_MATCHED_TOTAL = memo_counts["matched"]
-TX_SEARCHABLE_TOTAL = memo_counts["searchable"]
-TX_SEARCHABLE_MATCHED = memo_counts["searchable_matched"]
-TX = json.dumps(tx, ensure_ascii=False).replace('</', '<\\/')
-COVER_COUNT = catalog_cover_count(cat)
-RECOVERED_COUNT = catalog_recovered_count(cat)
-CATALOG_VERSION = str(cat.get("version") or "")
+def render_dashboard(cat: dict, payload: dict) -> str:
+    slim, tx = payload["DATA"], payload["TX"]
+    memo_counts = payload["memo_counts"]
 
-page = r'''<!DOCTYPE html>
+    def _lane_work_pill(song_id: str) -> str:
+        row = next((item for item in slim if item.get("id") == song_id), None)
+        kind = song_work_kind((row or {}).get("nx"))
+        if not kind or kind == "unknown":
+            return ""
+        return f'<span class="pill wk-{kind} lane-work">{kind}</span>'
+
+    DATA = json.dumps(slim, ensure_ascii=False).replace('</', '<\\/')
+    LOGIC_READY = json.dumps(logic_ready_maps(), ensure_ascii=False).replace('</', '<\\/')
+    LOGIC_READY_FILTER = "".join(
+        f'<option value="{cluster}">{LOGIC_READY_LABELS[cluster]}</option>'
+        for cluster in LOGIC_READY_CLUSTERS
+    )
+
+    TX_TOTAL = memo_counts["transcribed"]
+    TX_MATCHED_TOTAL = memo_counts["matched"]
+    TX_SEARCHABLE_TOTAL = memo_counts["searchable"]
+    TX_SEARCHABLE_MATCHED = memo_counts["searchable_matched"]
+    TX = json.dumps(tx, ensure_ascii=False).replace('</', '<\\/')
+    COVER_COUNT = catalog_cover_count(cat)
+    RECOVERED_COUNT = catalog_recovered_count(cat)
+    CATALOG_VERSION = str(cat.get("version") or "")
+
+    page = r'''<!DOCTYPE html>
 <html lang="en" data-theme="dark"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
@@ -1336,16 +1361,62 @@ if(typeof document!=='undefined')document.addEventListener('keydown',handleVault
 if(typeof window!=='undefined'){window.addEventListener('hashchange',applyVaultHash);applyVaultHash();}
 </script></body></html>'''
 
-page = (page.replace('__DATA__', DATA)
-    .replace('__LOGIC_READY__', LOGIC_READY)
-    .replace('__LOGIC_READY_FILTER__', LOGIC_READY_FILTER)
-    .replace('__TX__', TX)
-    .replace('__TX_TOTAL__', str(TX_TOTAL))
-    .replace('__TX_MATCHED_TOTAL__', str(TX_MATCHED_TOTAL))
-    .replace('__TX_SEARCHABLE_TOTAL__', str(TX_SEARCHABLE_TOTAL))
-    .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED))
-    .replace('__COVER_COUNT__', str(COVER_COUNT))
-    .replace('__RECOVERED_COUNT__', str(RECOVERED_COUNT)))
-open(OUT_PATH,'w').write(page)
-print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,',
-      TX_SEARCHABLE_TOTAL, 'searchable transcripts from', TX_TOTAL, 'transcribed')
+    page = (page.replace('__DATA__', DATA)
+        .replace('__LOGIC_READY__', LOGIC_READY)
+        .replace('__LOGIC_READY_FILTER__', LOGIC_READY_FILTER)
+        .replace('__TX__', TX)
+        .replace('__TX_TOTAL__', str(TX_TOTAL))
+        .replace('__TX_MATCHED_TOTAL__', str(TX_MATCHED_TOTAL))
+        .replace('__TX_SEARCHABLE_TOTAL__', str(TX_SEARCHABLE_TOTAL))
+        .replace('__TX_SEARCHABLE_MATCHED__', str(TX_SEARCHABLE_MATCHED))
+        .replace('__COVER_COUNT__', str(COVER_COUNT))
+        .replace('__RECOVERED_COUNT__', str(RECOVERED_COUNT)))
+    return page
+
+
+def write_dashboard(page: str, path: str = OUT_PATH) -> None:
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(page)
+
+
+def _read_json(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Build the song vault dashboard")
+    parser.add_argument(
+        "--check", action="store_true",
+        help="fail if committed HTML DATA/TX payloads differ from a fresh projection; do not write",
+    )
+    args = parser.parse_args(argv)
+    try:
+        cat = _read_json(CAT_PATH)
+        app_api = _read_json(API_PATH) if os.path.exists(API_PATH) else {}
+        chains = _read_json(CHAIN_PATH) if os.path.exists(CHAIN_PATH) else {}
+        joined = _read_json(TX_PATH)
+        matches = _read_json(VM_MATCHES_PATH) if os.path.exists(VM_MATCHES_PATH) else {}
+        payload = build_payload(cat, app_api, chains, joined, matches)
+        if args.check:
+            errors = check_committed(payload)
+            if errors:
+                print("dashboard CHECK FAILED", file=sys.stderr)
+                for error in errors:
+                    print(f"  • {error}", file=sys.stderr)
+                return 1
+            print(f"dashboard OK — {OUT_PATH} DATA/TX match source metadata")
+            return 0
+        page = render_dashboard(cat, payload)
+        write_dashboard(page)
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        print(f"dashboard {'CHECK FAILED' if args.check else 'BUILD FAILED'}: {exc}", file=sys.stderr)
+        return 1
+    counts = payload["memo_counts"]
+    print('dashboard written,', OUT_PATH, len(page)//1024, 'KB,',
+          counts['searchable'], 'searchable transcripts from', counts['transcribed'], 'transcribed')
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
