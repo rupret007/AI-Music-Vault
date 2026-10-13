@@ -400,7 +400,7 @@ const projects=[...new Set(DATA.map(d=>d.p))].sort();
 projects.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;proj.appendChild(o);});
 const scopes=[...new Set(DATA.map(d=>d.scope).filter(Boolean))].sort();
 scopes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=(DATA.find(d=>d.scope===s)||{}).scope_label||s;scope.appendChild(o);});
-const scoredCount=DATA.filter(d=>d.pot).length;
+const scoredCount=DATA.filter(d=>hasScore(d.pot)).length;
 const defaultLiveCount=DATA.filter(d=>d.scope==='default_live').length;
 const workCounts={write:0,produce:0,listen:0};
 DATA.forEach(d=>{const wk=songWorkKind(d.nx);if(workCounts[wk]!=null)workCounts[wk]+=1;});
@@ -790,9 +790,10 @@ function sortSongRows(rows,term,sortKey){
  });
  return decorated;
 }
+function hasScore(v){return Number.isFinite(v)&&v>=0&&v<=100;}
 function bar(v,c){
- const n=Number(v);
- if(!Number.isFinite(n)||n<=0)return '<div class="barwrap"><span style="color:var(--ink3)">—</span></div>';
+ if(!hasScore(v))return '<div class="barwrap"><span style="color:var(--ink3)">—</span></div>';
+ const n=v;
  const safe=Math.min(100,Math.max(0,n));
  return `<div class="barwrap"><div class="bar"><i style="width:${safe}%;background:var(--${c})"></i></div><span class="bar-n">${esc(n)}</span></div>`;
 }
@@ -805,7 +806,7 @@ function render(){
  DATA.forEach(d=>{
   if(pv&&d.p!==pv)return;
   if(scv&&d.scope!==scv)return;
-  if(sv==='1'&&!d.pot)return; if(sv==='0'&&d.pot)return;
+  if(sv==='1'&&!hasScore(d.pot))return; if(sv==='0'&&hasScore(d.pot))return;
   if(evv==='1'&&!memoEvidenceBySong[d.id])return;
   if(evv==='0'&&memoEvidenceBySong[d.id])return;
   if(wv&&songWorkKind(d.nx)!==wv)return;
@@ -839,7 +840,7 @@ function render(){
   const lrPill=typeof logicReadyPill==='function'?logicReadyPill(d.lr):'';
   const lrNext=typeof logicReadyNext==='function'?logicReadyNext(d.lr):'';
   const lrFormats=typeof logicReadyFormats==='function'?logicReadyFormats(d):[];
-  const scoreLabel=`${esc(d.t)} ${esc(d.id)}. Potential ${d.pot||'unscored'}, readiness ${d.rdy||'unscored'}, momentum ${d.mom||'unscored'}`;
+  const scoreLabel=`${esc(d.t)} ${esc(d.id)}. Potential ${hasScore(d.pot)?d.pot:'unscored'}, readiness ${hasScore(d.rdy)?d.rdy:'unscored'}, momentum ${hasScore(d.mom)?d.mom:'unscored'}`;
   return `
  <div class="row" data-song-id="${esc(d.id)}"><div class="row-heading"><div class="rhead" role="option" aria-selected="false" id="song-row-${esc(d.id)}" tabindex="0" aria-expanded="false" aria-controls="song-detail-${esc(d.id)}" aria-label="${scoreLabel}" data-toggle-song>
   <span class="rid">${esc(d.id)}</span>
@@ -849,7 +850,7 @@ function render(){
   <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${lrFormats.length?`<div class="sit-logic-assets">Assets on file: ${lrFormats.map(t=>esc(t)).join(' · ')}</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)} <button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button></div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latestIntake.label)}</span>${latestIntake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}<div class="memo-next">${latestIntake.copy?'Copy the intake name only (sanitized);':'No copy-safe intake name on this memo row yet;'} write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div>`}</div>
   ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
   ${hook?`<h4>Hook</h4>${esc(hook)}`:''}
-  <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${d.mom?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
+  <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${hasScore(d.mom)?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
   ${d.gate?`<h4>AI-upload gate</h4><span class="pill" style="color:${d.gate.startsWith('YES')?'var(--good)':d.gate.startsWith('NEEDS')?'var(--rdy)':'var(--ink3)'}">${esc(d.gate)}</span>`:''}
   ${d.lp&&d.lp.length?`<h4>Played live</h4>${d.lp.map(x=>`<span class="pill">${esc(x)}</span>`).join('')}`:''}
   ${d.sc&&d.sc.length?`<h4>SoundCloud</h4><ul>${d.sc.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
