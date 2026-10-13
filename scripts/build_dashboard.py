@@ -14,6 +14,7 @@ from catalog_surface import (  # noqa: E402
     LOGIC_READY_CLUSTERS,
     LOGIC_READY_LABELS,
     ON_DECK_NOTE,
+    SCOPE_SURFACE_LABELS,
     SURFACE_SUBTITLE,
     build_memo_search_index,
     catalog_cover_count,
@@ -27,6 +28,7 @@ from catalog_surface import (  # noqa: E402
     song_work_kind,
     surface_stage_label,
 )
+from storyboard_contract import vault_payload_validation_error  # noqa: E402
 
 CAT_PATH = os.path.join(HERE, "data", "master_catalog.json")
 API_PATH = os.path.join(HERE, "data", "app_api.json")
@@ -35,8 +37,60 @@ CHAIN_PATH = os.path.join(HERE, "data", "version_chains.json")
 VM_MATCHES_PATH = os.path.join(HERE, "01_source_manifests", "voicememo", "vm_matches.json")
 OUT_PATH = os.path.join(HERE, "Jeff Story Song Vault Dashboard.html")
 
-cat = json.load(open(CAT_PATH))
-app_api = json.load(open(API_PATH)) if os.path.exists(API_PATH) else {}
+def load_dashboard_json(path):
+    """Required inputs must be readable JSON before the output is opened."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"{os.path.basename(path)}: cannot read valid UTF-8 JSON ({exc})") from exc
+
+
+def validate_dashboard_inputs(cat, app_api):
+    """Check the feed overlay and play history used by this standalone writer.
+
+    Full catalog/feed semantic validation remains in validate_catalog.py.
+    Here every catalog row must have one unambiguous, recognized feed scope.
+    """
+    if vault_payload_validation_error(app_api) is not None:
+        raise ValueError("app_api.json must be a valid StoryBoard feed envelope")
+    if app_api.get("schema_version") != 3 or app_api.get("primary_consumer") != "StoryBoard":
+        raise ValueError("app_api.json requires schema_version 3 and primary_consumer StoryBoard")
+    if not app_api["songs"]:
+        raise ValueError("app_api.json songs must be a non-empty list")
+    feed_ids = set()
+    for row in app_api["songs"]:
+        sid = row.get("id")
+        if not isinstance(sid, str) or not sid.strip() or sid != sid.strip():
+            raise ValueError("app_api.json songs[] requires a non-empty, trimmed string id")
+        if sid in feed_ids:
+            raise ValueError(f"app_api.json {sid}: duplicate song id")
+        feed_ids.add(sid)
+        scope = row.get("import_scope")
+        if not isinstance(scope, str) or scope not in SCOPE_SURFACE_LABELS:
+            raise ValueError(f"app_api.json {sid}: import_scope must be a recognized scope")
+    if feed_ids != {song["song_id"] for song in cat["songs"]}:
+        raise ValueError("app_api.json song ids do not match master_catalog.json")
+    for song in cat["songs"]:
+        sid = song["song_id"]
+        live = song.get("live_presence", [])
+        if not isinstance(live, list):
+            raise ValueError(f"{sid}: live_presence must be a list when present")
+        for index, event in enumerate(live):
+            if not isinstance(event, dict):
+                raise ValueError(f"{sid}: live_presence[{index}] must be an object")
+            if not str(event.get("band") or "").strip() or not str(event.get("date") or "").strip():
+                raise ValueError(f"{sid}: live_presence[{index}] needs non-empty band and date")
+
+
+try:
+    cat = load_dashboard_json(CAT_PATH)
+    app_api = load_dashboard_json(API_PATH)
+    validate_dashboard_inputs(cat, app_api)
+except ValueError as exc:
+    print(f"dashboard INVALID: {exc}", file=sys.stderr)
+    sys.exit(1)
+
 chains = json.load(open(CHAIN_PATH)) if os.path.exists(CHAIN_PATH) else {}
 slim = []
 for s in cat['songs']:
