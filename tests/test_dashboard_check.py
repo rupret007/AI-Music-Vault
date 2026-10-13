@@ -30,8 +30,13 @@ class DashboardCheckTests(unittest.TestCase):
             "uid": "memo-1", "title": "Fixture memo", "date": "2026-01-01",
             "text": "A synthetic lyric long enough for the searchable memo index.",
         }]
+        self.feed = {
+            "schema_version": 3, "primary_consumer": "StoryBoard",
+            "songs": [{"id": "TEST-1", "title": "Fixture song",
+                       "import_scope": "not_live_band"}],
+        }
         self.write_json("master_catalog.json", self.catalog)
-        self.write_json("app_api.json", {"songs": []})
+        self.write_json("app_api.json", self.feed)
         self.write_json("vm_transcribed.json", self.transcripts)
         self.html = self.root / DASHBOARD
         self.assertEqual(self.run_builder().returncode, 0)
@@ -81,9 +86,8 @@ class DashboardCheckTests(unittest.TestCase):
                 self.assert_check(0)
 
     def test_feed_scope_and_memo_match_changes_fail(self):
-        self.write_json("app_api.json", {"songs": [{
-            "id": "TEST-1", "import_scope": "default_live",
-        }]})
+        self.feed["songs"][0]["import_scope"] = "default_live"
+        self.write_json("app_api.json", self.feed)
         self.assert_check(1, "DATA")
         self.assertEqual(self.run_builder().returncode, 0)
         self.assert_check(0)

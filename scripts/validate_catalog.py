@@ -31,11 +31,13 @@ import sys
 
 from catalog_surface import (
     catalog_surface_admits_not_official_set,
+    duplicate_memo_uids,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
     dashboard_escape_clears_memo_search,
     dashboard_empty_memo_search_honest,
     dashboard_empty_search_honest,
+    dashboard_memo_query_ranks_catalog_matches,
     dashboard_memo_search_folds_punctuation,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
@@ -50,6 +52,7 @@ from catalog_surface import (
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
+    dashboard_search_results_keyboard_ready,
     dashboard_tablist_keyboard_ready,
     dashboard_skip_link_contrast_ready,
     dashboard_search_mark_contrast_ready,
@@ -1165,6 +1168,18 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.merge_key must be vault:catalog_import_v1:{vault_id ?? id} "
                 "(StoryBoard sourceKey)"
             )
+        if sb.get("import_is_idempotent") is not True:
+            errors.append(
+                "storyboard.import_is_idempotent must be true — "
+                "tests/test_storyboard_catalog_import.mjs runs StoryBoard "
+                "planCatalogImport/reconcileCatalogImport"
+            )
+        if sb.get("reconcile_skips_existing_source_key") is not True:
+            errors.append(
+                "storyboard.reconcile_skips_existing_source_key must be true"
+            )
+        if sb.get("reconcile_skips_existing_title") is not True:
+            errors.append("storyboard.reconcile_skips_existing_title must be true")
         if list(sb.get("reads") or []) != list(IMPORTER_READS):
             errors.append(
                 "storyboard.reads must list exactly the fields StoryBoard reads: "
@@ -1243,7 +1258,10 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         "originals": sum(
             1 for src in by_id.values() if src.get("classification") == "original"
         ),
-        "scored": sum(1 for src in by_id.values() if src.get("potential")),
+        "scored": sum(
+            1 for src in by_id.values()
+            if src.get("potential") is not None and src.get("potential") != ""
+        ),
         "ai_upload_ok": sum(
             1
             for src in by_id.values()
@@ -1928,6 +1946,9 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
         unknown = sorted(sid for sid in vm_matches if sid not in by_id)
         if unknown:
             errors.append(f"vm_matches points at unknown song_id values: {unknown}")
+        dup_memos = duplicate_memo_uids(vm_matches)
+        if dup_memos:
+            errors.append(f"vm_matches duplicate memo uids: {dup_memos}")
 
     api = extras.get("app_api")
     if api is None:
@@ -2145,6 +2166,13 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard zero memo hits must not tell the user to clear "
                 "a song filter that is not set"
             )
+        if not dashboard_memo_query_ranks_catalog_matches(dash):
+            errors.append(
+                "dashboard memo queries must rank catalog-matched rows "
+                "(or a Songs named jump) above unmatched Whisper hits, "
+                "keep the Whisper disclaimer once, keep Voice Memo Intake "
+                "unsplit, and cap visible rows at 80"
+            )
         if not dashboard_memo_search_folds_punctuation(dash):
             errors.append(
                 "dashboard Memo Search must fold apostrophes and punctuation "
@@ -2167,6 +2195,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "dashboard must stay usable at 390px with landmarks, "
                 "labeled controls, 44px tap targets, visible focus, "
                 "and no horizontal scroll"
+            )
+        if not dashboard_search_results_keyboard_ready(dash):
+            errors.append(
+                "dashboard search results must use arrow keys, Enter, and "
+                "a visible dark-theme focus ring"
             )
         if not dashboard_tablist_keyboard_ready(dash):
             errors.append(

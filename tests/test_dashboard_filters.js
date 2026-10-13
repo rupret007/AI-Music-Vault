@@ -132,7 +132,7 @@ async function main() {
     const ids = () => [...document.querySelectorAll('#list .row')].map(el=>el.dataset.songId).sort();
     const change = (id,value) => {const el=document.getElementById(id);el.value=value;el.dispatchEvent(new Event('input'));};
     const matches = {
-      proj:(d,v)=>d.p===v, scored:(d,v)=>v==='1'?!!d.pot:!d.pot,
+      proj:(d,v)=>d.p===v, scored:(d,v)=>v==='1'?Number.isFinite(d.pot):!Number.isFinite(d.pot),
       scope:(d,v)=>d.scope===v, evidence:(d,v)=>v==='1'?!!memoEvidenceBySong[d.id]:!memoEvidenceBySong[d.id],
       work:(d,v)=>songWorkKind(d.nx)===v, logicReady:(d,v)=>d.lr===v
     };
@@ -152,7 +152,7 @@ async function main() {
     }
     document.getElementById('clearSongFilters').click();
     change('scored','1'); change('evidence','1');
-    check(JSON.stringify(ids())===JSON.stringify(DATA.filter(d=>d.pot&&memoEvidenceBySong[d.id]).map(d=>d.id).sort()),'filters intersect');
+    check(JSON.stringify(ids())===JSON.stringify(DATA.filter(d=>Number.isFinite(d.pot)&&memoEvidenceBySong[d.id]).map(d=>d.id).sort()),'filters intersect');
     document.getElementById('clearSongFilters').click();
     check(ids().length===DATA.length,'clear restores all songs');
     check(Object.keys(matches).every(id=>document.getElementById(id).value===''),'clear resets all selects');
