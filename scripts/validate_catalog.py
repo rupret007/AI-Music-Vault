@@ -31,19 +31,35 @@ import sys
 
 from catalog_surface import (
     catalog_surface_admits_not_official_set,
+    duplicate_memo_uids,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_escape_clears_memo_search,
+    dashboard_empty_memo_search_honest,
+    dashboard_empty_search_honest,
+    dashboard_memo_query_ranks_catalog_matches,
+    dashboard_memo_search_folds_punctuation,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_catalog_overview_starts_collapsed,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
     dashboard_opens_owner_audio,
+    dashboard_work_starts_name_the_action,
     dashboard_resume_leads_first_paint,
+    dashboard_start_copy_omits_resume_preview,
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
     dashboard_sit_down_copy_actions_on_own_row,
+    dashboard_search_results_keyboard_ready,
+    dashboard_tablist_keyboard_ready,
+    dashboard_skip_link_contrast_ready,
+    dashboard_search_mark_contrast_ready,
+    dashboard_dark_theme_default,
+    readme_click_test_does_not_claim_private,
+    readme_click_test_uses_browser_local_heading,
     readme_documents_session_click_test,
 )
 from export_catalog_csv import (
@@ -320,6 +336,51 @@ def apps_md_claims_catalog_is_official_set(text: str) -> bool:
     return catalog_surface_claims_official_set(text)
 
 
+PRIVATE_CATALOG_CLAIM = "this private catalog"
+PUBLIC_CATALOG_NOT_REMOTE = "this public catalog is not a remote fetch"
+PUBLIC_REPO_ADMISSION = "this repository is public"
+
+
+def _collapsed_honesty_text(text: str | None) -> str:
+    """Lowercase and collapse wrapping so honesty phrases survive line breaks."""
+    return " ".join((text or "").lower().split())
+
+
+def _feed_honesty_text(api: dict | None) -> str:
+    """Published StoryBoard prose that must not claim the catalog is private."""
+    payload = api if isinstance(api, dict) else {}
+    storyboard = payload.get("storyboard")
+    notes = payload.get("notes")
+    mapping = storyboard if isinstance(storyboard, dict) else {}
+    note_map = notes if isinstance(notes, dict) else {}
+    parts = (
+        mapping.get("default_import"),
+        mapping.get("inspected"),
+        note_map.get("storyboard_import"),
+    )
+    return "\n".join(str(part) for part in parts if part)
+
+
+def feed_claims_private_catalog(api: dict | None) -> bool:
+    """Published feed must not call this public catalog private."""
+    return PRIVATE_CATALOG_CLAIM in _collapsed_honesty_text(_feed_honesty_text(api))
+
+
+def feed_admits_public_catalog(api: dict | None) -> bool:
+    """Published feed must admit the catalog is public and not a remote fetch."""
+    return PUBLIC_CATALOG_NOT_REMOTE in _collapsed_honesty_text(_feed_honesty_text(api))
+
+
+def public_doc_claims_private_catalog(text: str) -> bool:
+    """Jeff-facing docs must not call this public catalog private."""
+    return PRIVATE_CATALOG_CLAIM in _collapsed_honesty_text(text)
+
+
+def public_doc_admits_public_repo(text: str) -> bool:
+    """Jeff-facing docs must say this repository is public."""
+    return PUBLIC_REPO_ADMISSION in _collapsed_honesty_text(text)
+
+
 def module_doc_claims_hosted_ci() -> bool:
     """Validator docstring must not claim hosted CI is the fail-closed gate."""
     return apps_md_claims_hosted_ci(sys.modules[__name__].__doc__ or "")
@@ -478,6 +539,11 @@ def public_facing_doc_errors(label: str, text: str, cat: dict) -> list[str]:
             f"{label} still claims catalog rows are the live set — "
             "Show Night owns official sets"
         )
+    if public_doc_claims_private_catalog(text):
+        errors.append(
+            f"{label} still claims this private catalog — "
+            "this repository is public"
+        )
     return errors
 
 
@@ -555,7 +621,7 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         errors.append(
             "app_api.json must be local JSON — StoryBoard #12 rejects a "
             "remote catalog locator (url / href / sourceUrl / catalogUrl / "
-            "fetch). This private catalog is not a public fetch."
+            "fetch). This public catalog is not a remote fetch."
         )
     if vault_payload_looks_like_spine(api):
         errors.append(
@@ -767,7 +833,17 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         if sb.get("remote_catalog_urls") is not REMOTE_CATALOG_URLS:
             errors.append(
                 "storyboard.remote_catalog_urls must be false — this "
-                "private catalog is not a public fetch"
+                "public catalog is not a remote fetch"
+            )
+        if feed_claims_private_catalog(api):
+            errors.append(
+                "app_api.json must not claim this private catalog — "
+                "this repository is public"
+            )
+        if not feed_admits_public_catalog(api):
+            errors.append(
+                "app_api.json must admit this public catalog is not a "
+                "remote fetch"
             )
         if sb.get("band_operations_import") != BAND_OPERATIONS_IMPORT:
             errors.append(
@@ -1093,6 +1169,18 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
                 "storyboard.merge_key must be vault:catalog_import_v1:{vault_id ?? id} "
                 "(StoryBoard sourceKey)"
             )
+        if sb.get("import_is_idempotent") is not True:
+            errors.append(
+                "storyboard.import_is_idempotent must be true — "
+                "tests/test_storyboard_catalog_import.mjs runs StoryBoard "
+                "planCatalogImport/reconcileCatalogImport"
+            )
+        if sb.get("reconcile_skips_existing_source_key") is not True:
+            errors.append(
+                "storyboard.reconcile_skips_existing_source_key must be true"
+            )
+        if sb.get("reconcile_skips_existing_title") is not True:
+            errors.append("storyboard.reconcile_skips_existing_title must be true")
         if list(sb.get("reads") or []) != list(IMPORTER_READS):
             errors.append(
                 "storyboard.reads must list exactly the fields StoryBoard reads: "
@@ -1171,7 +1259,10 @@ def _validate_app_api(api: dict, ids: list[str], by_id: dict) -> list[str]:
         "originals": sum(
             1 for src in by_id.values() if src.get("classification") == "original"
         ),
-        "scored": sum(1 for src in by_id.values() if src.get("potential")),
+        "scored": sum(
+            1 for src in by_id.values()
+            if src.get("potential") is not None and src.get("potential") != ""
+        ),
         "ai_upload_ok": sum(
             1
             for src in by_id.values()
@@ -1856,6 +1947,9 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
         unknown = sorted(sid for sid in vm_matches if sid not in by_id)
         if unknown:
             errors.append(f"vm_matches points at unknown song_id values: {unknown}")
+        dup_memos = duplicate_memo_uids(vm_matches)
+        if dup_memos:
+            errors.append(f"vm_matches duplicate memo uids: {dup_memos}")
 
     api = extras.get("app_api")
     if api is None:
@@ -1982,13 +2076,32 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "set and Show Night owns official sets"
             )
         errors.extend(public_facing_doc_errors("APPS.md", apps_md, cat))
+        if not public_doc_admits_public_repo(apps_md):
+            errors.append(
+                "APPS.md must say this repository is public — "
+                "importing local JSON does not make the catalog private"
+            )
 
     readme = extras.get("readme")
     if isinstance(readme, str) and readme.strip():
         errors.extend(public_facing_doc_errors("README.md", readme, cat))
+        if not public_doc_admits_public_repo(readme):
+            errors.append(
+                "README.md must say this repository is public — "
+                "private session means browser-local state, not a private repo"
+            )
+        if not readme_click_test_does_not_claim_private(readme):
+            errors.append(
+                "README.md Click-test heading still claims a private session — "
+                "this public catalog is browser-local only"
+            )
+        if not readme_click_test_uses_browser_local_heading(readme):
+            errors.append(
+                "README.md Click-test heading must say browser-local session"
+            )
         if not readme_documents_session_click_test(readme):
             errors.append(
-                "README.md must document the private session click-test: "
+                "README.md must document the browser-local session click-test: "
                 "Click Write, Produce, or Listen; Refresh; Resume; Forget; "
                 "stores only work kind and catalog ID; "
                 "Logic export honesty (WAVs/AIFF/MIDI preference, no Ableton-first); "
@@ -2050,6 +2163,34 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "punctuation, rank the closest name first, and allow Enter "
                 "to open that row"
             )
+        if not dashboard_escape_clears_memo_search(dash):
+            errors.append(
+                "dashboard Escape on Memo Search must clear a typed query, "
+                "not only a scoped song filter"
+            )
+        if not dashboard_empty_memo_search_honest(dash):
+            errors.append(
+                "dashboard zero memo hits must not tell the user to clear "
+                "a song filter that is not set"
+            )
+        if not dashboard_memo_query_ranks_catalog_matches(dash):
+            errors.append(
+                "dashboard memo queries must rank catalog-matched rows "
+                "(or a Songs named jump) above unmatched Whisper hits, "
+                "keep the Whisper disclaimer once, keep Voice Memo Intake "
+                "unsplit, and cap visible rows at 80"
+            )
+        if not dashboard_memo_search_folds_punctuation(dash):
+            errors.append(
+                "dashboard Memo Search must fold apostrophes and punctuation "
+                "the same way Songs search does — raw toLowerCase includes "
+                "miss It's Alright when Jeff types its alright"
+            )
+        if not dashboard_empty_search_honest(dash):
+            errors.append(
+                "dashboard zero song hits must not claim closest-name ranking "
+                "or tell the user to clear a filter that is not set"
+            )
         if not dashboard_exposes_logic_ready(dash):
             errors.append(
                 "dashboard must name a sanitized Logic-ready next from "
@@ -2058,14 +2199,51 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             )
         if not dashboard_phone_and_a11y_ready(dash):
             errors.append(
-                "dashboard must stay usable at 375px with landmarks, "
+                "dashboard must stay usable at 390px with landmarks, "
                 "labeled controls, 44px tap targets, visible focus, "
                 "and no horizontal scroll"
+            )
+        if not dashboard_search_results_keyboard_ready(dash):
+            errors.append(
+                "dashboard search results must use arrow keys, Enter, and "
+                "a visible dark-theme focus ring"
+            )
+        if not dashboard_tablist_keyboard_ready(dash):
+            errors.append(
+                "dashboard Songs/Memo tabs must use APG arrow-key tablist "
+                "with roving tabindex, Home, and End"
+            )
+        if not dashboard_skip_link_contrast_ready(dash):
+            errors.append(
+                "dashboard skip link must meet WCAG AA 4.5:1 on dark and "
+                "light — do not paint white text on --pot"
+            )
+        if not dashboard_search_mark_contrast_ready(dash):
+            errors.append(
+                "dashboard search-hit marks must meet WCAG AA 4.5:1 on "
+                "dark and light — do not paint white text on --pot"
+            )
+        if not dashboard_dark_theme_default(dash):
+            errors.append(
+                "dashboard must paint Jeff's dark theme by default — "
+                "lock data-theme=dark after the light-scheme palette, "
+                "keep color-scheme:dark, reject #000, and keep WCAG AA "
+                "on dark text, highlights, and work colors"
             )
         if not dashboard_first_paint_ready(dash):
             errors.append(
                 "dashboard first paint must show the honesty sentence and "
                 "Write / Produce / Listen before collapsed catalog counts"
+            )
+        if not dashboard_catalog_overview_starts_collapsed(dash):
+            errors.append(
+                "dashboard catalog overview must start collapsed with a visible "
+                "summary — do not auto-open subtitle and counts on first paint"
+            )
+        if not dashboard_start_copy_omits_resume_preview(dash):
+            errors.append(
+                "dashboard start-work copy must name Write / Produce / Listen "
+                "and Refresh, not preview Resume or Forget on a cold start"
             )
         if not dashboard_resume_leads_first_paint(dash):
             errors.append(
@@ -2081,6 +2259,11 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard Listen control must say Listen in Logic and "
                 "must not open audio"
+            )
+        if not dashboard_work_starts_name_the_action(dash):
+            errors.append(
+                "dashboard Write / Produce / Listen must name Start and "
+                "the highest-momentum match, not a song-count instruction"
             )
 
     audio_hits = extras.get("audio_files")

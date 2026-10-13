@@ -58,7 +58,7 @@ class DashboardRowA11yTests(unittest.TestCase):
         for row in self.rows:
             head = next(el for el in row.descendants() if "data-toggle-song" in el.attrs)
             self.assertFalse(any(el.interactive() for el in head.descendants()))
-            self.assertEqual(head.attrs["role"], "button")
+            self.assertEqual(head.attrs["role"], "option")
             self.assertEqual(head.attrs["tabindex"], "0")
             self.assertEqual(head.attrs["aria-expanded"], "false")
             detail = next(el for el in row.descendants() if el.has_class("detail"))
@@ -66,6 +66,38 @@ class DashboardRowA11yTests(unittest.TestCase):
             self.assertEqual(head.attrs["aria-controls"], detail.attrs["id"])
             siblings = [el for el in head.parent.children if "data-open-memos" in el.attrs]
             self.assertEqual(len(siblings), 1 if row.attrs["data-song-id"] == "TEST-1" else 0)
+
+    def test_search_options_do_not_wrap_interactive_controls(self):
+        tree = Tree(self.html.split("<script>")[0])
+        lists = [el for el in tree.root.descendants() if el.attrs.get("role") == "listbox"]
+        self.assertGreaterEqual(len(lists), 2)
+        self.assertTrue(any(el.attrs.get("id") == "list" for el in lists))
+        self.assertTrue(any(el.attrs.get("id") == "mlist" for el in lists))
+        for row in self.rows:
+            options = [el for el in row.descendants() if el.attrs.get("role") == "option"]
+            self.assertEqual(len(options), 1)
+            option = options[0]
+            self.assertTrue(option.has_class("rhead"))
+            self.assertFalse(any(el.interactive() for el in option.descendants()))
+            self.assertFalse(option.tag in {"button", "a"})
+            memos = [el for el in row.descendants() if "data-open-memos" in el.attrs]
+            for memo in memos:
+                cursor = memo.parent
+                nested = False
+                while cursor is not None:
+                    if cursor is option:
+                        nested = True
+                        break
+                    cursor = cursor.parent
+                self.assertFalse(nested, "memo controls must stay outside the listbox option")
+        self.assertNotIn('class="row" role="option"', self.html)
+        self.assertNotIn('class="mrow" role="option"', self.html)
+        self.assertIn('class="mopt" role="option"', self.html)
+        self.assertIn('class="mrow-actions"', self.html)
+        self.assertIn(
+            '</div><div class="mrow-actions">${m.s&&sname[m.s]?`<button type="button" class="song-link"',
+            self.html,
+        )
 
     def test_dom_tab_order_reaches_memos_then_copy_controls(self):
         controls = [el for el in self.rows[0].descendants() if el.interactive()]

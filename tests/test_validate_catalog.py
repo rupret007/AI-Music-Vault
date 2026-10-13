@@ -16,17 +16,34 @@ from catalog_surface import (  # noqa: E402
     catalog_surface_admits_not_official_set,
     catalog_surface_claims_official_set,
     dashboard_displays_owner_audio_index,
+    dashboard_escape_clears_memo_search,
+    dashboard_empty_memo_search_honest,
+    dashboard_empty_search_honest,
+    dashboard_memo_query_ranks_catalog_matches,
+    dashboard_memo_search_folds_punctuation,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_catalog_overview_starts_collapsed,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
+    dashboard_work_starts_name_the_action,
     dashboard_opens_owner_audio,
     dashboard_resume_leads_first_paint,
+    dashboard_start_copy_omits_resume_preview,
     dashboard_work_next_stays_in_view,
     dashboard_phone_and_a11y_ready,
     dashboard_resumes_song_work_privately,
     dashboard_sit_down_copy_actions_on_own_row,
+    dashboard_search_results_keyboard_ready,
+    dashboard_tablist_keyboard_ready,
+    duplicate_memo_files,
+    duplicate_memo_uids,
+    dashboard_skip_link_contrast_ready,
+    dashboard_search_mark_contrast_ready,
+    dashboard_dark_theme_default,
+    readme_click_test_does_not_claim_private,
+    readme_click_test_uses_browser_local_heading,
     readme_documents_session_click_test,
     catalog_workspace_uses_vault_framing,
     overlay_feed_scopes,
@@ -97,6 +114,10 @@ from validate_catalog import (  # noqa: E402
     apps_md_claims_suggestion_dump_is_official_set,
     catalog_ok_report,
     catalog_ok_report_leaks_published_ids,
+    feed_admits_public_catalog,
+    feed_claims_private_catalog,
+    public_doc_admits_public_repo,
+    public_doc_claims_private_catalog,
     duplicate_session_log_headings,
     latest_session_log_has_logic_export_handoff,
     latest_session_log_has_continuation,
@@ -169,6 +190,7 @@ def fixture():
 
 
 APPS_MD_HONEST = (
+    "This repository is public. This public catalog is not a remote fetch. "
     "Local python3 scripts/validate_catalog.py fails closed "
     "if this file drifts. Hosted catalog-validate may be a "
     "0-step empty-runner — not a catalog fail. "
@@ -269,6 +291,10 @@ def extras_ok(cat=None):
             'id="resumeWorkNext" Do this now id="copyResumeNext" Copy next step '
             'id="forgetWorkSession" Forget class="resume-actions" has-resume '
             'id="workStarts" id="catalogOverview" id="catalogOverviewSummary" '
+            'catalogOverviewSummary.hidden=false '
+            '<p class="work-now-copy">Pick Write, Produce, or Listen. '
+            "The Vault opens the highest-momentum match. "
+            "Refresh keeps that exact song in this browser.</p> "
             'id="statsFold" <details id="statsLine" id="stats" '
             'const COVER_COUNT const RECOVERED_COUNT no audio in this repo '
             'id="advancedFilters" '
@@ -291,7 +317,10 @@ def extras_ok(cat=None):
             '@media(max-width:390px){.sit-down-actions{display:flex;flex-wrap:wrap}} '
             'function updateSitDownCatalogNext( function sessionShowsSongNext( '
             'function copySitDownNextStep( '
-            'function workKindLabel( Listen in Logic '
+            'function workKindLabel( function workStartLabel( '
+            'Listen in Logic highest-momentum match '
+            'aria-label="${workStartLabel(kind,workCounts[kind])}" '
+            '${workCounts[kind]} in queue data-open-work="${kind}" '
             "scrollIntoView({block:'nearest'}) "
             '#workSession{position:sticky overflow-x:clip '
             'sessionEl.scrollIntoView({block:\'nearest\'}) '
@@ -311,7 +340,32 @@ def extras_ok(cat=None):
             'function normalizeSearch( function songAliases( '
             'function songSearchHit( function markNormalized( '
             'function focusFoundSong( function handleSongSearchKey( '
+            'function nextSearchCursor( function searchActivateId( '
+            'function searchActivateMemoSong( function paintSearchFocus( '
+            'function handleMemoSearchKey( '
+            'ArrowDown ArrowUp aria-activedescendant search-focus '
+            '.rhead.search-focus,.mopt.search-focus '
+            'outline:2px solid var(--pot) '
+            'if(!term&&!(cursor>=0))return false '
+            "paintSearchFocus(list,'.rhead',cur,'search-focus') "
+            'id="list" role="listbox" id="mlist" role="listbox" '
+            'class="rhead" role="option" class="mopt" role="option" '
+            'function handleVaultKey( activeMemoSong|| mq.value||\'\' '
             'closest name first titles, aliases, hooks memo lyric aka '
+            'function emptyMemosCopy( press Escape or Show all memos '
+            'try a different word '
+            'function memoIsCatalogMatched( function namedSongsForMemoQuery( '
+            'function memoResultsStatus( function memoIntakeLine( '
+            'Songs named catalog matches first id="memoWhisper" '
+            'Whisper mishears sung words class="intake-loc" '
+            '.intake-loc{white-space:nowrap} Voice&nbsp;Memo&nbsp;Intake '
+            "MEMO_VISIBLE_CAP=80 slice(0,MEMO_VISIBLE_CAP) hit.via==='name' "
+            'function memoMatches( function normalizedMatchRange( '
+            'function memoSnippet( normalizeSearch(term) normalizeSearch(field) '
+            'function markHay( markNormalized(text,term) try: its alright '
+            "!String(term||'').trim()&&!!songId "
+            'function songResultsStatus( function emptySongsCopy( '
+            'press Escape or Clear filters '
             'id="logicReady" Sort: Logic-ready Any Logic-ready '
             'function logicReadyNext( function logicReadyLabel( '
             'Copy Logic-ready next id="workSessionLogic" id="copyWorkLogic" '
@@ -325,7 +379,30 @@ def extras_ok(cat=None):
             'class="skip-link" href="#workNowTitle" <header> <main id="main" <footer '
             '<h2 id="workNowTitle" tabindex="-1"> class="row-heading" aria-controls="song-detail- '
             'role="tablist" aria-label="Sort songs" '
-            'aria-label="Search memo transcripts" @media(max-width:375px) '
+            'aria-orientation="horizontal" '
+            'id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0" '
+            'id="tabM" role="tab" aria-controls="paneM" aria-selected="false" tabindex="-1" '
+            'function nextVaultTab( function activateVaultTab( function handleVaultTabKey( '
+            'ArrowRight ArrowLeft tabS.tabIndex= tabM.tabIndex= '
+            'aria-label="Search memo transcripts" '
+            '<html lang="en" data-theme="dark">'
+            '<meta name="color-scheme" content="dark">'
+            '<style>:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;'
+            '--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;--write:#3993fd;'
+            '--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;'
+            '--good:#20b87e;color-scheme:dark}'
+            '@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;'
+            '--card2:#f3f3f0;--ink:#1a1a19;--ink2:#4a4a45;--ink3:#5c5b54;'
+            '--pot:#2a78d6;--write:#2466b8;--rdy:#b84414;--mom:#1baf7a;'
+            '--listen:#187a56;--line:#e3e2dc;--good:#187a56;color-scheme:light}}'
+            'html[data-theme="dark"]{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;'
+            '--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;'
+            '--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;'
+            '--line:#3a3a38;--good:#20b87e;color-scheme:dark}'
+            '.skip-link{background:var(--ink);color:var(--bg)}'
+            '.msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}'
+            '@media(max-width:640px){body{padding:12px;font-size:16px}'
+            '.rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}</style> '
             'min-height:44px overflow-x:hidden :focus-visible class="score-lab" '
             '--ink3:#a8a79c --ink3:#5c5b54 '
         ),
@@ -678,6 +755,40 @@ class ValidateCatalogTests(unittest.TestCase):
         errors = validate(fixture(), extra)
         self.assertTrue(any("vm_matches.json is missing" in e for e in errors), errors)
 
+    def test_duplicate_memo_uid_fails_closed(self):
+        extra = extras_ok()
+        extra["vm_matches"] = {"ST-0001": ["uid-a", "uid-a"]}
+        extra["app_api"] = extras_ok()["app_api"]
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("duplicate memo uids" in e for e in errors), errors)
+        self.assertEqual(duplicate_memo_uids(extra["vm_matches"]), ["uid-a"])
+
+    def test_duplicate_memo_uid_across_songs_fails_closed(self):
+        cat = fixture()
+        cat["voice_memo_pool"] = {"matched": 2, "matched_songs": 2}
+        extra = extras_ok(cat)
+        extra["vm_matches"] = {"ST-0001": ["uid-a"], "ST-0004": ["uid-a"]}
+        errors = validate(cat, extra)
+        self.assertTrue(any("duplicate memo uids" in e for e in errors), errors)
+        self.assertEqual(duplicate_memo_uids(extra["vm_matches"]), ["uid-a"])
+        self.assertEqual(
+            duplicate_memo_files([{"f": "Clip.m4a"}, {"f": "Clip.m4a"}, {"f": "Other.m4a"}]),
+            ["clip.m4a"],
+        )
+        self.assertEqual(duplicate_memo_files([{"f": "Clip.m4a"}, {"f": "Other.m4a"}]), [])
+
+    def test_import_not_idempotent_flag_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["import_is_idempotent"] = False
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("import_is_idempotent" in e for e in errors), errors)
+
+    def test_import_idempotent_missing_claim_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"].pop("import_is_idempotent", None)
+        errors = validate(fixture(), extra)
+        self.assertTrue(any("import_is_idempotent" in e for e in errors), errors)
+
     def test_old_schema_version_fails(self):
         extra = extras_ok()
         extra["app_api"]["schema_version"] = 2
@@ -802,6 +913,81 @@ class ValidateCatalogTests(unittest.TestCase):
         extra["app_api"]["storyboard"]["ops"]["remote_catalog_urls"] = True
         errors = validate(fixture(), extra)
         self.assertTrue(any("remote_catalog_urls" in e for e in errors), errors)
+
+    def test_claiming_private_catalog_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["default_import"] = (
+            extra["app_api"]["storyboard"]["default_import"].replace(
+                "This public catalog is not a remote fetch.",
+                "This private catalog is not a public fetch.",
+            )
+        )
+        extra["app_api"]["notes"]["storyboard_import"] = extra["app_api"]["notes"][
+            "storyboard_import"
+        ].replace(
+            "This public catalog is not a remote fetch.",
+            "This private catalog is not a public fetch.",
+        )
+        self.assertTrue(feed_claims_private_catalog(extra["app_api"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("must not claim this private catalog" in e for e in errors),
+            errors,
+        )
+
+    def test_missing_public_catalog_admission_fails_closed(self):
+        extra = extras_ok()
+        extra["app_api"]["storyboard"]["default_import"] = extra["app_api"][
+            "storyboard"
+        ]["default_import"].replace(
+            "This public catalog is not a remote fetch. ",
+            "",
+        )
+        extra["app_api"]["notes"]["storyboard_import"] = extra["app_api"]["notes"][
+            "storyboard_import"
+        ].replace(
+            "This public catalog is not a remote fetch. ",
+            "",
+        )
+        self.assertFalse(feed_admits_public_catalog(extra["app_api"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("must admit this public catalog is not a remote fetch" in e for e in errors),
+            errors,
+        )
+
+    def test_jeff_facing_docs_cannot_claim_private_catalog(self):
+        extra = extras_ok()
+        extra["readme"] = (
+            "This repository is public. Click Write, Produce, or Listen. "
+            "This private catalog is not a public fetch."
+        )
+        extra["apps_md"] = extra["readme"]
+        self.assertTrue(public_doc_claims_private_catalog(extra["readme"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("README.md still claims this private catalog" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            any("APPS.md still claims this private catalog" in e for e in errors),
+            errors,
+        )
+
+    def test_jeff_facing_docs_must_admit_public_repo(self):
+        extra = extras_ok()
+        extra["readme"] = "Click Write, Produce, or Listen. Resume Forget."
+        extra["apps_md"] = extra["readme"]
+        self.assertFalse(public_doc_admits_public_repo(extra["readme"]))
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("README.md must say this repository is public" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(
+            any("APPS.md must say this repository is public" in e for e in errors),
+            errors,
+        )
 
     def test_missing_band_operations_import_fails_closed(self):
         extra = extras_ok()
@@ -1243,6 +1429,105 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertFalse(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
 
+    def test_dashboard_without_memo_escape_search_clear_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "activeMemoSong||", ""
+        ).replace("mq.value||''", "") + "paneM&&!paneM.hidden&&activeMemoSong)"
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("Escape on Memo Search must clear a typed query" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_escape_clears_memo_search(extra["dashboard_html"]))
+
+    def test_dashboard_without_catalog_matched_memo_rank_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function namedSongsForMemoQuery(", ""
+        ).replace("catalog matches first", "").replace('id="memoWhisper"', "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("rank catalog-matched rows" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_memo_query_ranks_catalog_matches(extra["dashboard_html"])
+        )
+
+    def test_dashboard_without_empty_memo_search_honesty_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function emptyMemosCopy(", ""
+        ).replace(
+            "press Escape or Show all memos",
+            "clear the song filter or try a different word",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("zero memo hits must not tell the user" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_empty_memo_search_honest(extra["dashboard_html"]))
+
+    def test_dashboard_without_memo_search_punctuation_fold_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function normalizedMatchRange(", ""
+        ).replace("normalizeSearch(field)", "").replace("try: its alright", "")
+        extra["dashboard_html"] += (
+            "String(m.x||'').toLowerCase().includes(term) lx=m.x.toLowerCase()"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("Memo Search must fold apostrophes" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_memo_search_folds_punctuation(extra["dashboard_html"])
+        )
+
+    def test_dashboard_scoped_empty_folded_memo_query_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "!String(term||'').trim()&&!!songId", ""
+        ) + "if(!needle)return !!songId;"
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("Memo Search must fold apostrophes" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_memo_search_folds_punctuation(extra["dashboard_html"])
+        )
+
+    def test_dashboard_without_empty_search_honesty_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function songResultsStatus(", ""
+        ).replace("press Escape or Clear filters", "clear a filter?")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("zero song hits must not claim" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_empty_search_honest(extra["dashboard_html"]))
+
+    def test_dashboard_zero_hit_closest_name_claim_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function songResultsStatus(", ""
+        ) + (
+            "songResults.textContent=term "
+            "?`Showing ${rows.length} of ${DATA.length} songs · closest name first`"
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("zero song hits must not claim" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_empty_search_honest(extra["dashboard_html"]))
+
     def test_dashboard_without_logic_ready_fails_closed(self):
         extra = extras_ok()
         extra["dashboard_html"] = extra["dashboard_html"].replace(
@@ -1258,14 +1543,130 @@ class ValidateCatalogTests(unittest.TestCase):
     def test_dashboard_without_phone_a11y_fails_closed(self):
         extra = extras_ok()
         extra["dashboard_html"] = extra["dashboard_html"].replace(
-            "@media(max-width:375px)", ""
+            "@media(max-width:640px){body{padding:12px;font-size:16px}"
+            ".rhead{padding:10px}.stat{min-width:0;flex-basis:calc(50% - 10px)}}",
+            "",
         ).replace("min-height:44px", "")
         errors = validate(fixture(), extra)
         self.assertTrue(
-            any("usable at 375px" in e for e in errors),
+            any("usable at 390px" in e for e in errors),
             errors,
         )
         self.assertFalse(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_search_results_keyboard_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function handleMemoSearchKey(", ""
+        ).replace(".rhead.search-focus,.mopt.search-focus", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_empty_search_enter_focus_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "if(!term&&!(cursor>=0))return false", ""
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_memo_activate_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function searchActivateMemoSong(", ""
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_listbox_search_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="list" role="listbox"', 'id="list"'
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_option_wrapping_row_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"] + ' class="row" role="option"'
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("arrow keys, Enter, and" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_tablist_keyboard_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function handleVaultTabKey(", ""
+        ).replace("aria-orientation=\"horizontal\"", "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("APG arrow-key tablist" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
+
+    def test_dashboard_white_on_pot_skip_link_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            ".skip-link{background:var(--ink);color:var(--bg)}",
+            ".skip-link{background:var(--pot);color:#fff}",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("skip link must meet WCAG AA" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
+
+    def test_dashboard_white_on_pot_search_marks_fail_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}",
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff}",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("search-hit marks must meet WCAG AA" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
+
+    def test_dashboard_without_dark_theme_lock_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'data-theme="dark"', ""
+        ).replace(
+            'html[data-theme="dark"]{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;'
+            '--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;'
+            '--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;'
+            '--line:#3a3a38;--good:#20b87e;color-scheme:dark}',
+            "",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("paint Jeff's dark theme by default" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_dark_theme_default(extra["dashboard_html"]))
 
     def test_dashboard_without_first_paint_fails_closed(self):
         extra = extras_ok()
@@ -1278,6 +1679,68 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_first_paint_ready(extra["dashboard_html"]))
+
+    def test_dashboard_open_catalog_overview_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            'id="catalogOverview"',
+            'id="catalogOverview" open',
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("catalog overview must start collapsed" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_catalog_overview_starts_collapsed(extra["dashboard_html"])
+        )
+
+    def test_dashboard_hidden_catalog_overview_summary_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "catalogOverviewSummary.hidden=false",
+            "catalogOverview.open=!saved",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("catalog overview must start collapsed" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_catalog_overview_starts_collapsed(extra["dashboard_html"])
+        )
+
+    def test_dashboard_start_copy_resume_preview_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "Refresh keeps that exact song in this browser.",
+            "Resume names it. Forget clears the local record.",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("not preview Resume or Forget" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_start_copy_omits_resume_preview(extra["dashboard_html"])
+        )
+
+    def test_dashboard_start_copy_without_work_kinds_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            '<p class="work-now-copy">Pick Write, Produce, or Listen. '
+            "The Vault opens the highest-momentum match. "
+            "Refresh keeps that exact song in this browser.</p>",
+            "",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("not preview Resume or Forget" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_start_copy_omits_resume_preview(extra["dashboard_html"])
+        )
 
     def test_dashboard_without_resume_lead_fails_closed(self):
         extra = extras_ok()
@@ -1316,6 +1779,21 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_listen_is_not_playback(extra["dashboard_html"]))
+
+    def test_dashboard_work_starts_song_count_label_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function workStartLabel(", ""
+        ).replace(
+            "${workCounts[kind]} in queue",
+            "${workCounts[kind]} songs",
+        )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("highest-momentum match, not a song-count instruction" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(dashboard_work_starts_name_the_action(extra["dashboard_html"]))
 
     def test_dashboard_owner_audio_index_fails_closed(self):
         extra = extras_ok()
@@ -2415,10 +2893,12 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         errors = validate(fixture(), extras)
         self.assertTrue(
-            any("private session click-test" in e for e in errors),
+            any("browser-local session click-test" in e for e in errors),
             errors,
         )
         self.assertFalse(readme_documents_session_click_test(extras["readme"]))
+        self.assertTrue(readme_click_test_does_not_claim_private(extras["readme"]))
+        self.assertTrue(readme_click_test_uses_browser_local_heading(extras["readme"]))
 
     def test_readme_click_test_requires_session_log_handoff_and_no_ableton_first(self):
         missing_handoff = (
@@ -2444,9 +2924,46 @@ class ValidateCatalogTests(unittest.TestCase):
         )
         self.assertFalse(readme_documents_session_click_test(missing_logic_ready))
 
+    def test_readme_click_test_private_heading_fails(self):
+        extras = extras_ok()
+        extras["readme"] = (
+            "## Click-test the private session\n"
+            "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
+            "Copy next step. Do this now. Stores only a work kind and catalog ID. "
+            "Sit-down handoff goes in Session Log. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "Logic-ready next. Copy Logic-ready next.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("still claims a private session" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(readme_click_test_does_not_claim_private(extras["readme"]))
+        self.assertFalse(readme_click_test_uses_browser_local_heading(extras["readme"]))
+
+    def test_readme_click_test_heading_requires_browser_local(self):
+        extras = extras_ok()
+        extras["readme"] = (
+            "## Click-test the session\n"
+            "Click Write, Produce, or Listen. Refresh. Resume. Forget. "
+            "Copy next step. Do this now. Stores only a work kind and catalog ID. "
+            "Sit-down handoff goes in Session Log. "
+            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
+            "Logic-ready next. Copy Logic-ready next.\n"
+        )
+        errors = validate(fixture(), extras)
+        self.assertTrue(
+            any("must say browser-local session" in e for e in errors),
+            errors,
+        )
+        self.assertTrue(readme_click_test_does_not_claim_private(extras["readme"]))
+        self.assertFalse(readme_click_test_uses_browser_local_heading(extras["readme"]))
+
     def test_public_docs_roles_counts_only_pass(self):
         extras = extras_ok()
         extras["readme"] = (
+            "This repository is public. This public catalog is not a remote fetch. "
             "Vault is the catalog brain. 150 entities. "
             "Flagship, Quick win, Experimental, On deck, The Opus. "
             "128 YES / 20 NO / 2 NEEDS-CONSENT. "
@@ -2459,6 +2976,7 @@ class ValidateCatalogTests(unittest.TestCase):
             "Logic-ready next. Copy Logic-ready next.\n"
         )
         extras["apps_md"] = (
+            "This repository is public. This public catalog is not a remote fetch. "
             "Local python3 scripts/validate_catalog.py fails closed "
             "if this file drifts. Hosted catalog-validate may be a "
             "0-step empty-runner — not a catalog fail. "
@@ -2660,6 +3178,29 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(api["storyboard"]["ops"]["show_night_guest_sets_stay_opt_in"])
         self.assertTrue(api["storyboard"]["local_json_only"])
         self.assertIs(api["storyboard"]["remote_catalog_urls"], False)
+        self.assertFalse(feed_claims_private_catalog(api))
+        self.assertTrue(feed_admits_public_catalog(api))
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["storyboard"]["default_import"],
+        )
+        self.assertNotIn("This private catalog", api["storyboard"]["default_import"])
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["notes"]["storyboard_import"],
+        )
+        self.assertTrue(public_doc_admits_public_repo(extra["readme"]))
+        self.assertTrue(public_doc_admits_public_repo(extra["apps_md"]))
+        self.assertFalse(public_doc_claims_private_catalog(extra["readme"]))
+        self.assertFalse(public_doc_claims_private_catalog(extra["apps_md"]))
+        self.assertIn(
+            "this public catalog is not a remote fetch",
+            " ".join(extra["readme"].lower().split()),
+        )
+        self.assertIn(
+            "this public catalog is not a remote fetch",
+            " ".join(extra["apps_md"].lower().split()),
+        )
         self.assertEqual(
             api["storyboard"]["band_operations_import"], BAND_OPERATIONS_IMPORT
         )
@@ -2861,6 +3402,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertFalse(
             apps_md_claims_catalog_is_official_set(extra["apps_md"])
         )
+        self.assertTrue(extra["app_api"]["storyboard"]["import_is_idempotent"])
         self.assertTrue(extra["app_api"]["storyboard"]["catalog_rows_are_not_the_official_set"])
         self.assertTrue(
             extra["app_api"]["storyboard"]["vault_default_live_is_not_the_official_set"]
@@ -2887,13 +3429,30 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_exposes_song_work(extra["dashboard_html"]))
         self.assertTrue(dashboard_resumes_song_work_privately(extra["dashboard_html"]))
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
+        self.assertTrue(dashboard_escape_clears_memo_search(extra["dashboard_html"]))
+        self.assertTrue(dashboard_empty_memo_search_honest(extra["dashboard_html"]))
+        self.assertTrue(dashboard_memo_query_ranks_catalog_matches(extra["dashboard_html"]))
+        self.assertTrue(dashboard_memo_search_folds_punctuation(extra["dashboard_html"]))
+        self.assertTrue(dashboard_empty_search_honest(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_search_results_keyboard_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_tablist_keyboard_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_skip_link_contrast_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_search_mark_contrast_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_dark_theme_default(extra["dashboard_html"]))
         self.assertTrue(dashboard_first_paint_ready(extra["dashboard_html"]))
+        self.assertTrue(dashboard_catalog_overview_starts_collapsed(extra["dashboard_html"]))
+        self.assertTrue(dashboard_start_copy_omits_resume_preview(extra["dashboard_html"]))
         self.assertTrue(dashboard_resume_leads_first_paint(extra["dashboard_html"]))
         self.assertTrue(dashboard_work_next_stays_in_view(extra["dashboard_html"]))
         self.assertTrue(dashboard_listen_is_not_playback(extra["dashboard_html"]))
+        self.assertTrue(dashboard_work_starts_name_the_action(extra["dashboard_html"]))
         self.assertTrue(readme_documents_session_click_test(extra["readme"]))
+        self.assertTrue(readme_click_test_does_not_claim_private(extra["readme"]))
+        self.assertTrue(readme_click_test_uses_browser_local_heading(extra["readme"]))
+        self.assertIn("## Click-test the browser-local session", extra["readme"])
+        self.assertNotIn("## Click-test the private session", extra["readme"])
         self.assertNotIn("in the live set", extra["readme"])
         self.assertTrue(extra["app_api"]["storyboard"]["show_night_binds_official_set_dump"])
         self.assertFalse(catalog_ok_report_leaks_published_ids())

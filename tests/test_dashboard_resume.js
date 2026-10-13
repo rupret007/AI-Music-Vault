@@ -23,7 +23,11 @@ assert.match(html, /WAVs\/AIFF\/MIDI preference/);
 assert.match(html, /this page does not open audio/i);
 const overview = html.match(/<details[^>]*id="catalogOverview"[^>]*>([\s\S]*?)<\/details>/);
 assert.ok(overview, "Subtitle and counts must remain available in native disclosure");
+assert.ok(!/<details[^>]*id="catalogOverview"[^>]*\bopen\b/.test(html),
+  "Catalog details must start collapsed");
 assert.match(overview[1], /<summary[^>]*id="catalogOverviewSummary"/);
+assert.ok(!/<summary[^>]*id="catalogOverviewSummary"[^>]*\bhidden\b/.test(overview[1]),
+  "Catalog summary must stay visible so counts stay discoverable");
 assert.match(overview[1], /class="sub"/);
 assert.match(overview[1], /id="stats"/);
 assert.match(overview[1], /no audio in this repo/);
@@ -60,7 +64,7 @@ const context = vm.createContext({
   resumeWork: element(), resumeWorkHint: element(), resumeWorkText: element(),
   resumeWorkButton: element(), resumeWorkNext: element(), copyResumeNext: element(),
   resumeWorkStatus: element(),
-  catalogOverview: { open: true }, catalogOverviewSummary: { hidden: true },
+  catalogOverview: { open: false }, catalogOverviewSummary: { hidden: false },
   workStarts: { querySelector: () => ({ focus() { focused = true; } }) },
 });
 for (const name of ["songWorkKind", "workKindLabel", "parseStoredWorkSession", "readStoredWorkSession", "storeWorkSession",
@@ -71,8 +75,8 @@ for (const name of ["songWorkKind", "workKindLabel", "parseStoredWorkSession", "
 }
 context.updateResumeWork();
 assert.equal(context.resumeWork.hidden, true);
-assert.equal(context.catalogOverview.open, true);
-assert.equal(context.catalogOverviewSummary.hidden, true);
+assert.equal(context.catalogOverview.open, false);
+assert.equal(context.catalogOverviewSummary.hidden, false);
 assert.equal(context.storeWorkSession(storage, "write", "TEST-1", context.sname, context.DATA), true);
 assert.deepEqual(Object.keys(JSON.parse(memory.get("resume-test"))).sort(), ["id", "kind", "v"]);
 context.updateResumeWork();
@@ -107,21 +111,23 @@ assert.match(extractFunction("forgetLastWorkSession"), /requestAnimationFrame/);
 assert.equal(context.forgetLastWorkSession(), true);
 assert.equal(memory.size, 0);
 assert.equal(context.resumeWork.hidden, true);
-assert.equal(context.catalogOverview.open, true);
-assert.equal(context.catalogOverviewSummary.hidden, true);
+assert.equal(context.catalogOverview.open, true, "Forget must not reset an explicit catalog disclosure");
+assert.equal(context.catalogOverviewSummary.hidden, false);
 assert.equal(focused, true, "Forget must move keyboard focus to a visible start choice");
 assert.equal(context.resumeWorkStatus.textContent, "Forgot this browser record.");
 context.DATA[0].nx = "Confirm the chorus lines";
+context.catalogOverview.open = false;
 for (const raw of ['{"v":1,"kind":"write","id":"missing"}',
   '{"v":1,"kind":"write","id":"TEST-1","title":"extra"}', "bad JSON"]) {
   memory.set("resume-test", raw);
   context.updateResumeWork();
   assert.equal(context.resumeWork.hidden, true);
-  assert.equal(context.catalogOverview.open, true);
+  assert.equal(context.catalogOverview.open, false, "Invalid session must not auto-open catalog details");
+  assert.equal(context.catalogOverviewSummary.hidden, false);
   assert.equal(memory.size, 0);
 }
 context.window.localStorage = { getItem() { throw new Error("blocked"); } };
 context.updateResumeWork();
 assert.equal(context.resumeWork.hidden, true);
-assert.equal(context.catalogOverview.open, true);
+assert.equal(context.catalogOverview.open, false);
 console.log("dashboard resume first-screen checks OK");

@@ -139,6 +139,35 @@ def build_memo_search_index(transcripts, matches_by_song) -> tuple[list[dict], d
     }
 
 
+def duplicate_memo_uids(vm_matches) -> list[str]:
+    """Memo UIDs listed more than once in vm_matches (same song or across songs)."""
+    counts: dict[str, int] = {}
+    if not isinstance(vm_matches, dict):
+        return []
+    for uids in vm_matches.values():
+        if not isinstance(uids, list):
+            continue
+        for uid in uids:
+            key = str(uid or "").strip()
+            if not key:
+                continue
+            counts[key] = counts.get(key, 0) + 1
+    return sorted(uid for uid, n in counts.items() if n > 1)
+
+
+def duplicate_memo_files(index_rows) -> list[str]:
+    """Search-index filenames that appear more than once."""
+    counts: dict[str, int] = {}
+    for row in index_rows or []:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("f") or row.get("file") or "").strip().lower()
+        if not name:
+            continue
+        counts[name] = counts.get(name, 0) + 1
+    return sorted(name for name, n in counts.items() if n > 1)
+
+
 def feed_scope_by_id(app_api) -> dict[str, str]:
     """Map export song id → import_scope. Missing feed stays empty."""
     out: dict[str, str] = {}
@@ -1271,6 +1300,117 @@ def dashboard_finds_remembered_song_names(html: str) -> bool:
     return all(marker in chrome for marker in required)
 
 
+_MEMO_ESCAPE_SCOPED_ONLY_RE = re.compile(
+    r"paneM&&!paneM\.hidden&&activeMemoSong\)"
+)
+
+
+def dashboard_escape_clears_memo_search(html: str) -> bool:
+    """Escape on Memo Search must clear a typed query, not only a song scope."""
+    chrome = dashboard_markup_chrome(html)
+    collapsed = re.sub(r"\s+", "", chrome)
+    if _MEMO_ESCAPE_SCOPED_ONLY_RE.search(collapsed):
+        return False
+    return (
+        "function handleVaultKey(" in chrome
+        and "activeMemoSong||" in chrome
+        and "mq.value||''" in chrome
+    )
+
+
+def dashboard_empty_memo_search_honest(html: str) -> bool:
+    """Zero memo hits must not tell the user to clear a song filter that is not set."""
+    chrome = dashboard_markup_chrome(html)
+    if "clear the song filter or try a different word" in chrome:
+        return False
+    required = (
+        "function emptyMemosCopy(",
+        "press Escape or Show all memos",
+        "try a different word",
+    )
+    return all(marker in chrome for marker in required)
+
+
+def dashboard_memo_query_ranks_catalog_matches(html: str) -> bool:
+    """Memo queries rank catalog matches (or a Songs named jump) above unmatched hits."""
+    chrome = dashboard_markup_chrome(html)
+    if chrome.count("Whisper mishears sung words") != 1:
+        return False
+    required = (
+        "function memoIsCatalogMatched(",
+        "function namedSongsForMemoQuery(",
+        "function memoResultsStatus(",
+        "function memoIntakeLine(",
+        "Songs named",
+        "catalog matches first",
+        'id="memoWhisper"',
+        "Whisper mishears sung words",
+        'class="intake-loc"',
+        ".intake-loc{white-space:nowrap}",
+        "Voice&nbsp;Memo&nbsp;Intake",
+        "MEMO_VISIBLE_CAP=80",
+        "slice(0,MEMO_VISIBLE_CAP)",
+        "hit.via==='name'",
+    )
+    return all(marker in chrome for marker in required)
+
+
+_MEMO_RAW_INCLUDES_RE = re.compile(
+    r"String\(m\.x\|\|''\)\.toLowerCase\(\)\.includes\(term\)"
+)
+_MEMO_RAW_SNIPPET_RE = re.compile(r"lx\s*=\s*m\.x\.toLowerCase\(\)")
+_MEMO_EMPTY_FOLD_SONG_TRUE_RE = re.compile(r"if\(!needle\)return !!songId;")
+
+
+def dashboard_memo_search_folds_punctuation(html: str) -> bool:
+    """Memo Search must fold apostrophes and punctuation the same way Songs does.
+
+    Raw toLowerCase includes miss curly-apostrophe titles such as It's Alright
+    when Jeff types the README-taught query without apostrophes. An empty
+    folded query in song scope must fail closed — !!songId alone treats !!!
+    as show-every-memo.
+    """
+    chrome = dashboard_markup_chrome(html)
+    if _MEMO_RAW_INCLUDES_RE.search(chrome):
+        return False
+    if _MEMO_RAW_SNIPPET_RE.search(chrome):
+        return False
+    if _MEMO_EMPTY_FOLD_SONG_TRUE_RE.search(chrome):
+        return False
+    required = (
+        "function memoMatches(",
+        "function normalizeSearch(",
+        "function normalizedMatchRange(",
+        "function memoSnippet(",
+        "normalizeSearch(term)",
+        "normalizeSearch(field)",
+        "function markHay(",
+        "markNormalized(text,term)",
+        "try: its alright",
+        "!String(term||'').trim()&&!!songId",
+    )
+    return all(marker in chrome for marker in required)
+
+
+_DISHONEST_TERM_STATUS_RE = re.compile(r"textContent\s*=\s*term\s*\?")
+
+
+def dashboard_empty_search_honest(html: str) -> bool:
+    """Zero song hits must not claim closest-name ranking or a filter that is not set."""
+    chrome = dashboard_markup_chrome(html)
+    if "clear a filter?" in chrome:
+        return False
+    if _DISHONEST_TERM_STATUS_RE.search(chrome):
+        return False
+    required = (
+        "function songResultsStatus(",
+        "function emptySongsCopy(",
+        "press Escape or Clear filters",
+        "closest name first",
+    )
+    return all(marker in chrome for marker in required)
+
+
 def dashboard_exposes_logic_ready(html: str) -> bool:
     """First useful surface must name a sanitized Logic-ready next action."""
     chrome = dashboard_markup_chrome(html)
@@ -1301,9 +1441,120 @@ def dashboard_exposes_logic_ready(html: str) -> bool:
     return not logic_ready_next_leaks_private_locators()
 
 
-def dashboard_phone_and_a11y_ready(html: str) -> bool:
-    """Phone sit-down at 375px plus landmarks, names, contrast, and focus."""
+# 390×844 (iPhone CSS width) must hit phone padding / 2-up stats. 375px-only misses it.
+PHONE_LAYOUT_MAX_WIDTH_PX = 640
+PHONE_LAYOUT_MIN_COVER_PX = 400
+PHONE_BODY_PADDING_VALUE = "12px"
+PHONE_STAT_FLEX_BASIS = "calc(50% - 10px)"
+PHONE_BODY_PADDING_CSS = f"body{{padding:{PHONE_BODY_PADDING_VALUE}"
+PHONE_TWO_UP_STATS_CSS = f".stat{{min-width:0;flex-basis:{PHONE_STAT_FLEX_BASIS}}}"
+PHONE_LAYOUT_MEDIA = f"@media(max-width:{PHONE_LAYOUT_MAX_WIDTH_PX}px)"
+_PHONE_MAX_WIDTH_MQ_RE = re.compile(r"@media\(max-width:(\d+)px\)\{")
+_STYLE_BLOCK_RE = re.compile(r"<style>(.*?)</style>", re.I | re.S)
+_WIDTH_MEDIA_RE = re.compile(
+    r"@media\s*\(\s*(min|max)-width\s*:\s*(\d+)px\s*\)",
+    re.I,
+)
+
+
+def _css_rule_block_at(text: str, start: int) -> str:
+    """Return the CSS inside a `{...}` block that starts at `start` (after `{`)."""
+    depth = 1
+    index = start
+    while index < len(text) and depth:
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        index += 1
+    if depth != 0:
+        return ""
+    return text[start : index - 1]
+
+
+def _css_declarations(block: str) -> dict[str, str]:
+    return {
+        key.strip(): value.strip()
+        for key, value in re.findall(r"([\w-]+)\s*:\s*([^;{}]+)", block)
+    }
+
+
+def _css_sources_for_layout(html: str) -> list[str]:
+    """Prefer `<style>` text so script braces cannot masquerade as CSS."""
     chrome = dashboard_markup_chrome(html)
+    blocks = [block.strip() for block in _STYLE_BLOCK_RE.findall(chrome) if block.strip()]
+    return blocks or [chrome]
+
+
+def _apply_computed_home_layout(text: str, width_px: int, layout: dict[str, str | None]) -> None:
+    """Walk rules in source order and keep the last matching body/.stat values."""
+    index = 0
+    while True:
+        brace = text.find("{", index)
+        if brace < 0:
+            return
+        prefix_at = brace
+        while prefix_at > 0 and text[prefix_at - 1] not in "{}":
+            prefix_at -= 1
+        prefix = text[prefix_at:brace].strip()
+        block = _css_rule_block_at(text, brace + 1)
+        next_index = brace + 1 + len(block) + 1
+        if prefix.startswith("@media"):
+            match = _WIDTH_MEDIA_RE.fullmatch(prefix)
+            applies = False
+            if match:
+                kind, bound = match.group(1).lower(), int(match.group(2))
+                applies = (
+                    (kind == "max" and width_px <= bound)
+                    or (kind == "min" and width_px >= bound)
+                )
+            if applies:
+                _apply_computed_home_layout(block, width_px, layout)
+        elif prefix == "body":
+            padding = _css_declarations(block).get("padding")
+            if padding is not None:
+                layout["padding"] = padding
+        elif prefix == ".stat":
+            flex_basis = _css_declarations(block).get("flex-basis")
+            if flex_basis is not None:
+                layout["stat_flex_basis"] = flex_basis
+        index = next_index
+
+
+def dashboard_computed_home_layout(html: str, width_px: int = 390) -> dict[str, str | None]:
+    """Winning `body` padding and `.stat` flex-basis after matching width queries.
+
+    Later declarations win, so a 640px phone block does not count if an unscoped
+    `body{padding:20px}` follows it. A 375px-only query never applies at 390.
+    """
+    layout: dict[str, str | None] = {"padding": None, "stat_flex_basis": None}
+    for source in _css_sources_for_layout(html):
+        _apply_computed_home_layout(source, width_px, layout)
+    return layout
+
+
+def dashboard_phone_layout_covers(html: str, width_px: int = 390) -> bool:
+    """True when tighter padding and 2-up stats apply at `width_px`.
+
+    A 375px-only query never covers 390. The live breakpoint is 640px
+    (must be at least 400px) so a 390×844 home view gets the phone tweaks.
+    """
+    chrome = dashboard_markup_chrome(html)
+    for match in _PHONE_MAX_WIDTH_MQ_RE.finditer(chrome):
+        max_width = int(match.group(1))
+        if max_width < PHONE_LAYOUT_MIN_COVER_PX or width_px > max_width:
+            continue
+        block = _css_rule_block_at(chrome, match.end())
+        if PHONE_BODY_PADDING_CSS in block and PHONE_TWO_UP_STATS_CSS in block:
+            return True
+    return False
+
+
+def dashboard_phone_and_a11y_ready(html: str) -> bool:
+    """Phone sit-down at 640px (covers 390px) plus landmarks, names, contrast, and focus."""
+    chrome = dashboard_markup_chrome(html)
+    phone = dashboard_computed_home_layout(chrome, 390)
     required = (
         'class="skip-link"',
         'href="#workNowTitle"',
@@ -1314,7 +1565,9 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
         'role="tablist"',
         'aria-label="Sort songs"',
         'aria-label="Search memo transcripts"',
-        "@media(max-width:375px)",
+        PHONE_LAYOUT_MEDIA,
+        PHONE_BODY_PADDING_CSS,
+        PHONE_TWO_UP_STATS_CSS,
         "min-height:44px",
         "overflow-x:hidden",
         ":focus-visible",
@@ -1327,7 +1580,59 @@ def dashboard_phone_and_a11y_ready(html: str) -> bool:
     return (
         all(marker in chrome for marker in required)
         and 'role="columnheader"' not in chrome
+        and dashboard_phone_layout_covers(chrome, 390)
+        and phone["padding"] == PHONE_BODY_PADDING_VALUE
+        and phone["stat_flex_basis"] == PHONE_STAT_FLEX_BASIS
     )
+
+
+def dashboard_search_results_keyboard_ready(html: str) -> bool:
+    """Songs/Memo search results use arrow keys, Enter, and a visible dark-theme focus."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        "function nextSearchCursor(",
+        "function searchActivateId(",
+        "function searchActivateMemoSong(",
+        "function paintSearchFocus(",
+        "function handleSongSearchKey(",
+        "function handleMemoSearchKey(",
+        "ArrowDown",
+        "ArrowUp",
+        "aria-activedescendant",
+        "search-focus",
+        ".rhead.search-focus,.mopt.search-focus",
+        "outline:2px solid var(--pot)",
+        "if(!term&&!(cursor>=0))return false",
+        "paintSearchFocus(list,'.rhead',cur,'search-focus')",
+        'id="list" role="listbox"',
+        'id="mlist" role="listbox"',
+        'class="rhead" role="option"',
+        'class="mopt" role="option"',
+    )
+    return (
+        all(marker in chrome for marker in required)
+        and 'class="row" role="option"' not in chrome
+        and 'class="mrow" role="option"' not in chrome
+    )
+
+
+def dashboard_tablist_keyboard_ready(html: str) -> bool:
+    """Songs/Memo tabs follow APG: roving tabindex plus arrow/Home/End keys."""
+    chrome = dashboard_markup_chrome(html)
+    required = (
+        'role="tablist"',
+        'aria-orientation="horizontal"',
+        'id="tabS" role="tab" aria-controls="paneS" aria-selected="true" tabindex="0"',
+        'id="tabM" role="tab" aria-controls="paneM" aria-selected="false" tabindex="-1"',
+        "function nextVaultTab(",
+        "function activateVaultTab(",
+        "function handleVaultTabKey(",
+        "ArrowRight",
+        "ArrowLeft",
+        "tabS.tabIndex=",
+        "tabM.tabIndex=",
+    )
+    return all(marker in chrome for marker in required)
 
 
 def _html_id_at(html: str, value: str) -> int:
@@ -1372,6 +1677,51 @@ def dashboard_first_paint_ready(html: str) -> bool:
     if resume_at >= 0 and resume_at > work_at:
         return False
     return work_at < fold_at < stats_at
+
+
+def dashboard_catalog_overview_starts_collapsed(html: str) -> bool:
+    """First paint must not auto-open catalog subtitle/counts; summary stays visible."""
+    chrome = dashboard_markup_chrome(html)
+    if 'id="catalogOverview"' not in chrome:
+        return False
+    if 'id="catalogOverviewSummary"' not in chrome:
+        return False
+    overview = re.search(r"<details[^>]*id=\"catalogOverview\"[^>]*>", chrome)
+    if overview and re.search(r"\bopen\b", overview.group(0)):
+        return False
+    if "id=\"catalogOverview\" open" in chrome or "open id=\"catalogOverview\"" in chrome:
+        return False
+    summary = re.search(r"<summary[^>]*id=\"catalogOverviewSummary\"[^>]*>", chrome)
+    if summary and re.search(r"\bhidden\b", summary.group(0)):
+        return False
+    if (
+        "id=\"catalogOverviewSummary\" hidden" in chrome
+        or "hidden id=\"catalogOverviewSummary\"" in chrome
+    ):
+        return False
+    if "catalogOverviewSummary.hidden=false" not in chrome:
+        return False
+    if "catalogOverview.open=!saved" in chrome:
+        return False
+    return True
+
+
+def dashboard_start_copy_omits_resume_preview(html: str) -> bool:
+    """Cold-start copy names Write/Produce/Listen and Refresh, not Resume/Forget."""
+    chrome = dashboard_markup_chrome(html)
+    match = re.search(r'<p class="work-now-copy">(.*?)</p>', chrome, re.S)
+    if not match:
+        return False
+    copy = match.group(1).lower()
+    if "resume" in copy or "forget" in copy:
+        return False
+    return (
+        "write" in copy
+        and "produce" in copy
+        and "listen" in copy
+        and "highest-momentum" in copy
+        and "refresh" in copy
+    )
 
 
 def dashboard_resume_leads_first_paint(html: str) -> bool:
@@ -1432,6 +1782,27 @@ def dashboard_listen_is_not_playback(html: str) -> bool:
     )
 
 
+def dashboard_work_starts_name_the_action(html: str) -> bool:
+    """Write / Produce / Listen must start one highest-momentum match.
+
+    Visible counts are queue size, not an instruction to write N songs.
+    The accessible name must say Start and highest-momentum match.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if "${workCounts[kind]} songs" in chrome:
+        return False
+    required = (
+        "function workStartLabel(",
+        "function workKindLabel(",
+        "highest-momentum match",
+        "in queue",
+        "${workCounts[kind]} in queue",
+        'aria-label="${workStartLabel(kind,workCounts[kind])}"',
+        'data-open-work="${kind}"',
+    )
+    return all(marker in chrome for marker in required)
+
+
 # WCAG 2 relative-luminance threshold for sRGB (not the older 0.03928 form).
 _SRGB_LINEAR_CUTOFF = 0.04045
 WCAG_AA_NORMAL_TEXT = 4.5
@@ -1448,8 +1819,31 @@ _LIGHT_SCHEME_ROOT_RE = re.compile(
 _PRODUCE_PILL_COLOR_RE = re.compile(
     r"\.pill\.wk-produce\s*\{\s*color\s*:\s*var\(\s*--rdy\s*\)",
 )
+_LISTEN_PILL_COLOR_RE = re.compile(
+    r"\.pill\.wk-listen\s*\{\s*color\s*:\s*var\(\s*--listen\s*\)",
+)
+_QUICK_WIN_COLOR_RE = re.compile(
+    r"\.tag\.q\s*\{\s*color\s*:\s*var\(\s*--good\s*\)",
+)
+_WRITE_PILL_COLOR_RE = re.compile(
+    r"\.pill\.wk-write\s*\{\s*color\s*:\s*var\(\s*--write\s*\)",
+)
+_LINK_WRITE_COLOR_RE = re.compile(
+    r"\.memo-link,\s*\.song-link\s*\{[^}]*color\s*:\s*var\(\s*--write\s*\)",
+)
+_FLAGSHIP_WRITE_COLOR_RE = re.compile(
+    r"\.tag\.f\s*\{\s*color\s*:\s*var\(\s*--write\s*\)",
+)
 _BAR_NUMBER_INK_RE = re.compile(
     r"\.bar-n\s*\{\s*color\s*:\s*var\(\s*--ink\s*\)",
+)
+_OLD_LISTEN_ON_MOM_RE = re.compile(
+    r"\.pill\.wk-listen\s*\{\s*color\s*:\s*var\(\s*--mom\s*\)"
+)
+
+
+_OLD_WRITE_ON_POT_RE = re.compile(
+    r"(?:\.pill\.wk-write|\.memo-link,\s*\.song-link|\.tag\.f)\s*\{[^}]*color\s*:\s*var\(\s*--pot\s*\)"
 )
 
 
@@ -1496,6 +1890,179 @@ def dashboard_theme_tokens(html: str) -> tuple[dict[str, str], dict[str, str]]:
     return dark, light
 
 
+_DARK_HTML_THEME_RE = re.compile(
+    r"<html\b[^>]*\bdata-theme\s*=\s*(['\"])dark\1",
+    re.IGNORECASE,
+)
+_COLOR_SCHEME_META_RE = re.compile(
+    r"<meta\b[^>]*\bname\s*=\s*['\"]color-scheme['\"][^>]*\bcontent\s*=\s*['\"]dark['\"]"
+    r"|<meta\b[^>]*\bcontent\s*=\s*['\"]dark['\"][^>]*\bname\s*=\s*['\"]color-scheme['\"]",
+    re.IGNORECASE,
+)
+_DARK_LOCK_RE = re.compile(
+    r"html\[data-theme=(['\"])dark\1\]\s*\{([^}]+)\}",
+    re.IGNORECASE,
+)
+_COLOR_SCHEME_DARK_DECL_RE = re.compile(r"color-scheme\s*:\s*dark\b", re.IGNORECASE)
+_DARK_BG_MAX_LUMINANCE = 0.05
+_DARK_INK_MIN_LUMINANCE = 0.80
+_HARSH_BLACK = "#000000"
+_REQUIRED_DARK_LOCK_TOKENS = (
+    "bg",
+    "card",
+    "card2",
+    "ink",
+    "ink2",
+    "ink3",
+    "line",
+    "pot",
+    "write",
+    "rdy",
+    "mom",
+    "listen",
+    "good",
+)
+
+
+def dashboard_dark_theme_default(html: str) -> bool:
+    """Jeff's dashboard paints dark by default; OS light must not win.
+
+    :root stays the dark token source. The light-scheme palette remains for
+    AA gates. html[data-theme=dark] after that query re-asserts the same
+    tokens so a light OS cannot flip the page. #000 is rejected as harsh.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _DARK_HTML_THEME_RE.search(chrome):
+        return False
+    if not _COLOR_SCHEME_META_RE.search(chrome):
+        return False
+    if not _COLOR_SCHEME_DARK_DECL_RE.search(chrome):
+        return False
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    dark, _light = dashboard_theme_tokens(chrome)
+    for name in _REQUIRED_DARK_LOCK_TOKENS:
+        if not dark.get(name):
+            return False
+    if dark["bg"] == _HARSH_BLACK:
+        return False
+    try:
+        if hex_srgb_luminance(dark["bg"]) > _DARK_BG_MAX_LUMINANCE:
+            return False
+        if hex_srgb_luminance(dark["ink"]) < _DARK_INK_MIN_LUMINANCE:
+            return False
+    except ValueError:
+        return False
+    lock = _DARK_LOCK_RE.search(chrome)
+    if not lock:
+        return False
+    locked = _css_root_tokens(lock.group(2))
+    for name in _REQUIRED_DARK_LOCK_TOKENS:
+        if locked.get(name) != dark.get(name):
+            return False
+    collapsed_lock = re.sub(r"\s+", "", lock.group(2).lower())
+    if "color-scheme:dark" not in collapsed_lock:
+        return False
+    light_at = chrome.lower().find("@media (prefers-color-scheme: light)")
+    lock_at = chrome.lower().find("html[data-theme=")
+    if light_at < 0 or lock_at < 0 or lock_at < light_at:
+        return False
+    for fg_name, bg_name in (
+        ("ink", "bg"),
+        ("ink", "card"),
+        ("ink", "card2"),
+        ("ink2", "bg"),
+        ("ink2", "card"),
+        ("ink2", "card2"),
+        ("ink3", "bg"),
+        ("ink3", "card"),
+        ("ink3", "card2"),
+        ("write", "bg"),
+        ("write", "card"),
+        ("write", "card2"),
+        ("rdy", "bg"),
+        ("rdy", "card"),
+        ("listen", "bg"),
+        ("listen", "card"),
+        ("good", "bg"),
+        ("good", "card"),
+    ):
+        fg, bg = dark.get(fg_name), dark.get(bg_name)
+        if not fg or not bg:
+            return False
+        if contrast_ratio(fg, bg) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return contrast_ratio(dark["bg"], dark["ink"]) >= WCAG_AA_NORMAL_TEXT
+
+
+def dashboard_listen_contrast_ready(html: str) -> bool:
+    """Listen pills and Quick-win/Copied/--good text meet WCAG AA 4.5:1.
+
+    Momentum bar fills may keep --mom. Listen text uses --listen. Quick win,
+    Copied, and YES-gate text keep --good, retuned to the same AA greens.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    if not _LISTEN_PILL_COLOR_RE.search(chrome):
+        return False
+    if not _QUICK_WIN_COLOR_RE.search(chrome):
+        return False
+    if _OLD_LISTEN_ON_MOM_RE.search(chrome):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        listen = theme.get("listen")
+        good = theme.get("good")
+        background = theme.get("bg")
+        card = theme.get("card")
+        card2 = theme.get("card2")
+        if not listen or not good or not background or not card or not card2:
+            return False
+        for token in (listen, good):
+            if contrast_ratio(token, background) < WCAG_AA_NORMAL_TEXT:
+                return False
+            if contrast_ratio(token, card) < WCAG_AA_NORMAL_TEXT:
+                return False
+            if contrast_ratio(token, card2) < WCAG_AA_NORMAL_TEXT:
+                return False
+    return True
+
+
+def dashboard_write_contrast_ready(html: str) -> bool:
+    """Write pills, flagship tag, and song/memo links meet WCAG AA 4.5:1.
+
+    Bar fills, skip-link, and search marks may keep --pot. Text uses --write
+    so those fills are not forced into the same token. Light-scheme stays.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    if not _WRITE_PILL_COLOR_RE.search(chrome):
+        return False
+    if not _LINK_WRITE_COLOR_RE.search(chrome):
+        return False
+    if not _FLAGSHIP_WRITE_COLOR_RE.search(chrome):
+        return False
+    if _OLD_WRITE_ON_POT_RE.search(chrome):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        write = theme.get("write")
+        background = theme.get("bg")
+        card = theme.get("card")
+        card2 = theme.get("card2")
+        if not write or not background or not card or not card2:
+            return False
+        if contrast_ratio(write, background) < WCAG_AA_NORMAL_TEXT:
+            return False
+        if contrast_ratio(write, card) < WCAG_AA_NORMAL_TEXT:
+            return False
+        if contrast_ratio(write, card2) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return True
+
+
 def dashboard_rdy_contrast_ready(html: str) -> bool:
     """Produce/readiness text meets WCAG AA 4.5:1 on --bg and --card.
 
@@ -1525,8 +2092,134 @@ def dashboard_rdy_contrast_ready(html: str) -> bool:
     return True
 
 
+_SKIP_LINK_RULE_RE = re.compile(r"\.skip-link\s*\{([^}]*)\}", re.IGNORECASE)
+_SEARCH_MARK_RULE_RE = re.compile(
+    r"\.msnip\s+mark\s*,\s*\.rtitle\s+mark\s*,\s*\.aka-hit\s+mark\s*\{([^}]*)\}",
+    re.IGNORECASE,
+)
+_CSS_DECL_RE = re.compile(r"([a-z-]+)\s*:\s*([^;]+)", re.IGNORECASE)
+_CSS_VAR_RE = re.compile(r"^var\(\s*--([a-z0-9]+)\s*\)$", re.IGNORECASE)
+
+
+def _css_declarations(block: str) -> dict[str, str]:
+    return {
+        name.lower(): value.strip()
+        for name, value in _CSS_DECL_RE.findall(block or "")
+    }
+
+
+def _resolve_theme_color(value: str, theme: dict[str, str]) -> str | None:
+    raw = (value or "").strip()
+    if raw.startswith("#"):
+        hex_value = raw.lower()
+        if len(hex_value) == 4 and all(ch in "0123456789abcdef#" for ch in hex_value):
+            return "#" + "".join(ch * 2 for ch in hex_value[1:])
+        if len(hex_value) == 7:
+            return hex_value
+        return None
+    match = _CSS_VAR_RE.fullmatch(raw)
+    if not match:
+        return None
+    return theme.get(match.group(1).lower())
+
+
+def dashboard_skip_link_contrast_ready(html: str) -> bool:
+    """Skip link text must meet WCAG AA 4.5:1 on dark and light themes.
+
+    White-on-`--pot` fails AA. Use `--ink` on `--bg` (or another pair that
+    actually meets 4.5:1) so the first keyboard control stays readable.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    rule = _SKIP_LINK_RULE_RE.search(chrome)
+    if not rule:
+        return False
+    decls = _css_declarations(rule.group(1))
+    background = decls.get("background") or decls.get("background-color")
+    foreground = decls.get("color")
+    if not background or not foreground:
+        return False
+    collapsed = re.sub(r"\s+", "", rule.group(1).lower())
+    if "background:var(--pot)" in collapsed and (
+        "color:#fff" in collapsed or "color:#ffffff" in collapsed
+    ):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        fg = _resolve_theme_color(foreground, theme)
+        bg = _resolve_theme_color(background, theme)
+        if not fg or not bg:
+            return False
+        if contrast_ratio(fg, bg) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return True
+
+
+def dashboard_search_mark_contrast_ready(html: str) -> bool:
+    """Search-hit marks must meet WCAG AA 4.5:1 on dark and light themes.
+
+    White-on-`--pot` fails AA at 14px. Use `--ink` on `--bg` (or another
+    pair that actually meets 4.5:1) so title, alias, and memo hits stay
+    readable.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    rule = _SEARCH_MARK_RULE_RE.search(chrome)
+    if not rule:
+        return False
+    decls = _css_declarations(rule.group(1))
+    background = decls.get("background") or decls.get("background-color")
+    foreground = decls.get("color")
+    if not background or not foreground:
+        return False
+    collapsed = re.sub(r"\s+", "", rule.group(1).lower())
+    if "background:var(--pot)" in collapsed and (
+        "color:#fff" in collapsed or "color:#ffffff" in collapsed
+    ):
+        return False
+    dark, light = dashboard_theme_tokens(chrome)
+    for theme in (dark, light):
+        fg = _resolve_theme_color(foreground, theme)
+        bg = _resolve_theme_color(background, theme)
+        if not fg or not bg:
+            return False
+        if contrast_ratio(fg, bg) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return True
+
+
+def _readme_h2_headings(text: str) -> list[str]:
+    return [
+        line.strip()
+        for line in (text or "").splitlines()
+        if line.startswith("## ")
+    ]
+
+
+def readme_click_test_does_not_claim_private(text: str) -> bool:
+    """Public README must not title the click-test as a private session."""
+    return not any(
+        heading.lower() == "## click-test the private session"
+        for heading in _readme_h2_headings(text)
+    )
+
+
+def readme_click_test_uses_browser_local_heading(text: str) -> bool:
+    """If a Click-test heading is present, it must say browser-local."""
+    click_headings = [
+        heading
+        for heading in _readme_h2_headings(text)
+        if heading.lower().startswith("## click-test")
+    ]
+    if not click_headings:
+        return True
+    return all("browser-local" in heading.lower() for heading in click_headings)
+
+
 def readme_documents_session_click_test(text: str) -> bool:
-    """Jeff-facing README must match the real private-session click path."""
+    """Jeff-facing README must match the real browser-local session click path."""
     body = (text or "").lower()
     return (
         "click write, produce, or listen" in body

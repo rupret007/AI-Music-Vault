@@ -27,8 +27,14 @@ jobs:
       - name: Validate master catalog (fail closed)
         run: python scripts/validate_catalog.py
 
+      - name: Dashboard payloads stay current (fail closed)
+        run: python scripts/build_dashboard.py --check
+
       - name: Catalog validator unit tests
         run: python -m unittest discover -s tests -v
+
+      - name: StoryBoard catalog importer (real module)
+        run: node --experimental-strip-types tests/test_storyboard_catalog_import.mjs
 
       - name: Dashboard song and memo navigation smoke
         run: node tests/test_dashboard_navigation.js

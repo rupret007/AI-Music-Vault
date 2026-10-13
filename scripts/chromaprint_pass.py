@@ -16,6 +16,8 @@ HOW TO RUN (Terminal on the mac mini)
 
   Takes roughly 15-30 minutes for 916 files; safe to leave running.
   Resumable — rerun anytime, it skips finished fingerprints.
+  Failed or empty fingerprints are retried. If any file fails, exits 1 after
+  saving successful fingerprints; cluster results are left unchanged.
   If it says fpcalc not found, run:  brew install chromaprint
   Tell Claude when it's done — Claude reads the clusters and folds the
   version families into the catalog next session.
@@ -41,6 +43,11 @@ def similarity(a, b):
     same = sum(1 for x, y in zip(a[:n], b[:n]) if bin(x ^ y).count("1") <= 6)
     return same / n
 
+def complete_fingerprint(value):
+    # Short recordings can be valid even below the clustering minimum of 20.
+    return (isinstance(value, list) and bool(value)
+            and all(type(word) is int for word in value))
+
 def main():
     fp = fpcalc_path()
     if not fp:
@@ -50,23 +57,37 @@ def main():
     files = sorted(f for f in os.listdir(INTAKE) if f.lower().endswith(".m4a"))
     cache = {}
     if os.path.exists(FP_CACHE):
-        cache = json.load(open(FP_CACHE))
+        with open(FP_CACHE) as source:
+            cache = {name: value for name, value in json.load(source).items()
+                     if complete_fingerprint(value)}
 
     print(f"Fingerprinting {len(files)} memos ({len(cache)} already cached)...")
+    failed = 0
     for i, f in enumerate(files, 1):
         if f in cache: continue
         try:
             r = subprocess.run([fp, "-raw", "-length", "120", "-json",
                                 os.path.join(INTAKE, f)],
                                capture_output=True, text=True, timeout=60)
+            if r.returncode != 0:
+                raise ValueError(f"fpcalc exit {r.returncode}")
             d = json.loads(r.stdout)
-            cache[f] = d.get("fingerprint", [])
-        except Exception as e:
-            cache[f] = []
+            if not isinstance(d, dict) or not complete_fingerprint(d.get("fingerprint")):
+                raise ValueError("fpcalc returned an empty or invalid fingerprint")
+            cache[f] = d["fingerprint"]
+        except (OSError, subprocess.SubprocessError, ValueError) as e:
+            failed += 1
+            print(f"ERROR: {f}: {e}", file=sys.stderr)
         if i % 25 == 0:
-            json.dump(cache, open(FP_CACHE, "w"))
+            with open(FP_CACHE, "w") as destination:
+                json.dump(cache, destination)
             print(f"  [{i}/{len(files)}]")
-    json.dump(cache, open(FP_CACHE, "w"))
+    with open(FP_CACHE, "w") as destination:
+        json.dump(cache, destination)
+    if failed:
+        print(f"ERROR: {failed} file(s) failed; successful fingerprints saved. "
+              "Rerun to retry. Cluster results left unchanged.", file=sys.stderr)
+        return 1
 
     print("Clustering (this part is quick)...")
     names = [f for f in files if len(cache.get(f, [])) >= 20]
@@ -89,12 +110,14 @@ def main():
         groups.setdefault(find(f), []).append(f)
     clusters = [sorted(g) for g in groups.values() if len(g) > 1]
     clusters.sort(key=len, reverse=True)
-    json.dump({"clusters": clusters, "threshold": 0.55,
-               "note": "same-audio families among 916 memos; verify by ear before merging catalog entries"},
-              open(CLUSTERS, "w"), indent=1)
+    with open(CLUSTERS, "w") as destination:
+        json.dump({"clusters": clusters, "threshold": 0.55,
+                   "note": "same-audio families among 916 memos; verify by ear before merging catalog entries"},
+                  destination, indent=1)
     print(f"\nDone: {len(clusters)} version families found ({pairs} matching pairs).")
     print(f"Results: {CLUSTERS}")
     print("Tell Claude it's done — the clusters get folded into the catalog next session.")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -21,16 +21,29 @@ from catalog_surface import (  # noqa: E402
     catalog_recovered_count,
     contrast_ratio,
     dashboard_displays_owner_audio_index,
+    dashboard_markup_chrome,
+    dashboard_memo_query_ranks_catalog_matches,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_memo_search_folds_punctuation,
+    dashboard_catalog_overview_starts_collapsed,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
+    dashboard_work_starts_name_the_action,
     dashboard_opens_owner_audio,
     dashboard_resume_leads_first_paint,
+    dashboard_start_copy_omits_resume_preview,
     dashboard_work_next_stays_in_view,
+    dashboard_computed_home_layout,
     dashboard_phone_and_a11y_ready,
+    dashboard_phone_layout_covers,
+    dashboard_listen_contrast_ready,
     dashboard_rdy_contrast_ready,
+    dashboard_write_contrast_ready,
+    dashboard_skip_link_contrast_ready,
+    dashboard_search_mark_contrast_ready,
+    dashboard_dark_theme_default,
     dashboard_resumes_song_work_privately,
     dashboard_sit_down_copy_actions_on_own_row,
     dashboard_theme_tokens,
@@ -285,10 +298,15 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("data-copy-file", dashboard)
         self.assertIn("Copy intake name", dashboard)
         self.assertIn("newest first", dashboard)
+        self.assertIn("catalog matches first", dashboard)
+        self.assertIn("Songs named", dashboard)
         self.assertIn("this page does not open audio", dashboard)
         self.assertIn("function parseVaultHash(", dashboard)
         self.assertIn("function sortMemoHits(", dashboard)
+        self.assertIn("function memoIsCatalogMatched(", dashboard)
+        self.assertIn("function namedSongsForMemoQuery(", dashboard)
         self.assertIn("function handleVaultKey(", dashboard)
+        self.assertTrue(dashboard_memo_query_ranks_catalog_matches(dashboard))
         self.assertFalse(dashboard_opens_owner_audio(dashboard))
         self.assertTrue(dashboard_exposes_song_work(dashboard))
         self.assertTrue(dashboard_sit_down_copy_actions_on_own_row(dashboard))
@@ -362,12 +380,18 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         )
         self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
         self.assertIn(
-            "Transcripts are machine-made (Whisper, run locally on your Mac) — "
-            "they mishear sung words constantly, so treat hits as leads, not gospel. "
-            "Copy the intake name only (sanitized).",
+            "Hits are leads, not gospel — Whisper mishears sung words.",
             dashboard,
         )
+        self.assertEqual(
+            dashboard_markup_chrome(dashboard).count("Whisper mishears sung words"),
+            1,
+        )
+        self.assertIn('id="memoWhisper"', dashboard)
         self.assertIn("Copy the intake name only (sanitized)", dashboard)
+        self.assertIn('class="intake-loc"', dashboard)
+        self.assertIn("Voice&nbsp;Memo&nbsp;Intake", dashboard)
+        self.assertIn("MEMO_VISIBLE_CAP=80", dashboard)
         self.assertIn("No copy-safe intake name on this memo row yet.", dashboard)
         self.assertIn("no copy-safe intake name yet", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
@@ -657,6 +681,41 @@ class DashboardSongFindTests(unittest.TestCase):
         )
         self.assertEqual(normalize_search_text("Manic?  No way!"), "manic no way")
         self.assertEqual(normalize_search_text("  Candy   Lane  "), "candy lane")
+        self.assertEqual(
+            normalize_search_text("It’s Alright"),
+            normalize_search_text("its alright"),
+        )
+
+    def test_committed_dashboard_memo_search_folds_punctuation(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_memo_search_folds_punctuation(dashboard))
+        self.assertIn("function normalizedMatchRange(", dashboard)
+        self.assertIn("function memoSnippet(", dashboard)
+        self.assertIn("normalizeSearch(field)", dashboard)
+        self.assertIn("try: its alright", dashboard)
+        self.assertIn("!String(term||'').trim()&&!!songId", dashboard)
+        self.assertNotIn("if(!needle)return !!songId;", dashboard)
+        self.assertNotIn("String(m.x||'').toLowerCase().includes(term)", dashboard)
+        self.assertFalse(
+            dashboard_memo_search_folds_punctuation(
+                dashboard.replace("function normalizedMatchRange(", "").replace(
+                    "normalizeSearch(field)",
+                    "String(m.x||'').toLowerCase().includes(term)",
+                )
+            )
+        )
+        self.assertFalse(
+            dashboard_memo_search_folds_punctuation(
+                dashboard.replace(
+                    "if(!needle)return !String(term||'').trim()&&!!songId;",
+                    "if(!needle)return !!songId;",
+                )
+            )
+        )
 
     def test_song_aliases_use_existing_titles_only(self):
         self.assertEqual(
@@ -1072,13 +1131,15 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         ) as handle:
             dashboard = handle.read()
         self.assertTrue(dashboard_phone_and_a11y_ready(dashboard))
+        self.assertTrue(dashboard_phone_layout_covers(dashboard, 390))
         self.assertIn("Skip to work session", dashboard)
         self.assertIn("<header>", dashboard)
         self.assertIn('<main id="main"', dashboard)
         self.assertIn("<footer", dashboard)
         self.assertIn('aria-label="Sort songs"', dashboard)
         self.assertIn('aria-label="Search memo transcripts"', dashboard)
-        self.assertIn("@media(max-width:375px)", dashboard)
+        self.assertIn("@media(max-width:640px)", dashboard)
+        self.assertNotIn("@media(max-width:375px)", dashboard)
         self.assertIn("min-height:44px", dashboard)
         self.assertIn("overflow-x:hidden", dashboard)
         self.assertIn(":focus-visible", dashboard)
@@ -1088,6 +1149,90 @@ class DashboardPhoneA11yTests(unittest.TestCase):
         self.assertIn('class="row-heading"', dashboard)
         self.assertIn('aria-controls="song-detail-', dashboard)
         self.assertNotIn("grid-template-columns:1fr 90px 90px", dashboard)
+
+    def test_phone_padding_and_two_up_stats_apply_at_640px_not_375px(self):
+        padding = (
+            "body{padding:12px;font-size:16px}.rhead{padding:10px}"
+            ".stat{min-width:0;flex-basis:calc(50% - 10px)}"
+        )
+        only_375 = f"<style>@media(max-width:375px){{{padding}}}</style>"
+        at_640 = f"<style>@media(max-width:640px){{{padding}}}</style>"
+        at_400 = f"<style>@media(max-width:400px){{{padding}}}</style>"
+        self.assertFalse(dashboard_phone_layout_covers(only_375, 390))
+        self.assertTrue(dashboard_phone_layout_covers(at_640, 390))
+        self.assertTrue(dashboard_phone_layout_covers(at_400, 390))
+        self.assertFalse(dashboard_phone_layout_covers(at_640, 800))
+
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        reverted = dashboard.replace(
+            "body{padding:12px;font-size:16px}.rhead{padding:10px}"
+            ".stat{min-width:0;flex-basis:calc(50% - 10px)}",
+            "",
+        ).replace(
+            "</style>",
+            f"@media(max-width:375px){{{padding}}}</style>",
+            1,
+        )
+        self.assertFalse(dashboard_phone_layout_covers(reverted, 390))
+        self.assertFalse(dashboard_phone_and_a11y_ready(reverted))
+
+    def test_computed_home_layout_at_390px_uses_phone_padding_and_two_up_stats(self):
+        padding = (
+            "body{padding:12px;font-size:16px}.rhead{padding:10px}"
+            ".stat{min-width:0;flex-basis:calc(50% - 10px)}"
+        )
+        base = (
+            "<style>body{padding:20px;font-size:16px}"
+            ".stat{min-width:100px;flex:1 1 140px}"
+            f"@media(max-width:640px){{{padding}}}</style>"
+        )
+        self.assertEqual(
+            dashboard_computed_home_layout(base, 390),
+            {"padding": "12px", "stat_flex_basis": "calc(50% - 10px)"},
+        )
+        self.assertEqual(dashboard_computed_home_layout(base, 800)["padding"], "20px")
+        self.assertNotEqual(
+            dashboard_computed_home_layout(base, 800)["stat_flex_basis"],
+            "calc(50% - 10px)",
+        )
+        only_375 = base.replace("max-width:640px", "max-width:375px")
+        self.assertEqual(dashboard_computed_home_layout(only_375, 390)["padding"], "20px")
+        self.assertIsNone(dashboard_computed_home_layout(only_375, 390)["stat_flex_basis"])
+
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        phone = dashboard_computed_home_layout(dashboard, 390)
+        desktop = dashboard_computed_home_layout(dashboard, 800)
+        self.assertEqual(phone["padding"], "12px")
+        self.assertEqual(phone["stat_flex_basis"], "calc(50% - 10px)")
+        self.assertEqual(desktop["padding"], "20px")
+        self.assertNotEqual(desktop["stat_flex_basis"], "calc(50% - 10px)")
+        overridden = dashboard.replace("</style>", "body{padding:20px}</style>", 1)
+        self.assertTrue(dashboard_phone_layout_covers(overridden, 390))
+        self.assertEqual(dashboard_computed_home_layout(overridden, 390)["padding"], "20px")
+        self.assertFalse(dashboard_phone_and_a11y_ready(overridden))
+
+    def test_phone_home_browser_check_measures_390px_padding_and_two_up_stats(self):
+        with open(
+            os.path.join(ROOT, "tests", "test_dashboard_phone_home.js"),
+            encoding="utf-8",
+        ) as handle:
+            source = handle.read()
+        self.assertIn("width: 390, height: 844", source)
+        self.assertIn("paddingLeft", source)
+        self.assertIn("12px", source)
+        self.assertIn("firstRowCount", source)
+        self.assertIn("expanded stats must be 2-up at 390px", source)
+        self.assertIn("390px home must use 12px body padding", source)
+        self.assertIn("Write / Produce / Listen must be on the first 390×844 screen", source)
+        self.assertIn("will not download a browser", source)
 
     def test_phone_gate_fails_closed_without_landmarks(self):
         self.assertFalse(dashboard_phone_and_a11y_ready("<html></html>"))
@@ -1181,6 +1326,8 @@ class DashboardFirstPaintTests(unittest.TestCase):
         ) as handle:
             builder = handle.read()
         self.assertTrue(dashboard_first_paint_ready(dashboard))
+        self.assertTrue(dashboard_catalog_overview_starts_collapsed(dashboard))
+        self.assertTrue(dashboard_start_copy_omits_resume_preview(dashboard))
         self.assertIn("No audio in this repo, and catalog rows are not the live set.", dashboard)
         self.assertIn(f"const COVER_COUNT = {catalog_cover_count(catalog)};", dashboard)
         self.assertIn(f"const RECOVERED_COUNT = {catalog_recovered_count(catalog)};", dashboard)
@@ -1243,10 +1390,35 @@ class DashboardFirstPaintTests(unittest.TestCase):
             dashboard = handle.read()
         self.assertTrue(dashboard_listen_is_not_playback(dashboard))
         self.assertIn("if(k==='listen')return 'Listen in Logic';", dashboard)
-        self.assertIn("${workKindLabel(kind)} <span>${workCounts[kind]} songs</span>", dashboard)
+        self.assertIn("${workKindLabel(kind)} <span>${workCounts[kind]} in queue</span>", dashboard)
         self.assertIn('option value="listen">Listen in Logic</option>', dashboard)
         self.assertNotIn("<audio", dashboard)
         self.assertIn("this page does not open audio", dashboard)
+
+    def test_work_starts_name_start_and_queue_not_song_count(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_work_starts_name_the_action(dashboard))
+        self.assertIn("function workStartLabel(", dashboard)
+        self.assertIn("highest-momentum match", dashboard)
+        self.assertIn("${workCounts[kind]} in queue", dashboard)
+        self.assertIn(
+            'aria-label="${workStartLabel(kind,workCounts[kind])}"', dashboard
+        )
+        self.assertNotIn("${workCounts[kind]} songs", dashboard)
+        self.assertFalse(
+            dashboard_work_starts_name_the_action(
+                dashboard.replace(
+                    "function workStartLabel(", "function workStartCopy("
+                ).replace(
+                    "${workCounts[kind]} in queue",
+                    "${workCounts[kind]} songs",
+                )
+            )
+        )
 
 
 # Pre-A06 oranges from the UX audit. Kept here so the contrast gate
@@ -1331,6 +1503,373 @@ class DashboardRdyContrastTests(unittest.TestCase):
             self.assertGreaterEqual(
                 contrast_ratio(theme["ink"], theme["card"]), WCAG_AA_NORMAL_TEXT
             )
+
+
+_OLD_SKIP_LINK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.skip-link{background:var(--pot);color:#fff}
+</style><a class="skip-link" href="#workNowTitle">Skip to work session</a>"""
+_FIXED_SKIP_LINK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.skip-link{background:var(--ink);color:var(--bg)}
+</style><a class="skip-link" href="#workNowTitle">Skip to work session</a>"""
+
+
+class DashboardSkipLinkContrastTests(unittest.TestCase):
+    def test_white_on_pot_misses_aa_on_dark_and_light(self):
+        self.assertLess(contrast_ratio("#ffffff", "#3987e5"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio("#ffffff", "#2a78d6"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#3987e5"), 3.64, places=2)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#2a78d6"), 4.42, places=2)
+        self.assertFalse(dashboard_skip_link_contrast_ready(_OLD_SKIP_LINK_SNIPPET))
+
+    def test_gate_fails_closed_without_light_scheme_or_skip_rule(self):
+        self.assertFalse(dashboard_skip_link_contrast_ready("<html></html>"))
+        no_light = _FIXED_SKIP_LINK_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_skip_link_contrast_ready(no_light))
+        no_rule = _FIXED_SKIP_LINK_SNIPPET.replace(".skip-link{background:var(--ink);color:var(--bg)}", "")
+        self.assertFalse(dashboard_skip_link_contrast_ready(no_rule))
+
+    def test_ink_on_bg_skip_link_meets_aa(self):
+        self.assertTrue(dashboard_skip_link_contrast_ready(_FIXED_SKIP_LINK_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_SKIP_LINK_SNIPPET)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["bg"], theme["ink"]), WCAG_AA_NORMAL_TEXT
+            )
+
+    def test_committed_dashboard_skip_link_meets_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_skip_link_contrast_ready(dashboard))
+        self.assertIn(
+            ".skip-link{position:absolute;left:-999px;top:8px;z-index:20;"
+            "background:var(--ink);color:var(--bg)",
+            dashboard,
+        )
+        dark, light = dashboard_theme_tokens(dashboard)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["bg"], theme["ink"]), WCAG_AA_NORMAL_TEXT
+            )
+
+
+_OLD_SEARCH_MARK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.msnip mark,.rtitle mark,.aka-hit mark{background:var(--pot);color:#fff}
+</style><mark>hit</mark>"""
+_FIXED_SEARCH_MARK_SNIPPET = """<style>
+:root{--bg:#1a1a19;--ink:#ffffff;--pot:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--ink:#1a1a19;--pot:#2a78d6;}}
+.msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}
+</style><mark>hit</mark>"""
+
+
+class DashboardSearchMarkContrastTests(unittest.TestCase):
+    def test_white_on_pot_marks_miss_aa_on_dark_and_light(self):
+        self.assertLess(contrast_ratio("#ffffff", "#3987e5"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio("#ffffff", "#2a78d6"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#3987e5"), 3.64, places=2)
+        self.assertAlmostEqual(contrast_ratio("#ffffff", "#2a78d6"), 4.42, places=2)
+        self.assertFalse(dashboard_search_mark_contrast_ready(_OLD_SEARCH_MARK_SNIPPET))
+
+    def test_gate_fails_closed_without_light_scheme_or_mark_rule(self):
+        self.assertFalse(dashboard_search_mark_contrast_ready("<html></html>"))
+        no_light = _FIXED_SEARCH_MARK_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_search_mark_contrast_ready(no_light))
+        no_rule = _FIXED_SEARCH_MARK_SNIPPET.replace(
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)}",
+            "",
+        )
+        self.assertFalse(dashboard_search_mark_contrast_ready(no_rule))
+
+    def test_ink_on_bg_marks_meet_aa(self):
+        self.assertTrue(dashboard_search_mark_contrast_ready(_FIXED_SEARCH_MARK_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_SEARCH_MARK_SNIPPET)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["bg"], theme["ink"]), WCAG_AA_NORMAL_TEXT
+            )
+
+    def test_committed_dashboard_search_marks_meet_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_search_mark_contrast_ready(dashboard))
+        self.assertIn(
+            ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)",
+            dashboard,
+        )
+
+
+# Pre-fix Potential blues used as write/link text. Bar --pot stays.
+_OLD_WRITE_DARK = "#3987e5"
+_OLD_WRITE_LIGHT = "#2a78d6"
+_AUDIT_WRITE_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--write:#3987e5;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--write:#2a78d6;}}
+.pill.wk-write{color:var(--write)}.memo-link,.song-link{padding:8px 10px;color:var(--write)}.tag.f{color:var(--write)}
+</style><span class="pill wk-write">write</span>"""
+_FIXED_WRITE_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--write:#3993fd;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--write:#2466b8;}}
+.pill.wk-write{color:var(--write)}.memo-link,.song-link{padding:8px 10px;color:var(--write)}.tag.f{color:var(--write)}
+</style><span class="pill wk-write">write</span>"""
+
+
+class DashboardWriteContrastTests(unittest.TestCase):
+    def test_audit_blues_miss_aa_on_card_and_light_bg(self):
+        self.assertGreaterEqual(contrast_ratio(_OLD_WRITE_DARK, "#1a1a19"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_WRITE_DARK, "#242423"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_WRITE_LIGHT, "#fcfcfb"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_WRITE_LIGHT, "#ffffff"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio(_OLD_WRITE_DARK, "#242423"), 4.27, places=2)
+        self.assertAlmostEqual(contrast_ratio(_OLD_WRITE_LIGHT, "#fcfcfb"), 4.30, places=2)
+        self.assertFalse(dashboard_write_contrast_ready(_AUDIT_WRITE_SNIPPET))
+
+    def test_gate_fails_closed_without_write_token_or_light_scheme(self):
+        self.assertFalse(dashboard_write_contrast_ready("<html></html>"))
+        no_light = _FIXED_WRITE_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_write_contrast_ready(no_light))
+        no_write_pill = _FIXED_WRITE_SNIPPET.replace(
+            ".pill.wk-write{color:var(--write)}", ".pill.wk-write{color:var(--pot)}"
+        )
+        self.assertFalse(dashboard_write_contrast_ready(no_write_pill))
+        no_link = _FIXED_WRITE_SNIPPET.replace(
+            ".memo-link,.song-link{padding:8px 10px;color:var(--write)}",
+            ".memo-link,.song-link{padding:8px 10px;color:var(--pot)}",
+        )
+        self.assertFalse(dashboard_write_contrast_ready(no_link))
+
+    def test_fixed_write_tokens_meet_aa_and_keep_light_scheme(self):
+        self.assertTrue(dashboard_write_contrast_ready(_FIXED_WRITE_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_WRITE_SNIPPET)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card2"]), WCAG_AA_NORMAL_TEXT
+            )
+
+    def test_committed_dashboard_write_and_links_meet_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_write_contrast_ready(dashboard))
+        self.assertIn("--write:#3993fd", dashboard)
+        self.assertIn("--write:#2466b8", dashboard)
+        self.assertIn(".pill.wk-write{color:var(--write)}", dashboard)
+        self.assertIn(".memo-link,.song-link{padding:8px 10px;color:var(--write)}", dashboard)
+        self.assertIn(".tag.f{color:var(--write)}", dashboard)
+        self.assertIn("--pot:#3987e5", dashboard)
+        self.assertIn("--pot:#2a78d6", dashboard)
+        dark, light = dashboard_theme_tokens(dashboard)
+        for theme in (dark, light):
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(theme["write"], theme["card2"]), WCAG_AA_NORMAL_TEXT
+            )
+
+
+_OLD_LISTEN_DARK = "#199e70"
+_OLD_LISTEN_LIGHT = "#1baf7a"
+_AUDIT_LISTEN_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--listen:#199e70;--good:#199e70;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--listen:#1baf7a;--good:#1baf7a;}}
+.pill.wk-listen{color:var(--listen)}.tag.q{color:var(--good)}
+</style><span class="pill wk-listen">listen</span>"""
+_FIXED_LISTEN_SNIPPET = """<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--listen:#20b87e;--good:#20b87e;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--listen:#187a56;--good:#187a56;}}
+.pill.wk-listen{color:var(--listen)}.tag.q{color:var(--good)}
+</style><span class="pill wk-listen">listen</span>"""
+
+
+class DashboardListenContrastTests(unittest.TestCase):
+    def test_audit_greens_miss_aa_on_card2_and_light_bg(self):
+        self.assertGreaterEqual(contrast_ratio(_OLD_LISTEN_DARK, "#1a1a19"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_LISTEN_DARK, "#2c2c2a"), WCAG_AA_NORMAL_TEXT)
+        self.assertLess(contrast_ratio(_OLD_LISTEN_LIGHT, "#fcfcfb"), WCAG_AA_NORMAL_TEXT)
+        self.assertAlmostEqual(contrast_ratio(_OLD_LISTEN_DARK, "#2c2c2a"), 4.11, places=2)
+        self.assertAlmostEqual(contrast_ratio(_OLD_LISTEN_LIGHT, "#fcfcfb"), 2.74, places=2)
+        self.assertFalse(dashboard_listen_contrast_ready(_AUDIT_LISTEN_SNIPPET))
+
+    def test_gate_fails_closed_without_listen_token_or_light_scheme(self):
+        self.assertFalse(dashboard_listen_contrast_ready("<html></html>"))
+        no_light = _FIXED_LISTEN_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_listen_contrast_ready(no_light))
+        on_mom = _FIXED_LISTEN_SNIPPET.replace(
+            ".pill.wk-listen{color:var(--listen)}", ".pill.wk-listen{color:var(--mom)}"
+        )
+        self.assertFalse(dashboard_listen_contrast_ready(on_mom))
+
+    def test_fixed_listen_tokens_meet_aa_and_keep_light_scheme(self):
+        self.assertTrue(dashboard_listen_contrast_ready(_FIXED_LISTEN_SNIPPET))
+        dark, light = dashboard_theme_tokens(_FIXED_LISTEN_SNIPPET)
+        for theme in (dark, light):
+            for token in ("listen", "good"):
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["bg"]), WCAG_AA_NORMAL_TEXT
+                )
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["card"]), WCAG_AA_NORMAL_TEXT
+                )
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["card2"]), WCAG_AA_NORMAL_TEXT
+                )
+
+    def test_committed_dashboard_listen_and_quick_win_meet_aa(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_listen_contrast_ready(dashboard))
+        self.assertIn("--listen:#20b87e", dashboard)
+        self.assertIn("--listen:#187a56", dashboard)
+        self.assertIn("--good:#20b87e", dashboard)
+        self.assertIn("--good:#187a56", dashboard)
+        self.assertIn(".pill.wk-listen{color:var(--listen)}", dashboard)
+        self.assertIn(".tag.q{color:var(--good)}", dashboard)
+        self.assertIn("--mom:#199e70", dashboard)
+        self.assertIn("--mom:#1baf7a", dashboard)
+        dark, light = dashboard_theme_tokens(dashboard)
+        for theme in (dark, light):
+            for token in ("listen", "good"):
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["bg"]), WCAG_AA_NORMAL_TEXT
+                )
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["card"]), WCAG_AA_NORMAL_TEXT
+                )
+                self.assertGreaterEqual(
+                    contrast_ratio(theme[token], theme["card2"]), WCAG_AA_NORMAL_TEXT
+                )
+
+
+_DARK_DEFAULT_SNIPPET = """<html lang="en" data-theme="dark"><meta name="color-scheme" content="dark">
+<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;color-scheme:dark;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--write:#2466b8;--rdy:#b84414;--mom:#1baf7a;--listen:#187a56;--line:#e3e2dc;--good:#187a56;color-scheme:light;}}
+html[data-theme="dark"]{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;color-scheme:dark;}
+</style>"""
+
+
+class DashboardDarkThemeDefaultTests(unittest.TestCase):
+    def test_gate_fails_closed_without_lock_or_color_scheme(self):
+        self.assertFalse(dashboard_dark_theme_default("<html></html>"))
+        no_attr = _DARK_DEFAULT_SNIPPET.replace('data-theme="dark"', "")
+        self.assertFalse(dashboard_dark_theme_default(no_attr))
+        no_meta = _DARK_DEFAULT_SNIPPET.replace(
+            '<meta name="color-scheme" content="dark">', ""
+        )
+        self.assertFalse(dashboard_dark_theme_default(no_meta))
+        no_lock = _DARK_DEFAULT_SNIPPET.replace(
+            'html[data-theme="dark"]{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;color-scheme:dark;}',
+            "",
+        )
+        self.assertFalse(dashboard_dark_theme_default(no_lock))
+        no_light = _DARK_DEFAULT_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_dark_theme_default(no_light))
+
+    def test_gate_rejects_harsh_black_and_washed_out_default(self):
+        harsh = _DARK_DEFAULT_SNIPPET.replace("#1a1a19", "#000000")
+        self.assertFalse(dashboard_dark_theme_default(harsh))
+        washed = _DARK_DEFAULT_SNIPPET.replace("#1a1a19", "#6a6a68")
+        self.assertFalse(dashboard_dark_theme_default(washed))
+
+    def test_fixed_tokens_lock_dark_and_keep_light_palette(self):
+        self.assertTrue(dashboard_dark_theme_default(_DARK_DEFAULT_SNIPPET))
+        dark, light = dashboard_theme_tokens(_DARK_DEFAULT_SNIPPET)
+        self.assertEqual(dark["bg"], "#1a1a19")
+        self.assertEqual(dark["ink"], "#ffffff")
+        self.assertEqual(dark["card"], "#242423")
+        self.assertEqual(dark["write"], "#3993fd")
+        self.assertEqual(light["bg"], "#fcfcfb")
+        self.assertEqual(light["ink"], "#1a1a19")
+        self.assertGreaterEqual(
+            contrast_ratio(dark["ink"], dark["bg"]), WCAG_AA_NORMAL_TEXT
+        )
+        self.assertGreaterEqual(
+            contrast_ratio(dark["ink2"], dark["card"]), WCAG_AA_NORMAL_TEXT
+        )
+        self.assertGreaterEqual(
+            contrast_ratio(dark["write"], dark["card2"]), WCAG_AA_NORMAL_TEXT
+        )
+
+    def test_committed_dashboard_is_dark_by_default(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_dark_theme_default(dashboard))
+        self.assertIn('<html lang="en" data-theme="dark">', dashboard)
+        self.assertIn('<meta name="color-scheme" content="dark">', dashboard)
+        self.assertIn("color-scheme:dark", dashboard)
+        self.assertIn('html[data-theme="dark"]{', dashboard)
+        self.assertIn("@media (prefers-color-scheme: light)", dashboard)
+        self.assertNotIn("--bg:#000000", dashboard)
+        dark, light = dashboard_theme_tokens(dashboard)
+        self.assertEqual(
+            dark,
+            {
+                "bg": "#1a1a19",
+                "card": "#242423",
+                "card2": "#2c2c2a",
+                "ink": "#ffffff",
+                "ink2": "#c3c2b7",
+                "ink3": "#a8a79c",
+                "pot": "#3987e5",
+                "write": "#3993fd",
+                "rdy": "#ee7a3a",
+                "mom": "#199e70",
+                "listen": "#20b87e",
+                "line": "#3a3a38",
+                "good": "#20b87e",
+            },
+        )
+        self.assertEqual(light.get("ink"), "#1a1a19")
+        self.assertEqual(light.get("write"), "#2466b8")
+        for fg in ("ink", "ink2", "ink3", "write", "rdy", "listen", "good"):
+            self.assertGreaterEqual(
+                contrast_ratio(dark[fg], dark["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(dark[fg], dark["card"]), WCAG_AA_NORMAL_TEXT
+            )
+        self.assertGreaterEqual(
+            contrast_ratio(dark["bg"], dark["ink"]), WCAG_AA_NORMAL_TEXT
+        )
 
 
 if __name__ == "__main__":

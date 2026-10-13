@@ -37,10 +37,32 @@ for (const marker of [
   "data-copy-file",
   "function openSong(",
   "function openSongMemos(",
+  "function emptyMemosCopy(",
   "function memoMatches(",
+  "function normalizedMatchRange(",
+  "function memoSnippet(",
+  "normalizeSearch(field)",
+  "markNormalized(text,term)",
+  "try: its alright",
+  "press Escape or Show all memos",
+  "try a different word",
   "function parseVaultHash(",
   "function sortMemoHits(",
+  "function memoIsCatalogMatched(",
+  "function namedSongsForMemoQuery(",
+  "function memoResultsStatus(",
+  "function memoIntakeLine(",
+  "Songs named",
+  "catalog matches first",
+  "id=\"memoWhisper\"",
+  "Whisper mishears sung words",
+  "class=\"intake-loc\"",
+  ".intake-loc{white-space:nowrap}",
+  "Voice&nbsp;Memo&nbsp;Intake",
+  "MEMO_VISIBLE_CAP=80",
   "function handleVaultKey(",
+  "activeMemoSong||",
+  "mq.value||''",
   "function normalizeSearch(",
   "function songAliases(",
   "function songSearchHit(",
@@ -48,7 +70,24 @@ for (const marker of [
   "function sortSongRows(",
   "function focusFoundSong(",
   "function handleSongSearchKey(",
+  "function nextSearchCursor(",
+  "function searchActivateId(",
+  "function searchActivateMemoSong(",
+  "function paintSearchFocus(",
+  "function handleMemoSearchKey(",
+  "search-focus",
+  "aria-activedescendant",
+  ".rhead.search-focus,.mopt.search-focus",
+  "if(!term&&!(cursor>=0))return false",
+  "paintSearchFocus(list,'.rhead',cur,'search-focus')",
+  'id="list" role="listbox"',
+  'id="mlist" role="listbox"',
+  'class="rhead" role="option"',
+  'class="mopt" role="option"',
+  "function songResultsStatus(",
+  "function emptySongsCopy(",
   "closest name first",
+  "press Escape or Clear filters",
   "titles, aliases, hooks",
   "scrollIntoView({block:'center'})",
   "function copyMemoFile(",
@@ -78,19 +117,33 @@ for (const marker of [
   "sit-logic",
   "Sort: Logic-ready",
   "class=\"skip-link\"",
+  "background:var(--ink);color:var(--bg)",
+  ".msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg)",
   "href=\"#workNowTitle\"",
   '<h2 id="workNowTitle" tabindex="-1">',
   "<header>",
   "<main id=\"main\"",
   "aria-label=\"Sort songs\"",
   "aria-label=\"Search memo transcripts\"",
-  "@media(max-width:375px)",
+  "@media(max-width:640px)",
+  "body{padding:12px",
+  ".stat{min-width:0;flex-basis:calc(50% - 10px)}",
   "min-height:44px",
   "overflow-x:hidden",
   ":focus-visible",
   "class=\"score-lab\"",
   "@media (prefers-color-scheme: light)",
+  'data-theme="dark"',
+  'name="color-scheme" content="dark"',
+  "color-scheme:dark",
+  'html[data-theme="dark"]',
   ".pill.wk-produce{color:var(--rdy)}",
+  ".pill.wk-listen{color:var(--listen)}",
+  "--listen:#20b87e",
+  "--listen:#187a56",
+  ".pill.wk-write{color:var(--write)}",
+  "--write:#3993fd",
+  "--write:#2466b8",
   ".bar-n{color:var(--ink)}",
   "class=\"bar-n\"",
   'class="row-heading"',
@@ -126,6 +179,9 @@ for (const marker of [
   "id=\"forgetWorkSession\"",
   "has-resume",
   "function workKindLabel(",
+  "function workStartLabel(",
+  "highest-momentum match",
+  "${workCounts[kind]} in queue",
   "Listen in Logic",
   "scrollIntoView({block:'nearest'})",
   "sessionEl.scrollIntoView({block:'nearest'})",
@@ -143,9 +199,13 @@ for (const marker of [
   "id=\"forgetWorkSession\"",
   "id=\"catalogOverview\"",
   "id=\"catalogOverviewSummary\"",
+  "catalogOverviewSummary.hidden=false",
   "class=\"resume-actions\"",
   "id=\"advancedFilters\"",
   "Start a work session",
+  "class=\"work-now-copy\"",
+  "Pick Write, Produce, or Listen",
+  "highest-momentum",
   "More filters",
   "Sit-down",
   "data-sit-next",
@@ -166,10 +226,60 @@ for (const marker of [
   "this page does not open audio",
   "aria-selected",
   "aria-expanded",
+  "aria-orientation=\"horizontal\"",
+  "id=\"tabS\" role=\"tab\" aria-controls=\"paneS\" aria-selected=\"true\" tabindex=\"0\"",
+  "id=\"tabM\" role=\"tab\" aria-controls=\"paneM\" aria-selected=\"false\" tabindex=\"-1\"",
+  "function nextVaultTab(",
+  "function activateVaultTab(",
+  "function handleVaultTabKey(",
 ]) {
   if (!html.includes(marker)) fail("missing navigation marker " + marker);
 }
+if (html.includes("clear the song filter or try a different word")) {
+  fail("empty memo results must not imply a song filter is set");
+}
+if (html.includes("clear a filter?")) {
+  fail("empty song results must not imply a filter is set");
+}
+if (html.includes("${workCounts[kind]} songs")) {
+  fail("work starts must not label the queue as N songs");
+}
 if (html.includes('role="columnheader"')) fail("score labels must not use table-only roles");
+if (/<details[^>]*id="catalogOverview"[^>]*\bopen\b/.test(html)) {
+  fail("catalog overview must start collapsed");
+}
+if (html.includes("catalogOverview.open=!saved")) {
+  fail("catalog overview must not auto-open from resume state");
+}
+{
+  const copy = html.match(/<p class="work-now-copy">([\s\S]*?)<\/p>/);
+  if (!copy) fail("start-work copy is missing");
+  if (/\bresume\b/i.test(copy[1]) || /\bforget\b/i.test(copy[1])) {
+    fail("start-work copy must not preview Resume or Forget");
+  }
+}
+if (html.includes("@media(max-width:375px)")) {
+  fail("phone padding must not live in a 375px-only query that misses 390px");
+}
+function cssBlockAt(source, start) {
+  let depth = 1;
+  let cursor = start;
+  for (; cursor < source.length && depth; cursor += 1) {
+    if (source[cursor] === "{") depth += 1;
+    if (source[cursor] === "}") depth -= 1;
+  }
+  return source.slice(start, cursor - 1);
+}
+const phoneMq = "@media(max-width:640px){";
+const phoneAt = html.indexOf(phoneMq);
+if (phoneAt < 0) fail("missing 640px phone media query");
+const phoneBlock = cssBlockAt(html, phoneAt + phoneMq.length);
+if (!phoneBlock.includes("body{padding:12px")) {
+  fail("640px phone query must tighten body padding so 390px is a phone");
+}
+if (!phoneBlock.includes(".stat{min-width:0;flex-basis:calc(50% - 10px)}")) {
+  fail("640px phone query must keep 2-up stats so 390px is a phone");
+}
 function idAt(source, value) {
   const needle = 'id="' + value + '"';
   let start = 0;
@@ -229,10 +339,14 @@ for (const cluster of Object.keys(logicReadyMaps.next || {})) {
 }
 
 const names = { "JS-0001": "First Song", "JS-0002": "Second Song" };
+const normalizeSearch = new Function(
+  "return (" + extractFunction(script, "normalizeSearch") + ");",
+)();
 const memoMatches = new Function(
   "sname",
+  "normalizeSearch",
   "return (" + extractFunction(script, "memoMatches") + ");",
-)(names);
+)(names, normalizeSearch);
 const memo = { s: "JS-0001", n: "Phone idea", x: "a lyric fragment lives here" };
 if (!memoMatches(memo, "", "JS-0001")) fail("song scope must show every linked memo");
 if (memoMatches(memo, "", "JS-0002")) fail("song scope must reject a different song");
@@ -240,6 +354,34 @@ if (!memoMatches(memo, "fragment", "")) fail("global search must match transcrip
 if (!memoMatches(memo, "phone", "")) fail("global search must match memo title");
 if (!memoMatches(memo, "first song", "")) fail("global search must match linked catalog title");
 if (memoMatches(memo, "missing", "")) fail("unmatched terms must stay out");
+const alrightMemo = { s: "JS-0128", n: "It’s Alright", x: "Don't you know it's alright tonight" };
+if (!memoMatches(alrightMemo, "its alright", "")) {
+  fail("Memo Search must fold curly apostrophes so its alright finds It’s Alright");
+}
+if (!memoMatches(alrightMemo, "dont", "")) {
+  fail("Memo Search must fold apostrophes so dont finds Don't");
+}
+if (!memoMatches(alrightMemo, "it's", "")) {
+  fail("Memo Search must fold a typed straight apostrophe onto curly catalog text");
+}
+if (memoMatches(alrightMemo, "!!!", "")) {
+  fail("punctuation-only Memo Search must fail closed instead of matching everything");
+}
+if (memoMatches(alrightMemo, "!!!", "JS-0128")) {
+  fail("punctuation-only per-song Memo Search must fail closed instead of matching everything");
+}
+if (memoMatches(alrightMemo, "'", "JS-0128")) {
+  fail("apostrophe-only per-song Memo Search must fail closed instead of matching everything");
+}
+if (!memoMatches(alrightMemo, "", "JS-0128")) {
+  fail("empty per-song Memo Search must still list every linked memo");
+}
+if (extractFunction(script, "memoMatches").includes("if(!needle)return !!songId;")) {
+  fail("empty folded query must not treat typed punctuation as show-all in song scope");
+}
+if (extractFunction(script, "memoMatches").includes("toLowerCase().includes(term)")) {
+  fail("memoMatches must not use raw toLowerCase includes");
+}
 
 const memoUi = { value: "old", focused: false, focus() { this.focused = true; } };
 const memoCalls = [];
@@ -373,9 +515,16 @@ if (!parseVaultHash("#work=write", names) || parseVaultHash("#work=write", names
 if (parseVaultHash("#work=unknown", names)) fail("hash must reject unknown work");
 if (parseVaultHash("#work=JS-0001", names)) fail("hash must reject a catalog id as work");
 
-const sortMemoHits = new Function(
-  "return (" + extractFunction(script, "sortMemoHits") + ");",
+const memoIsCatalogMatched = new Function(
+  "return (" + extractFunction(script, "memoIsCatalogMatched") + ");",
 )();
+if (!memoIsCatalogMatched({ s: "JS-0128" }) || memoIsCatalogMatched({ s: "" }) || memoIsCatalogMatched({})) {
+  fail("catalog match must require a song id");
+}
+const sortMemoHits = new Function(
+  "memoIsCatalogMatched",
+  "return (" + extractFunction(script, "sortMemoHits") + ");",
+)(memoIsCatalogMatched);
 const ordered = sortMemoHits([
   { m: { d: "2020-01-01", f: "old.m4a" } },
   { m: { d: "2024-12-01", f: "new.m4a" } },
@@ -383,16 +532,74 @@ const ordered = sortMemoHits([
 ]);
 if (ordered[0].m.f !== "new.m4a") fail("newest memo must come first");
 if (ordered[2].m.d !== "") fail("undated memo must sink");
+const matchedFirst = sortMemoHits([
+  { m: { d: "2025-10-22", f: "unmatched-new.m4a", s: "" } },
+  { m: { d: "2020-01-01", f: "matched-old.m4a", s: "JS-0128" } },
+  { m: { d: "2024-12-01", f: "unmatched-mid.m4a" } },
+  { m: { d: "2021-06-01", f: "matched-newer.m4a", s: "JS-0128" } },
+  { m: { d: "", f: "matched-undated.m4a", s: "ST-0001" } },
+]);
+if (matchedFirst.map((hit) => hit.m.f).join(",") !== "matched-newer.m4a,matched-old.m4a,matched-undated.m4a,unmatched-new.m4a,unmatched-mid.m4a") {
+  fail("catalog-matched memos must sort above unmatched Whisper hits");
+}
+if (!script.includes("const MEMO_VISIBLE_CAP=80") || !extractFunction(script, "mrender").includes("slice(0,MEMO_VISIBLE_CAP)")) {
+  fail("memo search must keep an 80-row visible cap");
+}
+const chrome = html.split("<script>")[0];
+if ((chrome.match(/Whisper mishears sung words/g) || []).length !== 1) {
+  fail("Whisper disclaimer must appear once in dashboard chrome");
+}
+if (extractFunction(script, "mrender").includes("Whisper") || extractFunction(script, "memoIntakeLine").includes("Whisper")) {
+  fail("Whisper copy must not repeat in memo rows or the empty hint");
+}
+const memoResultsStatus = new Function(
+  "return (" + extractFunction(script, "memoResultsStatus") + ");",
+)();
+if (memoResultsStatus(80, 84, true) !== "Showing 80 of 84 matching memos · catalog matches first") {
+  fail("unscoped memo queries must say catalog matches first and keep the 80 cap in the status line");
+}
+if (memoResultsStatus(3, 3, false) !== "Showing 3 matching memos · newest first") {
+  fail("scoped memo lists must keep newest-first copy");
+}
 
 const esc = new Function("return (" + extractFunction(script, "esc") + ");")();
-const markHay = new Function(
+const normalizedMatchRange = new Function(
+  "normalizeSearch",
+  "return (" + extractFunction(script, "normalizedMatchRange") + ");",
+)(normalizeSearch);
+const markNormalizedEarly = new Function(
   "esc",
+  "normalizedMatchRange",
+  "return (" + extractFunction(script, "markNormalized") + ");",
+)(esc, normalizedMatchRange);
+const markHay = new Function(
+  "markNormalized",
   "return (" + extractFunction(script, "markHay") + ");",
-)(esc);
+)(markNormalizedEarly);
 if (markHay("Hello Garden", "garden") !== "Hello <mark>Garden</mark>") {
   fail("title match must highlight without changing catalog feel");
 }
 if (markHay("<x>", "x") !== "&lt;<mark>x</mark>&gt;") fail("markHay must escape");
+if (markHay("It’s Alright", "its alright") !== "<mark>It’s Alright</mark>") {
+  fail("memo title highlight must fold curly apostrophes");
+}
+if (markHay("Don't worry", "dont") !== "<mark>Don&#39;t</mark> worry") {
+  fail("memo title highlight must fold straight apostrophes");
+}
+const memoSnippet = new Function(
+  "esc",
+  "normalizedMatchRange",
+  "return (" + extractFunction(script, "memoSnippet") + ");",
+)(esc, normalizedMatchRange);
+if (!memoSnippet("Don't you know it's alright tonight", "its alright").includes("<mark>it&#39;s alright</mark>")) {
+  fail("memo snippet must highlight a folded apostrophe hit");
+}
+if (extractFunction(script, "mrender").includes("lx=m.x.toLowerCase()") || extractFunction(script, "mrender").includes("lx = m.x.toLowerCase()")) {
+  fail("memo snippets must not use raw toLowerCase indexOf");
+}
+if (!extractFunction(script, "mrender").includes("memoSnippet(m.x,term)")) {
+  fail("mrender must reuse memoSnippet for folded highlights");
+}
 if (!extractFunction(script, "copyVaultText").includes("execCommand")) {
   fail("copy must fall back when the clipboard API is blocked");
 }
@@ -534,6 +741,19 @@ const workKindLabel = new Function(
 if (workKindLabel("listen") !== "Listen in Logic") fail("Listen must be labeled Listen in Logic");
 if (workKindLabel("write") !== "Write" || workKindLabel("produce") !== "Produce") {
   fail("write and produce labels must stay human work kinds");
+}
+const workStartLabel = new Function(
+  "workKindLabel",
+  "return (" + extractFunction(script, "workStartLabel") + ");",
+)(workKindLabel);
+if (workStartLabel("write", 12) !== "Start Write on the highest-momentum match (12 in queue)") {
+  fail("Write start must name Start and the highest-momentum match");
+}
+if (workStartLabel("listen", 0) !== "Start Listen in Logic on the highest-momentum match (0 in queue)") {
+  fail("Listen start must keep Listen in Logic and name the queue");
+}
+if (workStartLabel("produce", 3).includes("songs") || workStartLabel("write", 12).includes("songs")) {
+  fail("work start labels must not call the queue N songs");
 }
 if (extractFunction(script, "focusWorkSong").includes("scrollIntoView({block:'center'})")) {
   fail("work-session song focus must not center-scroll the next step away");
@@ -1115,11 +1335,77 @@ if (escapeNav.painted() !== "memos" || escapeNav.hashed() !== ":") {
   fail("escape must repaint Memo Search and drop the hash");
 }
 
+const memoSearchEscape = new Function(
+  "paneM",
+  "paneS",
+  "mq",
+  "q",
+  "sname",
+  "proj",
+  "sort",
+  "scored",
+  "scope",
+  "evidence",
+  "let activeMemoSong = ''; let hashed = ''; let painted = '';" +
+    "function writeVaultHash(kind, id) { hashed = String(kind || '') + ':' + String(id || ''); }" +
+    "function mrender() { painted = 'memos'; }" +
+    "function render() { painted = 'songs'; }" +
+    "const handleVaultKey = " + extractFunction(script, "handleVaultKey") + ";" +
+    "return { handleVaultKey, hashed: () => hashed, painted: () => painted, mq };",
+)(
+  { hidden: false },
+  { hidden: true },
+  { value: "zzzzzzznomatchxyz", focus() {} },
+  { value: "", focus() {} },
+  names,
+  { value: "" },
+  { value: "mom" },
+  { value: "" },
+  { value: "" },
+  { value: "" },
+);
+if (!memoSearchEscape.handleVaultKey({ key: "Escape" }) || memoSearchEscape.mq.value !== "") {
+  fail("escape must clear an unscoped Memo Search query");
+}
+if (memoSearchEscape.painted() !== "memos" || memoSearchEscape.hashed() !== ":") {
+  fail("escape must repaint Memo Search after clearing an unscoped query");
+}
+
+const memoIdleEscape = new Function(
+  "paneM",
+  "paneS",
+  "mq",
+  "q",
+  "sname",
+  "proj",
+  "sort",
+  "scored",
+  "scope",
+  "evidence",
+  "let activeMemoSong = '';" +
+    "function writeVaultHash() {}" +
+    "function mrender() {}" +
+    "function render() {}" +
+    "const handleVaultKey = " + extractFunction(script, "handleVaultKey") + ";" +
+    "return handleVaultKey;",
+)(
+  { hidden: false },
+  { hidden: true },
+  { value: "  ", focus() {} },
+  { value: "", focus() {} },
+  names,
+  { value: "" },
+  { value: "mom" },
+  { value: "" },
+  { value: "" },
+  { value: "" },
+);
+if (memoIdleEscape({ key: "Escape" })) {
+  fail("escape must leave an empty Memo Search alone");
+}
+
 const stripForSearch = new Function(
   "return (" + extractFunction(script, "stripPrivateLocators") + ");",
-)();
-const normalizeSearch = new Function(
-  "return (" + extractFunction(script, "normalizeSearch") + ");",
 )();
 if (normalizeSearch("Don't Put Your Life Away") !== normalizeSearch("dont put your life away")) {
   fail("song search must fold apostrophes");
@@ -1170,6 +1456,42 @@ if (!memoHit.hit || memoHit.via !== "memo" || memoHit.rank !== 4) {
 if (songSearchHit({ id: "JS-9999", t: "Unrelated" }, "ca").hit) {
   fail("short queries must not scan memo lyrics");
 }
+const namedSongsForMemoQuery = new Function(
+  "normalizeSearch",
+  "songSearchHit",
+  "DATA",
+  "return (" + extractFunction(script, "namedSongsForMemoQuery") + ");",
+)(
+  normalizeSearch,
+  songSearchHit,
+  [],
+);
+const named = namedSongsForMemoQuery("alright", [
+  { id: "JS-0128", t: "It's Alright", aka: [] },
+  { id: "ST-0004", t: "Manic", th: "feeling alright tonight" },
+  { id: "JS-9999", t: "Unrelated" },
+]);
+if (named.length !== 1 || named[0].row.id !== "JS-0128") {
+  fail("Songs named jump must use catalog titles, not theme or memo-lyric hits");
+}
+const namedSongsJumpHtml = new Function(
+  "esc",
+  "return (" + extractFunction(script, "namedSongsJumpHtml") + ");",
+)(esc);
+if (!namedSongsJumpHtml(named).includes("Songs named") || !namedSongsJumpHtml(named).includes("data-open-song=\"JS-0128\"")) {
+  fail("memo query must offer a Songs named jump to the catalog title");
+}
+const memoIntakeLine = new Function(
+  "esc",
+  "return (" + extractFunction(script, "memoIntakeLine") + ");",
+)(esc);
+const intakeLine = memoIntakeLine({ label: "Clip.m4a", copy: "Clip.m4a" });
+if (!intakeLine.includes('<span class="intake-loc">(Voice&nbsp;Memo&nbsp;Intake)</span>')) {
+  fail("Voice Memo Intake must stay one unsplit phrase");
+}
+if (intakeLine.includes(".wav") || intakeLine.includes("file://") || !intakeLine.includes("data-copy-file=\"Clip.m4a\"")) {
+  fail("intake copy must stay basename only with no audio locator");
+}
 const sortSongRows = new Function(
   "songSearchHit",
   "return (" + extractFunction(script, "sortSongRows") + ");",
@@ -1211,9 +1533,9 @@ if (logicSorted[0].row.id !== "ST-DROP" || logicSorted[1].row.id !== "JS-KEY" ||
 }
 const markNormalized = new Function(
   "esc",
-  "normalizeSearch",
+  "normalizedMatchRange",
   "return (" + extractFunction(script, "markNormalized") + ");",
-)(esc, normalizeSearch);
+)(esc, normalizedMatchRange);
 if (markNormalized("Don't Put Your Life Away", "dont put") !== "<mark>Don&#39;t Put</mark> Your Life Away") {
   fail("title highlight must survive apostrophe folding");
 }
@@ -1224,26 +1546,225 @@ if (markNormalized("Candy Lane (2017)", "candy lane") !== "<mark>Candy Lane</mar
   fail("the matching alias must highlight");
 }
 
+const nextSearchCursor = new Function(
+  "return (" + extractFunction(script, "nextSearchCursor") + ");",
+)();
+if (nextSearchCursor(-1, "ArrowDown", 3) !== 0 || nextSearchCursor(-1, "ArrowUp", 3) !== 2) {
+  fail("first arrow must land on the first or last search result");
+}
+if (nextSearchCursor(0, "ArrowDown", 3) !== 1 || nextSearchCursor(2, "ArrowDown", 3) !== 0) {
+  fail("arrow down must wrap through search results");
+}
+if (nextSearchCursor(0, "ArrowUp", 3) !== 2 || nextSearchCursor(1, "Tab", 3) !== 1) {
+  fail("arrow up must wrap and non-arrow keys must keep the cursor");
+}
+const searchActivateId = new Function(
+  "return (" + extractFunction(script, "searchActivateId") + ");",
+)();
+if (searchActivateId(["ST-0019", "JS-9998"], -1) !== "ST-0019") {
+  fail("Enter without an arrow cursor must still open the closest name match");
+}
+if (searchActivateId(["ST-0019", "JS-9998"], 1) !== "JS-9998") {
+  fail("Enter after arrows must open the focused search result");
+}
+const searchActivateMemoSong = new Function(
+  "return (" + extractFunction(script, "searchActivateMemoSong") + ");",
+)();
+if (searchActivateMemoSong([{ dataset: { openSong: "" } }, { dataset: { openSong: "JS-0128" } }], -1) !== "JS-0128") {
+  fail("Enter without an arrow cursor must open the first matched memo song");
+}
+if (searchActivateMemoSong([{ dataset: { openSong: "" } }, { dataset: { openSong: "JS-0128" } }], 0) !== "") {
+  fail("Enter on a focused unmatched memo must fail closed");
+}
+if (searchActivateMemoSong([{ dataset: { openSong: "ST-0001" } }, { dataset: { openSong: "JS-0128" } }], 1) !== "JS-0128") {
+  fail("Enter after arrows must open the focused memo's matched song");
+}
+
+const painted = [];
+const paintSearchFocus = new Function(
+  "return (" + extractFunction(script, "paintSearchFocus") + ");",
+)();
+const fakeResults = [0, 1].map((i) => {
+  const attrs = {};
+  const classes = new Set();
+  return {
+    id: "song-row-" + i,
+    classList: {
+      toggle(name, on) {
+        if (on) classes.add(name);
+        else classes.delete(name);
+        painted.push({ i, name, on: !!on });
+      },
+      has(name) { return classes.has(name); },
+    },
+    setAttribute(name, value) { attrs[name] = String(value); },
+    getAttribute(name) { return attrs[name]; },
+    scrolled: false,
+    scrollIntoView() { this.scrolled = true; },
+  };
+});
+const fakeList = { querySelectorAll() { return fakeResults; } };
+const focusedRow = paintSearchFocus(fakeList, ".rhead", 1, "search-focus");
+if (focusedRow !== fakeResults[1] || !fakeResults[1].classList.has("search-focus") || fakeResults[0].classList.has("search-focus")) {
+  fail("search focus paint must mark only the active result");
+}
+if (fakeResults[1].getAttribute("aria-selected") !== "true" || fakeResults[0].getAttribute("aria-selected") !== "false") {
+  fail("search focus paint must expose aria-selected on the active result");
+}
+if (!fakeResults[1].scrolled) {
+  fail("search focus paint must scroll the active result into view");
+}
+
 const searchFocus = { id: "", focused: 0 };
+const searchAttrs = { "aria-activedescendant": "" };
+const searchBox = {
+  value: "candy lane",
+  setAttribute(name, value) { searchAttrs[name] = String(value); },
+};
 const searchKey = new Function(
   "q",
   "visibleSongIds",
   "work",
   "focusWorkSong",
   "focusFoundSong",
-  "return (" + extractFunction(script, "handleSongSearchKey") + ");",
+  "list",
+  "paintSearchFocus",
+  "nextSearchCursor",
+  "searchActivateId",
+  "let songSearchCursor = -1;" +
+    extractFunction(script, "handleSongSearchKey") +
+    "; return function(e){ return handleSongSearchKey(e); };",
 )(
-  { value: "candy lane" },
+  searchBox,
   ["ST-0019", "JS-9998"],
   { value: "" },
   () => { searchFocus.id = "work"; return true; },
   (id) => { searchFocus.id = id; searchFocus.focused += 1; return true; },
+  fakeList,
+  paintSearchFocus,
+  nextSearchCursor,
+  searchActivateId,
 );
 if (!searchKey({ key: "Enter", preventDefault() {} }) || searchFocus.id !== "ST-0019") {
   fail("Enter in Songs search must open the closest name match");
 }
 if (searchKey({ key: "Tab" }) || searchFocus.focused !== 1) {
   fail("non-Enter keys must leave the search results alone");
+}
+if (!searchKey({ key: "ArrowDown", preventDefault() {} }) || searchAttrs["aria-activedescendant"] !== "song-row-ST-0019") {
+  fail("ArrowDown must move visible focus to the first search result");
+}
+if (!searchKey({ key: "ArrowDown", preventDefault() {} }) || searchAttrs["aria-activedescendant"] !== "song-row-JS-9998") {
+  fail("a second ArrowDown must move visible focus to the next search result");
+}
+if (!searchKey({ key: "Enter", preventDefault() {} }) || searchFocus.id !== "JS-9998") {
+  fail("Enter after arrows must open the focused search result");
+}
+
+const emptySearchFocus = { id: "", focused: 0 };
+const emptySearchAttrs = { "aria-activedescendant": "" };
+const emptySearchBox = {
+  value: "",
+  setAttribute(name, value) { emptySearchAttrs[name] = String(value); },
+};
+const emptySearchKey = new Function(
+  "q",
+  "visibleSongIds",
+  "work",
+  "focusWorkSong",
+  "focusFoundSong",
+  "list",
+  "paintSearchFocus",
+  "nextSearchCursor",
+  "searchActivateId",
+  "let songSearchCursor = -1;" +
+    extractFunction(script, "handleSongSearchKey") +
+    "; return function(e){ return handleSongSearchKey(e); };",
+)(
+  emptySearchBox,
+  ["ST-0001", "ST-0004"],
+  { value: "" },
+  () => { emptySearchFocus.id = "work"; return true; },
+  (id) => { emptySearchFocus.id = id; emptySearchFocus.focused += 1; return true; },
+  fakeList,
+  paintSearchFocus,
+  nextSearchCursor,
+  searchActivateId,
+);
+if (emptySearchKey({ key: "Enter", preventDefault() {} }) || emptySearchFocus.focused !== 0) {
+  fail("Enter with an empty Songs search and no arrow cursor must not open a row");
+}
+if (!emptySearchKey({ key: "ArrowDown", preventDefault() {} }) || emptySearchAttrs["aria-activedescendant"] !== "song-row-ST-0001") {
+  fail("ArrowDown with an empty Songs search must highlight the first visible row");
+}
+if (!emptySearchKey({ key: "Enter", preventDefault() {} }) || emptySearchFocus.id !== "ST-0001") {
+  fail("Enter after ArrowDown with an empty Songs search must open the focused row");
+}
+
+const memoOpened = { id: "" };
+const memoItems = [
+  { id: "memo-hit-0", dataset: { openSong: "ST-0001" } },
+  { id: "memo-hit-1", dataset: { openSong: "JS-0128" } },
+];
+const memoKey = new Function(
+  "mlist",
+  "mq",
+  "paintSearchFocus",
+  "nextSearchCursor",
+  "openSong",
+  "searchActivateMemoSong",
+  "let memoSearchCursor = -1;" +
+    extractFunction(script, "handleMemoSearchKey") +
+    "; return function(e){ return handleMemoSearchKey(e); };",
+)(
+  { querySelectorAll() { return memoItems; } },
+  { setAttribute() {} },
+  () => memoItems[1],
+  nextSearchCursor,
+  (id) => { memoOpened.id = id; },
+  searchActivateMemoSong,
+);
+if (memoKey({ key: "Tab" })) {
+  fail("Tab must not steal memo search results");
+}
+if (!memoKey({ key: "ArrowDown", preventDefault() {} }) || !memoKey({ key: "ArrowDown", preventDefault() {} })) {
+  fail("arrow keys must move through memo search results");
+}
+if (!memoKey({ key: "Enter", preventDefault() {} }) || memoOpened.id !== "JS-0128") {
+  fail("Enter on a focused memo result must open the matched song");
+}
+
+const unmatchedFirstOpened = { id: "" };
+const unmatchedFirstItems = [
+  { id: "memo-hit-0", dataset: { openSong: "" } },
+  { id: "memo-hit-1", dataset: { openSong: "JS-0128" } },
+];
+const unmatchedFirstKey = new Function(
+  "mlist",
+  "mq",
+  "paintSearchFocus",
+  "nextSearchCursor",
+  "openSong",
+  "searchActivateMemoSong",
+  "let memoSearchCursor = -1;" +
+    extractFunction(script, "handleMemoSearchKey") +
+    "; return function(e){ return handleMemoSearchKey(e); };",
+)(
+  { querySelectorAll() { return unmatchedFirstItems; } },
+  { setAttribute() {} },
+  () => unmatchedFirstItems[0],
+  nextSearchCursor,
+  (id) => { unmatchedFirstOpened.id = id; },
+  searchActivateMemoSong,
+);
+if (!unmatchedFirstKey({ key: "Enter", preventDefault() {} }) || unmatchedFirstOpened.id !== "JS-0128") {
+  fail("Enter without an arrow cursor must skip an unmatched first memo");
+}
+if (!unmatchedFirstKey({ key: "ArrowDown", preventDefault() {} })) {
+  fail("ArrowDown must focus the first memo even when it is unmatched");
+}
+if (unmatchedFirstKey({ key: "Enter", preventDefault() {} }) || unmatchedFirstOpened.id !== "JS-0128") {
+  fail("Enter on a focused unmatched memo must fail closed");
 }
 
 const searchEscape = new Function(
@@ -1279,6 +1800,139 @@ if (!searchEscape.handleVaultKey({ key: "Escape" }) || searchEscape.q.value !== 
 }
 if (searchEscape.painted() !== "songs" || searchEscape.hashed() !== ":") {
   fail("escape must repaint Songs after clearing a name search");
+}
+
+const emptyMemosCopy = new Function(
+  "return (" + extractFunction(script, "emptyMemosCopy") + ");",
+)();
+if (emptyMemosCopy("") !== "No matched memo evidence found — try a different word.") {
+  fail("unscoped memo misses must not tell the user to clear a song filter");
+}
+if (emptyMemosCopy("ST-0001") !== "No matched memo evidence found — press Escape or Show all memos.") {
+  fail("scoped memo misses must name Escape and Show all memos");
+}
+const scopedPunctuationHits = [alrightMemo].filter((row) => memoMatches(row, "!!!", "JS-0128"));
+if (scopedPunctuationHits.length) {
+  fail("per-song punctuation-only query must return no memo hits");
+}
+if (emptyMemosCopy("JS-0128") !== "No matched memo evidence found — press Escape or Show all memos.") {
+  fail("per-song punctuation-only misses must show the same scoped empty hint");
+}
+const scopedApostropheHits = [alrightMemo].filter((row) => memoMatches(row, "'", "JS-0128"));
+if (scopedApostropheHits.length) {
+  fail("per-song apostrophe-only query must return no memo hits");
+}
+if (emptyMemosCopy("JS-0128") !== emptyMemosCopy("ST-0001")) {
+  fail("per-song empty folded query must reuse the scoped empty-memo hint");
+}
+if (emptyMemosCopy("").includes("clear the song filter") || emptyMemosCopy("ST-0001").includes("clear the song filter")) {
+  fail("empty memo copy must not invent a song-filter control");
+}
+
+const nextVaultTab = new Function(
+  "return (" + extractFunction(script, "nextVaultTab") + ");",
+)();
+if (nextVaultTab("S", "ArrowRight") !== "M" || nextVaultTab("M", "ArrowLeft") !== "S") {
+  fail("arrow keys must move between Songs and Memo tabs");
+}
+if (nextVaultTab("M", "ArrowRight") !== "S" || nextVaultTab("S", "ArrowLeft") !== "M") {
+  fail("arrow keys must wrap at both ends of the tablist");
+}
+if (nextVaultTab("M", "Home") !== "S" || nextVaultTab("S", "End") !== "M") {
+  fail("Home and End must jump to the first and last tab");
+}
+if (nextVaultTab("S", "Enter") !== "" || nextVaultTab("S", "Tab") !== "") {
+  fail("non-arrow keys must not steal Tab or Enter from the tab buttons");
+}
+
+function fakeTab(selected) {
+  const attrs = { "aria-selected": selected ? "true" : "false" };
+  return {
+    tabIndex: selected ? 0 : -1,
+    classList: { toggle() {} },
+    focused: false,
+    setAttribute(name, value) { attrs[name] = String(value); },
+    getAttribute(name) { return attrs[name]; },
+    focus() { this.focused = true; },
+  };
+}
+const tabS = fakeTab(true);
+const tabM = fakeTab(false);
+const paneS = { hidden: false };
+const paneM = { hidden: true };
+let memoPainted = 0;
+let openedWork = "";
+const tabRuntime = new Function(
+  "tabS",
+  "tabM",
+  "paneS",
+  "paneM",
+  "lastWorkKind",
+  "work",
+  "q",
+  "mrender",
+  "openWork",
+  "const showTab = " + extractFunction(script, "showTab") + ";" +
+    "const activateVaultTab = " + extractFunction(script, "activateVaultTab") + ";" +
+    "const handleVaultTabKey = " + extractFunction(script, "handleVaultTabKey") + ";" +
+    "const nextVaultTab = " + extractFunction(script, "nextVaultTab") + ";" +
+    "return { showTab, activateVaultTab, handleVaultTabKey };",
+)(
+  tabS,
+  tabM,
+  paneS,
+  paneM,
+  "",
+  { value: "" },
+  { value: "" },
+  () => { memoPainted += 1; },
+  (kind) => { openedWork = kind; },
+);
+tabRuntime.showTab("M");
+if (paneS.hidden !== true || paneM.hidden !== false) fail("showTab(M) must hide Songs");
+if (tabS.tabIndex !== -1 || tabM.tabIndex !== 0) fail("selected Memo tab must be the only tabbable tab");
+if (tabS.getAttribute("aria-selected") !== "false" || tabM.getAttribute("aria-selected") !== "true") {
+  fail("showTab must flip aria-selected");
+}
+tabRuntime.showTab("S");
+if (tabS.tabIndex !== 0 || tabM.tabIndex !== -1) fail("selected Songs tab must restore roving tabindex");
+const prevented = [];
+if (tabRuntime.handleVaultTabKey({ key: "ArrowRight", preventDefault: () => prevented.push("right") }, "S") !== "M") {
+  fail("ArrowRight from Songs must activate Memo");
+}
+if (!tabM.focused || memoPainted < 1 || prevented.join(",") !== "right") {
+  fail("arrow activation must focus Memo, paint it, and prevent scrolling");
+}
+if (tabRuntime.handleVaultTabKey({ key: "Home", preventDefault() {} }, "M") !== "S") {
+  fail("Home from Memo must activate Songs");
+}
+if (!tabS.focused) fail("Home must move focus to Songs");
+if (openedWork) fail("tab keyboard must not mint a work session without a stored kind");
+
+const songResultsStatus = new Function(
+  "return (" + extractFunction(script, "songResultsStatus") + ");",
+)();
+if (songResultsStatus("candy lane", 3, 150) !== "Showing 3 of 150 songs · closest name first") {
+  fail("ranked hits must still say closest name first");
+}
+if (songResultsStatus("zzzzzzzz", 0, 150) !== "Showing 0 of 150 songs") {
+  fail("zero search hits must not claim closest-name ranking");
+}
+if (songResultsStatus("", 150, 150) !== "Showing 150 of 150 songs") {
+  fail("an unfiltered list must not claim closest-name ranking");
+}
+if (songResultsStatus("  ", 2, 150) !== "Showing 2 of 150 songs") {
+  fail("whitespace-only search is not a ranked name search");
+}
+
+const emptySongsCopy = new Function(
+  "return (" + extractFunction(script, "emptySongsCopy") + ");",
+)();
+if (!emptySongsCopy().includes("Escape") || !emptySongsCopy().includes("Clear filters")) {
+  fail("empty song results must name Escape and Clear filters");
+}
+if (emptySongsCopy().includes("clear a filter?")) {
+  fail("empty song copy must not imply a filter is set");
 }
 
 console.log("dashboard song/memo navigation smoke ok");

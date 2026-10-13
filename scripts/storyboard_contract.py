@@ -21,8 +21,9 @@ official live set. Show Night owns official sets.
 `data/app_api.json` is the StoryBoard import. `master_catalog.json`
 is the spine and is rejected as an import. StoryLiner is promo only.
 Nothing auto-posts. Jeff owns feel, set-list, and catalog calls.
-Parked catalogs are not a fourth live band. This private catalog
-is not a public fetch.
+Parked catalogs are not a fourth live band. This public catalog
+is not a remote fetch. Importing local JSON does not make
+committed catalog contents private.
 """
 from __future__ import annotations
 
@@ -1114,6 +1115,118 @@ def imported_active(is_original) -> bool:
     return is_original is not False
 
 
+SKIP_SOURCE_KEY_EXISTS = "source_key_exists"
+SKIP_TITLE_EXISTS = "title_exists"
+
+
+def vault_song_draft(song: dict) -> dict | None:
+    """StoryBoard vaultSongDraft() from a Vault feed row."""
+    if not isinstance(song, dict):
+        return None
+    vault_id = str(song.get("vault_id") or song.get("id") or "").strip()
+    title = clean_title(song.get("title") or "")
+    if not vault_id or not title:
+        return None
+    project = song.get("project")
+    return {
+        "sourceKey": source_key(vault_id),
+        "title": title,
+        "musicalKey": storyboard_parse_key(song.get("key")),
+        "bpm": parse_bpm(song),
+        "notes": imported_notes(song.get("vault_ref"), vault_id),
+        "active": imported_active(song.get("is_original")),
+        "project": str(project) if project not in (None, "") else None,
+        "origin": "vault",
+    }
+
+
+def upsert_catalog_song(songs: list[dict], draft: dict) -> str:
+    """StoryBoard upsertSong: existing sourceKey or title is skipped (first write wins)."""
+    key = str((draft or {}).get("sourceKey") or "")
+    if not key:
+        return ""
+    existing_key = next((row for row in songs if row.get("sourceKey") == key), None)
+    if existing_key:
+        return str(existing_key["sourceKey"])
+    title_l = str(draft.get("title") or "").strip().lower()
+    if title_l:
+        duplicate_title = next(
+            (
+                row
+                for row in songs
+                if str(row.get("title") or "").strip().lower() == title_l
+            ),
+            None,
+        )
+        if duplicate_title:
+            return str(duplicate_title["sourceKey"])
+    songs.append(dict(draft))
+    return key
+
+
+def reconcile_catalog_import(plan_songs, existing_songs) -> dict:
+    """StoryBoard reconcileCatalogImport: skip existing sourceKey or title."""
+    by_key = {
+        row["sourceKey"]: row
+        for row in existing_songs or []
+        if isinstance(row, dict) and row.get("sourceKey")
+    }
+    by_title = {
+        str(row.get("title") or "").strip().lower(): row
+        for row in existing_songs or []
+        if isinstance(row, dict) and str(row.get("title") or "").strip()
+    }
+    create: list[dict] = []
+    skip: list[dict] = []
+    for song in plan_songs or []:
+        if not isinstance(song, dict) or not song.get("sourceKey"):
+            continue
+        key = str(song["sourceKey"])
+        title = song.get("title")
+        if key in by_key:
+            skip.append(
+                {"sourceKey": key, "title": title, "reason": SKIP_SOURCE_KEY_EXISTS}
+            )
+            continue
+        title_l = str(title or "").strip().lower()
+        if title_l and title_l in by_title:
+            skip.append(
+                {"sourceKey": key, "title": title, "reason": SKIP_TITLE_EXISTS}
+            )
+            continue
+        created = dict(song)
+        create.append(created)
+        by_key[key] = created
+        if title_l:
+            by_title[title_l] = created
+    return {
+        "policyVersion": CATALOG_IMPORT_POLICY_VERSION,
+        "createSongs": create,
+        "skipSongs": skip,
+    }
+
+
+def apply_catalog_import(existing_songs, incoming_songs) -> list[dict]:
+    """Merge incoming Vault songs onto a library. Re-applying is a no-op."""
+    library = [dict(row) for row in existing_songs or [] if isinstance(row, dict)]
+    drafts = [
+        draft
+        for draft in (vault_song_draft(song) for song in incoming_songs or [])
+        if draft
+    ]
+    library.extend(reconcile_catalog_import(drafts, library)["createSongs"])
+    return library
+
+
+def catalog_import_is_idempotent(existing_songs, incoming_songs) -> bool:
+    """True when applying the same payload twice does not mint a second copy."""
+    once = apply_catalog_import(existing_songs, incoming_songs)
+    twice = apply_catalog_import(once, incoming_songs)
+    return [row.get("sourceKey") for row in once] == [
+        row.get("sourceKey") for row in twice
+    ]
+
+
 def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
     """Honest mapping object published on app_api.json → storyboard."""
     parked_named_ids = list(default_live_parked_named_ids or [])
@@ -1207,6 +1320,9 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "set-list, and catalog calls."
         ),
         "merge_key": f"vault:{CATALOG_IMPORT_POLICY_VERSION}:{{vault_id ?? id}}",
+        "import_is_idempotent": True,
+        "reconcile_skips_existing_source_key": True,
+        "reconcile_skips_existing_title": True,
         "bpm_note": (
             "StoryBoard parseBpm prefers songs[].bpm_int (clean integer 20–400), "
             "then songs[].bpm as an integer, then a leading 2–3 digit tempo. "
@@ -1221,7 +1337,9 @@ def storyboard_mapping(default_live_parked_named_ids=None) -> dict:
             "spine and is rejected as an import. StoryBoard #16 fails closed "
             "on that spine. StoryBoard #12 accepts this file only as local "
             "JSON (Band operations → Music & setlists). Remote catalog URLs "
-            "are rejected. This private catalog is not a public fetch. "
+            "are rejected. This public catalog is not a remote fetch. "
+            "Importing local JSON does not make committed catalog contents "
+            "private. "
             "Published setlist_ready_default_import is the default plan "
             "when present (empty published slice stays empty — StoryBoard will "
             "not recompute a live band). StoryBoard names that draft setlist "
