@@ -188,7 +188,7 @@ input{flex:1;min-width:0;width:100%}
 <div class="covers-note">93 covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
-<div class="controls"><input id="mq" placeholder="Search 807 usable transcript snippets… (try: alright, garden, better than now)" aria-label="Search memo transcripts"></div>
+<div class="controls"><input id="mq" placeholder="Search 807 usable transcript snippets… (try: its alright, garden, better than now)" aria-label="Search memo transcripts"></div>
 <div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div><div class="memo-next" id="memoScopeHook" hidden></div></div><span><button type="button" class="subtle-btn" id="copyMemoWork" hidden data-copy-work="">Copy work card</button> <button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></span></div>
 <div id="mlist"><div class="mhint">Type 3+ letters to search 807 usable-text transcripts. Source truth: 916 transcribed and 372 matched; 355 matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
 </div>
@@ -623,10 +623,10 @@ function songSearchHit(row,term){
  if(norm.length>=3&&memoLyricNorm(row.id).includes(norm))return {hit:true,rank:4,via:'memo'};
  return {hit:false,rank:99,via:''};
 }
-function markNormalized(text,term){
+function normalizedMatchRange(text,term){
  const src=String(text||'');
  const needle=normalizeSearch(term);
- if(!needle)return esc(src);
+ if(!needle)return null;
  const units=[];
  let norm='';
  let pendingSpace=false;
@@ -641,10 +641,16 @@ function markNormalized(text,term){
   }else pendingSpace=true;
  }
  const at=norm.indexOf(needle);
- if(at<0||!units[at]||!units[at+needle.length-1])return esc(src);
+ if(at<0||!units[at]||!units[at+needle.length-1])return null;
  const start=units[at].start;
  const end=units[at+needle.length-1].end||units[at+needle.length-1].start;
- return esc(src.slice(0,start))+'<mark>'+esc(src.slice(start,end))+'</mark>'+esc(src.slice(end));
+ return {start,end};
+}
+function markNormalized(text,term){
+ const src=String(text||'');
+ const range=normalizedMatchRange(src,term);
+ if(!range)return esc(src);
+ return esc(src.slice(0,range.start))+'<mark>'+esc(src.slice(range.start,range.end))+'</mark>'+esc(src.slice(range.end));
 }
 function songResultsStatus(term,shown,total){
  const n=Number(shown)||0, all=Number(total)||0;
@@ -1142,15 +1148,19 @@ function emptyMemosCopy(songScoped){
 }
 function memoMatches(m,term,songId){
  if(songId&&m.s!==songId)return false;
- if(!term)return !!songId;
- return String(m.x||'').toLowerCase().includes(term)||String(m.n||'').toLowerCase().includes(term)||String(sname[m.s]||'').toLowerCase().includes(term);
+ const needle=normalizeSearch(term);
+ if(!needle)return !!songId;
+ return [m&&m.x,m&&m.n,typeof sname!=='undefined'?sname[m&&m.s]:''].some(field=>normalizeSearch(field).includes(needle));
 }
 function markHay(text,term){
+ return markNormalized(text,term);
+}
+function memoSnippet(text,term){
  const src=String(text||'');
- if(!term)return esc(src);
- const i=src.toLowerCase().indexOf(term);
- if(i<0)return esc(src);
- return esc(src.slice(0,i))+'<mark>'+esc(src.slice(i,i+term.length))+'</mark>'+esc(src.slice(i+term.length));
+ const range=normalizedMatchRange(src,term);
+ if(!range)return esc(src.slice(0,160))+(src.length>160?'…':'');
+ const a=Math.max(0,range.start-80), b=Math.min(src.length,range.end+120);
+ return (a>0?'…':'')+esc(src.slice(a,range.start))+'<mark>'+esc(src.slice(range.start,range.end))+'</mark>'+esc(src.slice(range.end,b))+(b<src.length?'…':'');
 }
 function sortMemoHits(hits){
  const dated=[], empty=[];
@@ -1198,12 +1208,7 @@ function mrender(){
  const hits=[];
  for(const m of TX){
   if(!memoMatches(m,term,activeMemoSong))continue;
-  const lx=m.x.toLowerCase(); const i=term?lx.indexOf(term):-1;
-  let snip='';
-  if(term&&i>=0){const a=Math.max(0,i-80),b=Math.min(m.x.length,i+term.length+120);
-   snip=(a>0?'…':'')+esc(m.x.slice(a,i))+'<mark>'+esc(m.x.slice(i,i+term.length))+'</mark>'+esc(m.x.slice(i+term.length,b))+(b<m.x.length?'…':'');}
-  else snip=esc(m.x.slice(0,160))+(m.x.length>160?'…':'');
-  hits.push({m,snip});
+  hits.push({m,snip:memoSnippet(m.x,term)});
  }
  const ordered=sortMemoHits(hits);
  const visible=ordered.slice(0,80);
