@@ -19,6 +19,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_escape_clears_memo_search,
     dashboard_empty_memo_search_honest,
     dashboard_empty_search_honest,
+    dashboard_memo_query_ranks_catalog_matches,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
@@ -326,6 +327,12 @@ def extras_ok(cat=None):
             'closest name first titles, aliases, hooks memo lyric aka '
             'function emptyMemosCopy( press Escape or Show all memos '
             'try a different word '
+            'function memoIsCatalogMatched( function namedSongsForMemoQuery( '
+            'function memoResultsStatus( function memoIntakeLine( '
+            'Songs named catalog matches first id="memoWhisper" '
+            'Whisper mishears sung words class="intake-loc" '
+            '.intake-loc{white-space:nowrap} Voice&nbsp;Memo&nbsp;Intake '
+            "MEMO_VISIBLE_CAP=80 slice(0,MEMO_VISIBLE_CAP) hit.via==='name' "
             'function songResultsStatus( function emptySongsCopy( '
             'press Escape or Clear filters '
             'id="logicReady" Sort: Logic-ready Any Logic-ready '
@@ -1277,6 +1284,20 @@ class ValidateCatalogTests(unittest.TestCase):
             errors,
         )
         self.assertFalse(dashboard_escape_clears_memo_search(extra["dashboard_html"]))
+
+    def test_dashboard_without_catalog_matched_memo_rank_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "function namedSongsForMemoQuery(", ""
+        ).replace("catalog matches first", "").replace('id="memoWhisper"', "")
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("rank catalog-matched rows" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_memo_query_ranks_catalog_matches(extra["dashboard_html"])
+        )
 
     def test_dashboard_without_empty_memo_search_honesty_fails_closed(self):
         extra = extras_ok()
@@ -3146,6 +3167,7 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(dashboard_finds_remembered_song_names(extra["dashboard_html"]))
         self.assertTrue(dashboard_escape_clears_memo_search(extra["dashboard_html"]))
         self.assertTrue(dashboard_empty_memo_search_honest(extra["dashboard_html"]))
+        self.assertTrue(dashboard_memo_query_ranks_catalog_matches(extra["dashboard_html"]))
         self.assertTrue(dashboard_empty_search_honest(extra["dashboard_html"]))
         self.assertTrue(dashboard_exposes_logic_ready(extra["dashboard_html"]))
         self.assertTrue(dashboard_phone_and_a11y_ready(extra["dashboard_html"]))

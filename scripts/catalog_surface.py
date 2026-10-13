@@ -1237,6 +1237,30 @@ def dashboard_empty_memo_search_honest(html: str) -> bool:
     return all(marker in chrome for marker in required)
 
 
+def dashboard_memo_query_ranks_catalog_matches(html: str) -> bool:
+    """Memo queries rank catalog matches (or a Songs named jump) above unmatched hits."""
+    chrome = dashboard_markup_chrome(html)
+    if chrome.count("Whisper mishears sung words") != 1:
+        return False
+    required = (
+        "function memoIsCatalogMatched(",
+        "function namedSongsForMemoQuery(",
+        "function memoResultsStatus(",
+        "function memoIntakeLine(",
+        "Songs named",
+        "catalog matches first",
+        'id="memoWhisper"',
+        "Whisper mishears sung words",
+        'class="intake-loc"',
+        ".intake-loc{white-space:nowrap}",
+        "Voice&nbsp;Memo&nbsp;Intake",
+        "MEMO_VISIBLE_CAP=80",
+        "slice(0,MEMO_VISIBLE_CAP)",
+        "hit.via==='name'",
+    )
+    return all(marker in chrome for marker in required)
+
+
 _DISHONEST_TERM_STATUS_RE = re.compile(r"textContent\s*=\s*term\s*\?")
 
 

@@ -73,7 +73,7 @@ input{flex:1;min-width:0;width:100%}
 .score{min-width:0}.score-lab{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3)}
 @media(min-width:641px){.rhead{grid-template-columns:64px minmax(0,1fr) 110px 110px 110px}.scores{display:contents;grid-column:auto}.score-lab{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}}
 .rid{color:var(--ink3);font-size:11px;font-family:ui-monospace,Menlo,monospace}
-.rtitle,.rproj,.mrow,.msnip{overflow-wrap:anywhere;word-break:break-word}
+.rtitle,.rproj,.msnip{overflow-wrap:anywhere;word-break:break-word}
 .rtitle{font-weight:600} .rproj{color:var(--ink3);font-size:12px}
 .barwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);min-width:0}
 .bar-n{color:var(--ink)}
@@ -92,6 +92,9 @@ input{flex:1;min-width:0;width:100%}
 .mrow b{font-size:15px} .mmeta{color:var(--ink3);font-size:12px;margin-bottom:4px}
 .msnip{color:var(--ink2);font-size:14px} .msnip mark,.rtitle mark,.aka-hit mark{background:var(--ink);color:var(--bg);border-radius:3px;padding:0 2px}
 .mhint{color:var(--ink3);font-size:13px;padding:16px;text-align:center;overflow-wrap:anywhere}
+.memo-whisper{color:var(--ink3);font-size:13px;margin:0 0 10px}
+.intake-loc{white-space:nowrap}
+.mintake{overflow-wrap:anywhere;word-break:break-word}
 .resultbar,.memo-scope{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--ink3);font-size:13px;margin:0 0 10px;flex-wrap:wrap}
 .memo-scope{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ink2)}
 #workSession{position:sticky;top:0;z-index:6;background:var(--card)}
@@ -190,7 +193,8 @@ input{flex:1;min-width:0;width:100%}
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
 <div class="controls"><input id="mq" placeholder="Search 807 usable transcript snippets… (try: alright, garden, better than now)" aria-label="Search memo transcripts"></div>
 <div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div><div class="memo-next" id="memoScopeHook" hidden></div></div><span><button type="button" class="subtle-btn" id="copyMemoWork" hidden data-copy-work="">Copy work card</button> <button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></span></div>
-<div id="mlist"><div class="mhint">Type 3+ letters to search 807 usable-text transcripts. Source truth: 916 transcribed and 372 matched; 355 matched rows have enough text for this search index. Transcripts are machine-made (Whisper, run locally on your Mac) — they mishear sung words constantly, so treat hits as leads, not gospel. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
+<p id="memoWhisper" class="memo-whisper">Hits are leads, not gospel — Whisper mishears sung words.</p>
+<div id="mlist"><div class="mhint">Type 3+ letters to search 807 usable-text transcripts. Source truth: 916 transcribed and 372 matched; 355 matched rows have enough text for this search index. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
 </div>
 </main>
 <footer class="foot">Catalog v1.6. Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio. Logic-ready next is catalog evidence, not a completed export.</footer>
@@ -1152,21 +1156,62 @@ function markHay(text,term){
  if(i<0)return esc(src);
  return esc(src.slice(0,i))+'<mark>'+esc(src.slice(i,i+term.length))+'</mark>'+esc(src.slice(i+term.length));
 }
+function memoIsCatalogMatched(m){
+ return !!(m&&String(m.s||'').trim());
+}
 function sortMemoHits(hits){
- const dated=[], empty=[];
+ const matchedDated=[], matchedEmpty=[], unmatchedDated=[], unmatchedEmpty=[];
  (hits||[]).forEach(hit=>{
   const row=hit&&(hit.m||hit);
-  if(row&&String(row.d||'').trim())dated.push(hit); else empty.push(hit);
+  const matched=memoIsCatalogMatched(row);
+  const dated=row&&String(row.d||'').trim();
+  if(matched){if(dated)matchedDated.push(hit);else matchedEmpty.push(hit);}
+  else if(dated)unmatchedDated.push(hit);else unmatchedEmpty.push(hit);
  });
  const byDateThenFile=(a,b)=>{
   const am=a.m||a, bm=b.m||b;
   const dd=String(bm.d||'').localeCompare(String(am.d||''));
   return dd||String(bm.f||'').localeCompare(String(am.f||''));
  };
- dated.sort(byDateThenFile);
- empty.sort((a,b)=>String((b.m||b).f||'').localeCompare(String((a.m||a).f||'')));
- return dated.concat(empty);
+ const byFile=(a,b)=>String((b.m||b).f||'').localeCompare(String((a.m||a).f||''));
+ matchedDated.sort(byDateThenFile);
+ matchedEmpty.sort(byFile);
+ unmatchedDated.sort(byDateThenFile);
+ unmatchedEmpty.sort(byFile);
+ return matchedDated.concat(matchedEmpty).concat(unmatchedDated).concat(unmatchedEmpty);
 }
+function namedSongsForMemoQuery(term, rows){
+ const src=Array.isArray(rows)?rows:(typeof DATA!=='undefined'?DATA:[]);
+ const norm=typeof normalizeSearch==='function'?normalizeSearch(term):'';
+ if(!norm)return [];
+ const hits=[];
+ src.forEach(row=>{
+  const hit=typeof songSearchHit==='function'?songSearchHit(row,term):null;
+  if(hit&&hit.hit&&hit.via==='name')hits.push({row,hit});
+ });
+ hits.sort((a,b)=>a.hit.rank-b.hit.rank||String(a.row.t||'').localeCompare(String(b.row.t||'')));
+ return hits.slice(0,6);
+}
+function namedSongsJumpHtml(named){
+ if(!named||!named.length)return '';
+ const links=named.map(({row})=>`<button type="button" class="song-link" data-open-song="${esc(row.id)}">${esc(row.t)}</button>`).join(' · ');
+ return `<div class="resultbar memo-named" role="navigation" aria-label="Songs named for this memo query"><span>Songs named ${links}</span></div>`;
+}
+function memoResultsStatus(shown,total,unscopedQuery){
+ const n=Number(shown)||0, all=Number(total)||0;
+ const more=all>n?` of ${all}`:'';
+ const noun=all===1?'memo':'memos';
+ const sort=unscopedQuery?'catalog matches first':'newest first';
+ return `Showing ${n}${more} matching ${noun} · ${sort}`;
+}
+function memoIntakeLine(intake){
+ const row=intake||{};
+ const copy=row.copy
+  ?` <button type="button" class="subtle-btn" data-copy-file="${esc(row.copy)}">Copy intake name</button>`
+  :' · no copy-safe intake name yet';
+ return `<div class="mmeta mintake">file: ${esc(row.label||'')} <span class="intake-loc">(Voice&nbsp;Memo&nbsp;Intake)</span>${copy}</div>`;
+}
+const MEMO_VISIBLE_CAP=80;
 function copyMemoFile(name,btn){
  return copyVaultText(safeIntakeName(name),btn,'Copy intake name');
 }
@@ -1193,7 +1238,7 @@ function mrender(){
   copyMemoWork.dataset.copyWork=song?song.id:'';
  }
  if((!activeMemoSong&&term.length<3)||(term.length>0&&term.length<3)){
-  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Hits are leads, not gospel — Whisper mishears sung words. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div>`;return;
+  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div>`;return;
  }
  const hits=[];
  for(const m of TX){
@@ -1206,15 +1251,20 @@ function mrender(){
   hits.push({m,snip});
  }
  const ordered=sortMemoHits(hits);
- const visible=ordered.slice(0,80);
- const summary=ordered.length?`<div class="resultbar"><span>Showing ${visible.length}${ordered.length>visible.length?` of ${ordered.length}`:''} matching memo${ordered.length===1?'':'s'} · newest first</span></div>`:'';
- mlist.innerHTML=ordered.length?summary+visible.map(({m,snip})=>{
+ const visible=ordered.slice(0,MEMO_VISIBLE_CAP);
+ const named=term?namedSongsForMemoQuery(term):[];
+ const namedHtml=namedSongsJumpHtml(named);
+ if(!ordered.length){
+  mlist.innerHTML=namedHtml||`<div class="empty">${emptyMemosCopy(activeMemoSong)}</div>`;
+  return;
+ }
+ const summary=`<div class="resultbar"><span>${memoResultsStatus(visible.length,ordered.length,!activeMemoSong&&!!term)}</span></div>`;
+ mlist.innerHTML=namedHtml+summary+visible.map(({m,snip})=>{
  const intake=intakeNameSummary(m.f);
   return `
   <div class="mrow"><div class="mmeta">${esc(m.d)} · ${Math.round((Number(m.u)||0)/60)}min${m.s&&sname[m.s]?` · matched to <button type="button" class="song-link" data-open-song="${esc(m.s)}">${esc(sname[m.s])}</button>`:' · unmatched'}</div>
   <b>${markHay(m.n,term)}</b><div class="msnip">${snip}</div>
-  <div class="mmeta" style="margin-top:4px">file: ${esc(intake.label)} (Voice Memo Intake)${intake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(intake.copy)}">Copy intake name</button>`:' · no copy-safe intake name yet'}</div></div>`;}).join('')
-  :`<div class="empty">${emptyMemosCopy(activeMemoSong)}</div>`;
+  ${memoIntakeLine(intake)}</div>`;}).join('');
 }
 mq.addEventListener('input',mrender);
 mlist.addEventListener('click',e=>{
