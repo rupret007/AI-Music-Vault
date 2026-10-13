@@ -1261,6 +1261,43 @@ def dashboard_memo_query_ranks_catalog_matches(html: str) -> bool:
     return all(marker in chrome for marker in required)
 
 
+_MEMO_RAW_INCLUDES_RE = re.compile(
+    r"String\(m\.x\|\|''\)\.toLowerCase\(\)\.includes\(term\)"
+)
+_MEMO_RAW_SNIPPET_RE = re.compile(r"lx\s*=\s*m\.x\.toLowerCase\(\)")
+_MEMO_EMPTY_FOLD_SONG_TRUE_RE = re.compile(r"if\(!needle\)return !!songId;")
+
+
+def dashboard_memo_search_folds_punctuation(html: str) -> bool:
+    """Memo Search must fold apostrophes and punctuation the same way Songs does.
+
+    Raw toLowerCase includes miss curly-apostrophe titles such as It's Alright
+    when Jeff types the README-taught query without apostrophes. An empty
+    folded query in song scope must fail closed — !!songId alone treats !!!
+    as show-every-memo.
+    """
+    chrome = dashboard_markup_chrome(html)
+    if _MEMO_RAW_INCLUDES_RE.search(chrome):
+        return False
+    if _MEMO_RAW_SNIPPET_RE.search(chrome):
+        return False
+    if _MEMO_EMPTY_FOLD_SONG_TRUE_RE.search(chrome):
+        return False
+    required = (
+        "function memoMatches(",
+        "function normalizeSearch(",
+        "function normalizedMatchRange(",
+        "function memoSnippet(",
+        "normalizeSearch(term)",
+        "normalizeSearch(field)",
+        "function markHay(",
+        "markNormalized(text,term)",
+        "try: its alright",
+        "!String(term||'').trim()&&!!songId",
+    )
+    return all(marker in chrome for marker in required)
+
+
 _DISHONEST_TERM_STATUS_RE = re.compile(r"textContent\s*=\s*term\s*\?")
 
 
@@ -1727,6 +1764,111 @@ def dashboard_theme_tokens(html: str) -> tuple[dict[str, str], dict[str, str]]:
     dark_match = _CSS_ROOT_RE.search(without_light)
     dark = _css_root_tokens(dark_match.group(1) if dark_match else "")
     return dark, light
+
+
+_DARK_HTML_THEME_RE = re.compile(
+    r"<html\b[^>]*\bdata-theme\s*=\s*(['\"])dark\1",
+    re.IGNORECASE,
+)
+_COLOR_SCHEME_META_RE = re.compile(
+    r"<meta\b[^>]*\bname\s*=\s*['\"]color-scheme['\"][^>]*\bcontent\s*=\s*['\"]dark['\"]"
+    r"|<meta\b[^>]*\bcontent\s*=\s*['\"]dark['\"][^>]*\bname\s*=\s*['\"]color-scheme['\"]",
+    re.IGNORECASE,
+)
+_DARK_LOCK_RE = re.compile(
+    r"html\[data-theme=(['\"])dark\1\]\s*\{([^}]+)\}",
+    re.IGNORECASE,
+)
+_COLOR_SCHEME_DARK_DECL_RE = re.compile(r"color-scheme\s*:\s*dark\b", re.IGNORECASE)
+_DARK_BG_MAX_LUMINANCE = 0.05
+_DARK_INK_MIN_LUMINANCE = 0.80
+_HARSH_BLACK = "#000000"
+_REQUIRED_DARK_LOCK_TOKENS = (
+    "bg",
+    "card",
+    "card2",
+    "ink",
+    "ink2",
+    "ink3",
+    "line",
+    "pot",
+    "write",
+    "rdy",
+    "mom",
+    "listen",
+    "good",
+)
+
+
+def dashboard_dark_theme_default(html: str) -> bool:
+    """Jeff's dashboard paints dark by default; OS light must not win.
+
+    :root stays the dark token source. The light-scheme palette remains for
+    AA gates. html[data-theme=dark] after that query re-asserts the same
+    tokens so a light OS cannot flip the page. #000 is rejected as harsh.
+    """
+    chrome = dashboard_markup_chrome(html or "")
+    if not _DARK_HTML_THEME_RE.search(chrome):
+        return False
+    if not _COLOR_SCHEME_META_RE.search(chrome):
+        return False
+    if not _COLOR_SCHEME_DARK_DECL_RE.search(chrome):
+        return False
+    if not _LIGHT_SCHEME_MQ_RE.search(chrome):
+        return False
+    dark, _light = dashboard_theme_tokens(chrome)
+    for name in _REQUIRED_DARK_LOCK_TOKENS:
+        if not dark.get(name):
+            return False
+    if dark["bg"] == _HARSH_BLACK:
+        return False
+    try:
+        if hex_srgb_luminance(dark["bg"]) > _DARK_BG_MAX_LUMINANCE:
+            return False
+        if hex_srgb_luminance(dark["ink"]) < _DARK_INK_MIN_LUMINANCE:
+            return False
+    except ValueError:
+        return False
+    lock = _DARK_LOCK_RE.search(chrome)
+    if not lock:
+        return False
+    locked = _css_root_tokens(lock.group(2))
+    for name in _REQUIRED_DARK_LOCK_TOKENS:
+        if locked.get(name) != dark.get(name):
+            return False
+    collapsed_lock = re.sub(r"\s+", "", lock.group(2).lower())
+    if "color-scheme:dark" not in collapsed_lock:
+        return False
+    light_at = chrome.lower().find("@media (prefers-color-scheme: light)")
+    lock_at = chrome.lower().find("html[data-theme=")
+    if light_at < 0 or lock_at < 0 or lock_at < light_at:
+        return False
+    for fg_name, bg_name in (
+        ("ink", "bg"),
+        ("ink", "card"),
+        ("ink", "card2"),
+        ("ink2", "bg"),
+        ("ink2", "card"),
+        ("ink2", "card2"),
+        ("ink3", "bg"),
+        ("ink3", "card"),
+        ("ink3", "card2"),
+        ("write", "bg"),
+        ("write", "card"),
+        ("write", "card2"),
+        ("rdy", "bg"),
+        ("rdy", "card"),
+        ("listen", "bg"),
+        ("listen", "card"),
+        ("good", "bg"),
+        ("good", "card"),
+    ):
+        fg, bg = dark.get(fg_name), dark.get(bg_name)
+        if not fg or not bg:
+            return False
+        if contrast_ratio(fg, bg) < WCAG_AA_NORMAL_TEXT:
+            return False
+    return contrast_ratio(dark["bg"], dark["ink"]) >= WCAG_AA_NORMAL_TEXT
 
 
 def dashboard_listen_contrast_ready(html: str) -> bool:

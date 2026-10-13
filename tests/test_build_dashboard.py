@@ -26,6 +26,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
+    dashboard_memo_search_folds_punctuation,
     dashboard_catalog_overview_starts_collapsed,
     dashboard_first_paint_ready,
     dashboard_listen_is_not_playback,
@@ -42,6 +43,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_write_contrast_ready,
     dashboard_skip_link_contrast_ready,
     dashboard_search_mark_contrast_ready,
+    dashboard_dark_theme_default,
     dashboard_resumes_song_work_privately,
     dashboard_theme_tokens,
     embedded_dashboard_payloads,
@@ -634,6 +636,41 @@ class DashboardSongFindTests(unittest.TestCase):
         )
         self.assertEqual(normalize_search_text("Manic?  No way!"), "manic no way")
         self.assertEqual(normalize_search_text("  Candy   Lane  "), "candy lane")
+        self.assertEqual(
+            normalize_search_text("It’s Alright"),
+            normalize_search_text("its alright"),
+        )
+
+    def test_committed_dashboard_memo_search_folds_punctuation(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_memo_search_folds_punctuation(dashboard))
+        self.assertIn("function normalizedMatchRange(", dashboard)
+        self.assertIn("function memoSnippet(", dashboard)
+        self.assertIn("normalizeSearch(field)", dashboard)
+        self.assertIn("try: its alright", dashboard)
+        self.assertIn("!String(term||'').trim()&&!!songId", dashboard)
+        self.assertNotIn("if(!needle)return !!songId;", dashboard)
+        self.assertNotIn("String(m.x||'').toLowerCase().includes(term)", dashboard)
+        self.assertFalse(
+            dashboard_memo_search_folds_punctuation(
+                dashboard.replace("function normalizedMatchRange(", "").replace(
+                    "normalizeSearch(field)",
+                    "String(m.x||'').toLowerCase().includes(term)",
+                )
+            )
+        )
+        self.assertFalse(
+            dashboard_memo_search_folds_punctuation(
+                dashboard.replace(
+                    "if(!needle)return !String(term||'').trim()&&!!songId;",
+                    "if(!needle)return !!songId;",
+                )
+            )
+        )
 
     def test_song_aliases_use_existing_titles_only(self):
         self.assertEqual(
@@ -1690,6 +1727,104 @@ class DashboardListenContrastTests(unittest.TestCase):
                 self.assertGreaterEqual(
                     contrast_ratio(theme[token], theme["card2"]), WCAG_AA_NORMAL_TEXT
                 )
+
+
+_DARK_DEFAULT_SNIPPET = """<html lang="en" data-theme="dark"><meta name="color-scheme" content="dark">
+<style>
+:root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;color-scheme:dark;}
+@media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;--ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--write:#2466b8;--rdy:#b84414;--mom:#1baf7a;--listen:#187a56;--line:#e3e2dc;--good:#187a56;color-scheme:light;}}
+html[data-theme="dark"]{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;color-scheme:dark;}
+</style>"""
+
+
+class DashboardDarkThemeDefaultTests(unittest.TestCase):
+    def test_gate_fails_closed_without_lock_or_color_scheme(self):
+        self.assertFalse(dashboard_dark_theme_default("<html></html>"))
+        no_attr = _DARK_DEFAULT_SNIPPET.replace('data-theme="dark"', "")
+        self.assertFalse(dashboard_dark_theme_default(no_attr))
+        no_meta = _DARK_DEFAULT_SNIPPET.replace(
+            '<meta name="color-scheme" content="dark">', ""
+        )
+        self.assertFalse(dashboard_dark_theme_default(no_meta))
+        no_lock = _DARK_DEFAULT_SNIPPET.replace(
+            'html[data-theme="dark"]{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;--pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;color-scheme:dark;}',
+            "",
+        )
+        self.assertFalse(dashboard_dark_theme_default(no_lock))
+        no_light = _DARK_DEFAULT_SNIPPET.replace(
+            "@media (prefers-color-scheme: light)", "@media (min-width: 1px)"
+        )
+        self.assertFalse(dashboard_dark_theme_default(no_light))
+
+    def test_gate_rejects_harsh_black_and_washed_out_default(self):
+        harsh = _DARK_DEFAULT_SNIPPET.replace("#1a1a19", "#000000")
+        self.assertFalse(dashboard_dark_theme_default(harsh))
+        washed = _DARK_DEFAULT_SNIPPET.replace("#1a1a19", "#6a6a68")
+        self.assertFalse(dashboard_dark_theme_default(washed))
+
+    def test_fixed_tokens_lock_dark_and_keep_light_palette(self):
+        self.assertTrue(dashboard_dark_theme_default(_DARK_DEFAULT_SNIPPET))
+        dark, light = dashboard_theme_tokens(_DARK_DEFAULT_SNIPPET)
+        self.assertEqual(dark["bg"], "#1a1a19")
+        self.assertEqual(dark["ink"], "#ffffff")
+        self.assertEqual(dark["card"], "#242423")
+        self.assertEqual(dark["write"], "#3993fd")
+        self.assertEqual(light["bg"], "#fcfcfb")
+        self.assertEqual(light["ink"], "#1a1a19")
+        self.assertGreaterEqual(
+            contrast_ratio(dark["ink"], dark["bg"]), WCAG_AA_NORMAL_TEXT
+        )
+        self.assertGreaterEqual(
+            contrast_ratio(dark["ink2"], dark["card"]), WCAG_AA_NORMAL_TEXT
+        )
+        self.assertGreaterEqual(
+            contrast_ratio(dark["write"], dark["card2"]), WCAG_AA_NORMAL_TEXT
+        )
+
+    def test_committed_dashboard_is_dark_by_default(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            dashboard = handle.read()
+        self.assertTrue(dashboard_dark_theme_default(dashboard))
+        self.assertIn('<html lang="en" data-theme="dark">', dashboard)
+        self.assertIn('<meta name="color-scheme" content="dark">', dashboard)
+        self.assertIn("color-scheme:dark", dashboard)
+        self.assertIn('html[data-theme="dark"]{', dashboard)
+        self.assertIn("@media (prefers-color-scheme: light)", dashboard)
+        self.assertNotIn("--bg:#000000", dashboard)
+        dark, light = dashboard_theme_tokens(dashboard)
+        self.assertEqual(
+            dark,
+            {
+                "bg": "#1a1a19",
+                "card": "#242423",
+                "card2": "#2c2c2a",
+                "ink": "#ffffff",
+                "ink2": "#c3c2b7",
+                "ink3": "#a8a79c",
+                "pot": "#3987e5",
+                "write": "#3993fd",
+                "rdy": "#ee7a3a",
+                "mom": "#199e70",
+                "listen": "#20b87e",
+                "line": "#3a3a38",
+                "good": "#20b87e",
+            },
+        )
+        self.assertEqual(light.get("ink"), "#1a1a19")
+        self.assertEqual(light.get("write"), "#2466b8")
+        for fg in ("ink", "ink2", "ink3", "write", "rdy", "listen", "good"):
+            self.assertGreaterEqual(
+                contrast_ratio(dark[fg], dark["bg"]), WCAG_AA_NORMAL_TEXT
+            )
+            self.assertGreaterEqual(
+                contrast_ratio(dark[fg], dark["card"]), WCAG_AA_NORMAL_TEXT
+            )
+        self.assertGreaterEqual(
+            contrast_ratio(dark["bg"], dark["ink"]), WCAG_AA_NORMAL_TEXT
+        )
 
 
 if __name__ == "__main__":

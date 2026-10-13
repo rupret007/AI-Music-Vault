@@ -37,6 +37,7 @@ from catalog_surface import (
     dashboard_empty_memo_search_honest,
     dashboard_empty_search_honest,
     dashboard_memo_query_ranks_catalog_matches,
+    dashboard_memo_search_folds_punctuation,
     dashboard_exposes_logic_ready,
     dashboard_exposes_song_work,
     dashboard_finds_remembered_song_names,
@@ -53,6 +54,7 @@ from catalog_surface import (
     dashboard_tablist_keyboard_ready,
     dashboard_skip_link_contrast_ready,
     dashboard_search_mark_contrast_ready,
+    dashboard_dark_theme_default,
     readme_click_test_does_not_claim_private,
     readme_click_test_uses_browser_local_heading,
     readme_documents_session_click_test,
@@ -2151,6 +2153,12 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
                 "keep the Whisper disclaimer once, keep Voice Memo Intake "
                 "unsplit, and cap visible rows at 80"
             )
+        if not dashboard_memo_search_folds_punctuation(dash):
+            errors.append(
+                "dashboard Memo Search must fold apostrophes and punctuation "
+                "the same way Songs search does — raw toLowerCase includes "
+                "miss It's Alright when Jeff types its alright"
+            )
         if not dashboard_empty_search_honest(dash):
             errors.append(
                 "dashboard zero song hits must not claim closest-name ranking "
@@ -2182,6 +2190,13 @@ def validate(cat: dict, extras: dict | None = None) -> list[str]:
             errors.append(
                 "dashboard search-hit marks must meet WCAG AA 4.5:1 on "
                 "dark and light — do not paint white text on --pot"
+            )
+        if not dashboard_dark_theme_default(dash):
+            errors.append(
+                "dashboard must paint Jeff's dark theme by default — "
+                "lock data-theme=dark after the light-scheme palette, "
+                "keep color-scheme:dark, reject #000, and keep WCAG AA "
+                "on dark text, highlights, and work colors"
             )
         if not dashboard_first_paint_ready(dash):
             errors.append(

@@ -93,14 +93,17 @@ RECOVERED_COUNT = catalog_recovered_count(cat)
 CATALOG_VERSION = str(cat.get("version") or "")
 
 page = r'''<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en" data-theme="dark"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>Jeff Story Song Vault</title>
 <style>
 :root{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;
- --pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;}
+ --pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;color-scheme:dark;}
 @media (prefers-color-scheme: light){:root{--bg:#fcfcfb;--card:#ffffff;--card2:#f3f3f0;--ink:#1a1a19;
- --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--write:#2466b8;--rdy:#b84414;--mom:#1baf7a;--listen:#187a56;--line:#e3e2dc;--good:#187a56;}}
+ --ink2:#4a4a45;--ink3:#5c5b54;--pot:#2a78d6;--write:#2466b8;--rdy:#b84414;--mom:#1baf7a;--listen:#187a56;--line:#e3e2dc;--good:#187a56;color-scheme:light;}}
+html[data-theme="dark"]{--bg:#1a1a19;--card:#242423;--card2:#2c2c2a;--ink:#ffffff;--ink2:#c3c2b7;--ink3:#a8a79c;
+ --pot:#3987e5;--write:#3993fd;--rdy:#ee7a3a;--mom:#199e70;--listen:#20b87e;--line:#3a3a38;--good:#20b87e;color-scheme:dark;}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{overflow-x:hidden;overflow-x:clip}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif;padding:20px;max-width:980px;margin:0 auto}
@@ -285,7 +288,7 @@ input{flex:1;min-width:0;width:100%}
 <div class="covers-note">__COVER_COUNT__ covers cataloged separately, never ranked against originals. Catalog rows are not the official set. Show Night owns official sets. Spine: data/master_catalog.json · StoryBoard feed: data/app_api.json · validate: python3 scripts/validate_catalog.py</div>
 </div>
 <div id="paneM" role="tabpanel" aria-labelledby="tabM" hidden>
-<div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: alright, garden, better than now)" aria-label="Search memo transcripts"></div>
+<div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: its alright, garden, better than now)" aria-label="Search memo transcripts"></div>
 <div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div><div class="memo-next" id="memoScopeHook" hidden></div></div><span><button type="button" class="subtle-btn" id="copyMemoWork" hidden data-copy-work="">Copy work card</button> <button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></span></div>
 <p id="memoWhisper" class="memo-whisper">Hits are leads, not gospel — Whisper mishears sung words.</p>
 <div id="mlist"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
@@ -721,10 +724,10 @@ function songSearchHit(row,term){
  if(norm.length>=3&&memoLyricNorm(row.id).includes(norm))return {hit:true,rank:4,via:'memo'};
  return {hit:false,rank:99,via:''};
 }
-function markNormalized(text,term){
+function normalizedMatchRange(text,term){
  const src=String(text||'');
  const needle=normalizeSearch(term);
- if(!needle)return esc(src);
+ if(!needle)return null;
  const units=[];
  let norm='';
  let pendingSpace=false;
@@ -739,10 +742,16 @@ function markNormalized(text,term){
   }else pendingSpace=true;
  }
  const at=norm.indexOf(needle);
- if(at<0||!units[at]||!units[at+needle.length-1])return esc(src);
+ if(at<0||!units[at]||!units[at+needle.length-1])return null;
  const start=units[at].start;
  const end=units[at+needle.length-1].end||units[at+needle.length-1].start;
- return esc(src.slice(0,start))+'<mark>'+esc(src.slice(start,end))+'</mark>'+esc(src.slice(end));
+ return {start,end};
+}
+function markNormalized(text,term){
+ const src=String(text||'');
+ const range=normalizedMatchRange(src,term);
+ if(!range)return esc(src);
+ return esc(src.slice(0,range.start))+'<mark>'+esc(src.slice(range.start,range.end))+'</mark>'+esc(src.slice(range.end));
 }
 function songResultsStatus(term,shown,total){
  const n=Number(shown)||0, all=Number(total)||0;
@@ -1240,15 +1249,19 @@ function emptyMemosCopy(songScoped){
 }
 function memoMatches(m,term,songId){
  if(songId&&m.s!==songId)return false;
- if(!term)return !!songId;
- return String(m.x||'').toLowerCase().includes(term)||String(m.n||'').toLowerCase().includes(term)||String(sname[m.s]||'').toLowerCase().includes(term);
+ const needle=normalizeSearch(term);
+ if(!needle)return !String(term||'').trim()&&!!songId;
+ return [m&&m.x,m&&m.n,typeof sname!=='undefined'?sname[m&&m.s]:''].some(field=>normalizeSearch(field).includes(needle));
 }
 function markHay(text,term){
+ return markNormalized(text,term);
+}
+function memoSnippet(text,term){
  const src=String(text||'');
- if(!term)return esc(src);
- const i=src.toLowerCase().indexOf(term);
- if(i<0)return esc(src);
- return esc(src.slice(0,i))+'<mark>'+esc(src.slice(i,i+term.length))+'</mark>'+esc(src.slice(i+term.length));
+ const range=normalizedMatchRange(src,term);
+ if(!range)return esc(src.slice(0,160))+(src.length>160?'…':'');
+ const a=Math.max(0,range.start-80), b=Math.min(src.length,range.end+120);
+ return (a>0?'…':'')+esc(src.slice(a,range.start))+'<mark>'+esc(src.slice(range.start,range.end))+'</mark>'+esc(src.slice(range.end,b))+(b<src.length?'…':'');
 }
 function memoIsCatalogMatched(m){
  return !!(m&&String(m.s||'').trim());
@@ -1337,12 +1350,7 @@ function mrender(){
  const hits=[];
  for(const m of TX){
   if(!memoMatches(m,term,activeMemoSong))continue;
-  const lx=m.x.toLowerCase(); const i=term?lx.indexOf(term):-1;
-  let snip='';
-  if(term&&i>=0){const a=Math.max(0,i-80),b=Math.min(m.x.length,i+term.length+120);
-   snip=(a>0?'…':'')+esc(m.x.slice(a,i))+'<mark>'+esc(m.x.slice(i,i+term.length))+'</mark>'+esc(m.x.slice(i+term.length,b))+(b<m.x.length?'…':'');}
-  else snip=esc(m.x.slice(0,160))+(m.x.length>160?'…':'');
-  hits.push({m,snip});
+  hits.push({m,snip:memoSnippet(m.x,term)});
  }
  const ordered=sortMemoHits(hits);
  const visible=ordered.slice(0,MEMO_VISIBLE_CAP);

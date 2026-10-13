@@ -15,8 +15,9 @@ outside this repo. Do not commit audio, personal data, or local session notes.
 ## Features
 
 - Search songs by title, existing aliases, punctuation-folded names, or searchable
-  matched memo lyrics; Enter opens the closest result. Navigate between a song
-  and its matched memo evidence, with date sorting and scoped search.
+  matched memo lyrics; Enter opens the closest result. Memo Search folds the same
+  apostrophes and punctuation, so `its alright` finds It’s Alright. Navigate
+  between a song and its matched memo evidence, with date sorting and scoped search.
 - Start Write / Produce / Listen on the highest-momentum matching song, move
   through a bounded queue, and resume the exact song after refresh. Copy a
   sanitized work card or next step; unsafe or missing actions fail closed.
@@ -33,8 +34,11 @@ outside this repo. Do not commit audio, personal data, or local session notes.
 ## Quick start
 
 Open [Jeff Story Song Vault Dashboard.html](Jeff%20Story%20Song%20Vault%20Dashboard.html)
-locally in a browser. No server, account, API key, or package install is needed
-to browse the committed dashboard. Clipboard and resume storage depend on browser
+locally in a browser. The dashboard is dark by default (Jeff's preference) and
+does not follow the OS light preference. Native controls use `color-scheme: dark`.
+A complete WCAG AA light palette remains in the stylesheet so contrast gates stay
+dual-theme. No server, account, API key, or package install is needed to browse
+the committed dashboard. Clipboard and resume storage depend on browser
 permissions; blocked storage soft-fails.
 
 For development, use **Python 3.12** (the CI version) and **Node.js** for the
@@ -112,7 +116,9 @@ test; it does not establish that any audio has been heard or exported.
    Browser storage holds only schema version, work kind, and catalog ID. Extra
    fields, stale schemas, unknown IDs, and mismatched kinds are rejected.
 6. Search Songs by an alias or a title without apostrophes; Enter opens the
-   closest result and Escape clears search. Memo lyric matches are leads, not listens.
+   closest result and Escape clears search. Memo Search folds the same
+   punctuation (`its alright` finds It’s Alright). Memo lyric matches are
+   leads, not listens.
 7. Check **Logic-ready next**, **Assets on file**, and **Copy Logic-ready next**
    when shown. Pair Voice Memo Intake name + **Copy next step** in your local
    Session Log handoff. Work in Logic (export honesty, WAVs/AIFF/MIDI preference,
