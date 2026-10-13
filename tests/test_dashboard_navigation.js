@@ -333,6 +333,18 @@ if (!memoMatches(alrightMemo, "it's", "")) {
 if (memoMatches(alrightMemo, "!!!", "")) {
   fail("punctuation-only Memo Search must fail closed instead of matching everything");
 }
+if (memoMatches(alrightMemo, "!!!", "JS-0128")) {
+  fail("punctuation-only per-song Memo Search must fail closed instead of matching everything");
+}
+if (memoMatches(alrightMemo, "'", "JS-0128")) {
+  fail("apostrophe-only per-song Memo Search must fail closed instead of matching everything");
+}
+if (!memoMatches(alrightMemo, "", "JS-0128")) {
+  fail("empty per-song Memo Search must still list every linked memo");
+}
+if (extractFunction(script, "memoMatches").includes("if(!needle)return !!songId;")) {
+  fail("empty folded query must not treat typed punctuation as show-all in song scope");
+}
 if (extractFunction(script, "memoMatches").includes("toLowerCase().includes(term)")) {
   fail("memoMatches must not use raw toLowerCase includes");
 }
@@ -1396,6 +1408,20 @@ if (emptyMemosCopy("") !== "No matched memo evidence found — try a different w
 }
 if (emptyMemosCopy("ST-0001") !== "No matched memo evidence found — press Escape or Show all memos.") {
   fail("scoped memo misses must name Escape and Show all memos");
+}
+const scopedPunctuationHits = [alrightMemo].filter((row) => memoMatches(row, "!!!", "JS-0128"));
+if (scopedPunctuationHits.length) {
+  fail("per-song punctuation-only query must return no memo hits");
+}
+if (emptyMemosCopy("JS-0128") !== "No matched memo evidence found — press Escape or Show all memos.") {
+  fail("per-song punctuation-only misses must show the same scoped empty hint");
+}
+const scopedApostropheHits = [alrightMemo].filter((row) => memoMatches(row, "'", "JS-0128"));
+if (scopedApostropheHits.length) {
+  fail("per-song apostrophe-only query must return no memo hits");
+}
+if (emptyMemosCopy("JS-0128") !== emptyMemosCopy("ST-0001")) {
+  fail("per-song empty folded query must reuse the scoped empty-memo hint");
 }
 if (emptyMemosCopy("").includes("clear the song filter") || emptyMemosCopy("ST-0001").includes("clear the song filter")) {
   fail("empty memo copy must not invent a song-filter control");

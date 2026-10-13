@@ -331,6 +331,7 @@ def extras_ok(cat=None):
             'function memoMatches( function normalizedMatchRange( '
             'function memoSnippet( normalizeSearch(term) normalizeSearch(field) '
             'function markHay( markNormalized(text,term) try: its alright '
+            "!String(term||'').trim()&&!!songId "
             'function songResultsStatus( function emptySongsCopy( '
             'press Escape or Clear filters '
             'id="logicReady" Sort: Logic-ready Any Logic-ready '
@@ -1318,6 +1319,20 @@ class ValidateCatalogTests(unittest.TestCase):
         extra["dashboard_html"] += (
             "String(m.x||'').toLowerCase().includes(term) lx=m.x.toLowerCase()"
         )
+        errors = validate(fixture(), extra)
+        self.assertTrue(
+            any("Memo Search must fold apostrophes" in e for e in errors),
+            errors,
+        )
+        self.assertFalse(
+            dashboard_memo_search_folds_punctuation(extra["dashboard_html"])
+        )
+
+    def test_dashboard_scoped_empty_folded_memo_query_fails_closed(self):
+        extra = extras_ok()
+        extra["dashboard_html"] = extra["dashboard_html"].replace(
+            "!String(term||'').trim()&&!!songId", ""
+        ) + "if(!needle)return !!songId;"
         errors = validate(fixture(), extra)
         self.assertTrue(
             any("Memo Search must fold apostrophes" in e for e in errors),
