@@ -5,17 +5,19 @@ ideas, tracking evidence, and choosing the next writing or production step.
 `data/master_catalog.json` is the source of truth; generated views are indexes,
 not audio players or finished exports.
 
-**This repository is PUBLIC.** Committed metadata, lyrics, transcripts, and the
-dashboard are publicly readable and include sensitive historical material.
-“Private session” or “private sit-down” means browser-local navigation and resume
-state, not private repository contents. Audio masters and Logic projects stay
+**This repository is PUBLIC.** This public catalog is not a remote fetch.
+Committed metadata, lyrics, transcripts, and the dashboard are publicly
+readable and include sensitive historical material. “Private session” or
+“private sit-down” means browser-local navigation and resume state, not
+private repository contents. Audio masters and Logic projects stay
 outside this repo. Do not commit audio, personal data, or local session notes.
 
 ## Features
 
 - Search songs by title, existing aliases, punctuation-folded names, or searchable
-  matched memo lyrics; Enter opens the closest result. Navigate between a song
-  and its matched memo evidence, with date sorting and scoped search.
+  matched memo lyrics; Enter opens the closest result. Memo Search folds the same
+  apostrophes and punctuation, so `its alright` finds It’s Alright. Navigate
+  between a song and its matched memo evidence, with date sorting and scoped search.
 - Start Write / Produce / Listen on the highest-momentum matching song, move
   through a bounded queue, and resume the exact song after refresh. Copy a
   sanitized work card or next step; unsafe or missing actions fail closed.
@@ -32,15 +34,20 @@ outside this repo. Do not commit audio, personal data, or local session notes.
 ## Quick start
 
 Open [Jeff Story Song Vault Dashboard.html](Jeff%20Story%20Song%20Vault%20Dashboard.html)
-locally in a browser. No server, account, API key, or package install is needed
-to browse the committed dashboard. Clipboard and resume storage depend on browser
+locally in a browser. The dashboard is dark by default (Jeff's preference) and
+does not follow the OS light preference. Native controls use `color-scheme: dark`.
+A complete WCAG AA light palette remains in the stylesheet so contrast gates stay
+dual-theme. No server, account, API key, or package install is needed to browse
+the committed dashboard. Clipboard and resume storage depend on browser
 permissions; blocked storage soft-fails.
 
 For development, use **Python 3.12** (the CI version) and **Node.js** for the
 navigation smoke test (verified locally with Node 22). The core build and checks
-use the standard libraries only. Where older docs use `python3`, ensure it selects
-the same Python version. There is no npm project, Makefile, required
-environment variable, `.env` file, or desktop packaging step.
+use the standard libraries only. The StoryBoard importer test loads
+`catalog-import.ts` from StoryBoard and installs `zod` into a temp directory.
+Where older docs use `python3`, ensure it selects the same Python version.
+There is no repo-level npm project, Makefile, required environment variable,
+`.env` file, or desktop packaging step.
 
 ## Build and test
 
@@ -53,20 +60,49 @@ python3.12 scripts/export_catalog_csv.py
 python3.12 scripts/build_dashboard.py
 ```
 
+Importing `scripts/build_dashboard.py` does not read catalog files or write HTML.
+Its `load_payload()` reads inputs explicitly; `build_payload()` and
+`render_dashboard()` work in memory. `write_dashboard()` writes the rendered
+page, and the guarded `main()` runs the CLI build.
+
 Run the full [catalog-validate workflow](.github/workflows/catalog-validate.yml)
 gate locally (CI uses `python` after selecting 3.12):
 
 ```bash
 python3.12 scripts/validate_catalog.py
+python3.12 scripts/build_dashboard.py --check
 python3.12 -m unittest discover -s tests -v
+node --experimental-strip-types tests/test_storyboard_catalog_import.mjs
 node tests/test_dashboard_navigation.js
+node tests/test_dashboard_resume.js
 python3.12 scripts/export_app_api.py --check
 python3.12 scripts/export_catalog_csv.py --check
 ```
 
+The dashboard check rebuilds slim `DATA` and `TX` in memory and fails if either
+committed HTML payload is missing, invalid, or stale. It never rewrites the HTML;
+run the build commands above to refresh it. The existing payload SHA pins remain
+a separate check. This freshness check compares payloads, not the HTML layout.
+
 These commands read committed metadata and generated files; they do not open or
 upload audio or contact an AI service. Local validation is the catalog gate;
 a hosted empty-runner is not a catalog fail or a successful validation.
+
+Verify Resume's first screen with an already-installed Chrome or Chromium
+(set `CHROME` to the executable if it is not at the default macOS path). The
+check uses Chrome DevTools Protocol the same way the local screenshot helper
+does and never downloads a browser:
+
+```bash
+node tests/test_dashboard_resume_browser.js /absolute/path/to/resume-evidence
+```
+
+This additional browser check requires all Resume controls above the fold at
+390×844 and 1280×800, checks keyboard order and Resume/Forget, and saves viewport
+PNGs plus measured bounds. It serves the committed HTML on loopback with other
+paths rejected and uses isolated temporary browser storage. Missing Chrome or a
+failed launch exits non-zero; that is not viewport verification. No dependencies
+are downloaded by the test. This check is not part of hosted catalog-validate.
 
 Optional: `python3.12 scripts/build_xlsx.py` needs `openpyxl` and writes
 `data/Jeff Story Master Song Catalog.xlsx`. It is untracked, not gitignored, and
@@ -76,7 +112,7 @@ Do not commit the workbook. `build_catalog.py`, `build_organized_vault.py`, and
 Owner-local audio tools and their separate dependencies are described in the
 [Workbench Plan](00_control_room/Workbench%20Plan.md); they are not CI prerequisites.
 
-## Click-test the private session
+## Click-test the browser-local session
 
 Open the dashboard locally. This manual browser check complements the Node smoke
 test; it does not establish that any audio has been heard or exported.
@@ -93,8 +129,11 @@ test; it does not establish that any audio has been heard or exported.
 5. Click **Forget**, then refresh. Resume stays gone and the work hash is cleared.
    Browser storage holds only schema version, work kind, and catalog ID. Extra
    fields, stale schemas, unknown IDs, and mismatched kinds are rejected.
-6. Search Songs by an alias or a title without apostrophes; Enter opens the
-   closest result and Escape clears search. Memo lyric matches are leads, not listens.
+6. Search Songs by an alias or a title without apostrophes; arrow keys move a
+   visible highlight among results and Enter opens the focused row (closest
+   result if none is highlighted). Escape clears search. Memo Search folds the
+   same punctuation (`its alright` finds It’s Alright) and uses the same
+   arrow/Enter focus. Memo lyric matches are leads, not listens.
 7. Check **Logic-ready next**, **Assets on file**, and **Copy Logic-ready next**
    when shown. Pair Voice Memo Intake name + **Copy next step** in your local
    Session Log handoff. Work in Logic (export honesty, WAVs/AIFF/MIDI preference,

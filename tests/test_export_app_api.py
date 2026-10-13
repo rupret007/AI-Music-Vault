@@ -23,13 +23,17 @@ from export_app_api import (  # noqa: E402
 from storyboard_contract import (  # noqa: E402
     BAND_OPERATIONS_IMPORT,
     CATALOG_IMPORT_POLICY_VERSION,
+    SKIP_SOURCE_KEY_EXISTS,
+    SKIP_TITLE_EXISTS,
     VAULT_DEFAULT_LIVE_SETLIST_NAME,
     VAULT_IMPORT_FILE,
     VAULT_SETLIST_READY_SETLIST_NAME,
     VAULT_SPINE_IMPORT_ERROR,
     VAULT_STORYBOARD_FIELD_MAP,
     SHOW_NIGHT_OFFICIAL_SET_SETLIST_NAME,
+    apply_catalog_import,
     bpm_int,
+    catalog_import_is_idempotent,
     catalog_locator_looks_remote,
     clean_title,
     default_decisions,
@@ -37,9 +41,12 @@ from storyboard_contract import (  # noqa: E402
     live_default_decisions,
     parked_named_default_live_ids,
     parse_bpm,
+    reconcile_catalog_import,
     source_key,
     storyboard_mapping,
     storyboard_parse_bpm,
+    upsert_catalog_song,
+    vault_song_draft,
 )
 from test_validate_catalog import fixture  # noqa: E402
 
@@ -139,6 +146,11 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertTrue(mapping["ops"]["show_night_binds_official_set_dump"])
         self.assertTrue(mapping["local_json_only"])
         self.assertIs(mapping["remote_catalog_urls"], False)
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            mapping["default_import"],
+        )
+        self.assertNotIn("This private catalog", mapping["default_import"])
         self.assertEqual(mapping["band_operations_import"], BAND_OPERATIONS_IMPORT)
         self.assertTrue(mapping["ops"]["local_json_only"])
         self.assertIs(mapping["ops"]["remote_catalog_urls"], False)
@@ -251,6 +263,112 @@ class ExportHonestyTests(unittest.TestCase):
         )
         rec = next(s for s in build_payload(fixture())["songs"] if s["id"] == "ST-0004")
         self.assertEqual(rec["source_key"], "vault:catalog_import_v1:ST-0004")
+
+    def test_catalog_import_is_idempotent(self):
+        payload = build_payload(fixture())
+        mapping = storyboard_mapping()
+        self.assertTrue(mapping["import_is_idempotent"])
+        self.assertTrue(payload["storyboard"]["import_is_idempotent"])
+        self.assertTrue(mapping["reconcile_skips_existing_source_key"])
+        self.assertTrue(mapping["reconcile_skips_existing_title"])
+        self.assertTrue(catalog_import_is_idempotent([], payload["songs"]))
+        once = apply_catalog_import([], payload["songs"])
+        twice = apply_catalog_import(once, payload["songs"])
+        self.assertEqual(len(once), len(payload["songs"]))
+        self.assertEqual(len(twice), len(once))
+        self.assertEqual(
+            [row["sourceKey"] for row in once],
+            [row["sourceKey"] for row in twice],
+        )
+        recon = reconcile_catalog_import(
+            [vault_song_draft(song) for song in payload["songs"]],
+            once,
+        )
+        self.assertEqual(recon["createSongs"], [])
+        self.assertTrue(recon["skipSongs"])
+        self.assertTrue(
+            all(skip["reason"] == SKIP_SOURCE_KEY_EXISTS for skip in recon["skipSongs"])
+        )
+
+    def test_catalog_import_skips_duplicate_title(self):
+        library = [
+            {
+                "sourceKey": "manual:existing",
+                "title": "Turn Over The Flag",
+                "origin": "manual",
+            }
+        ]
+        incoming = [
+            {
+                "id": "ST-0001",
+                "vault_id": "ST-0001",
+                "title": "Turn Over The Flag",
+                "is_original": True,
+            }
+        ]
+        merged = apply_catalog_import(library, incoming)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["sourceKey"], "manual:existing")
+        recon = reconcile_catalog_import(
+            [vault_song_draft(incoming[0])],
+            library,
+        )
+        self.assertEqual(recon["skipSongs"][0]["reason"], SKIP_TITLE_EXISTS)
+
+    def test_upsert_existing_source_key_is_noop(self):
+        songs = []
+        draft = vault_song_draft(
+            {"id": "ST-0004", "vault_id": "ST-0004", "title": "Manic", "is_original": True}
+        )
+        self.assertEqual(upsert_catalog_song(songs, draft), draft["sourceKey"])
+        self.assertEqual(len(songs), 1)
+        changed = dict(draft)
+        changed["title"] = "Manic!!"
+        self.assertEqual(upsert_catalog_song(songs, changed), draft["sourceKey"])
+        self.assertEqual(len(songs), 1)
+        self.assertEqual(songs[0]["title"], "Manic")
+
+    def test_upsert_title_collision_skips_existing_non_vault_song(self):
+        songs = [
+            {
+                "sourceKey": "manual:existing",
+                "title": "Turn Over The Flag",
+                "origin": "manual",
+                "notes": "keep me",
+                "bpm": 100,
+            }
+        ]
+        draft = vault_song_draft(
+            {
+                "id": "ST-0001",
+                "vault_id": "ST-0001",
+                "title": "Turn Over The Flag",
+                "is_original": True,
+            }
+        )
+        self.assertEqual(draft["origin"], "vault")
+        self.assertEqual(upsert_catalog_song(songs, draft), "manual:existing")
+        self.assertEqual(len(songs), 1)
+        self.assertEqual(songs[0]["sourceKey"], "manual:existing")
+        self.assertEqual(songs[0]["origin"], "manual")
+        self.assertEqual(songs[0]["notes"], "keep me")
+        self.assertEqual(songs[0]["bpm"], 100)
+        self.assertEqual(songs[0]["title"], "Turn Over The Flag")
+
+    def test_upsert_empty_title_does_not_collide_with_blank_library_title(self):
+        songs = [{"sourceKey": "manual:blank", "title": "   ", "origin": "manual"}]
+        draft = {
+            "sourceKey": "vault:catalog_import_v1:ST-0004",
+            "title": "",
+            "origin": "vault",
+        }
+        self.assertEqual(upsert_catalog_song(songs, draft), draft["sourceKey"])
+        self.assertEqual(len(songs), 2)
+        self.assertEqual(songs[0]["sourceKey"], "manual:blank")
+        self.assertEqual(songs[1]["sourceKey"], draft["sourceKey"])
+        recon = reconcile_catalog_import([draft], songs[:1])
+        self.assertEqual(recon["createSongs"][0]["sourceKey"], draft["sourceKey"])
+        self.assertEqual(recon["skipSongs"], [])
 
     def test_duration_stays_null(self):
         for rec in build_payload(fixture())["songs"]:
@@ -373,6 +491,15 @@ class ExportHonestyTests(unittest.TestCase):
         self.assertTrue(api["storyboard"]["vault_feed_is_not_a_show_night_writer"])
         self.assertTrue(api["storyboard"]["local_json_only"])
         self.assertIs(api["storyboard"]["remote_catalog_urls"], False)
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["storyboard"]["default_import"],
+        )
+        self.assertIn(
+            "This public catalog is not a remote fetch.",
+            api["notes"]["storyboard_import"],
+        )
+        self.assertNotIn("This private catalog", api["notes"]["storyboard_import"])
         self.assertEqual(
             api["storyboard"]["band_operations_import"], BAND_OPERATIONS_IMPORT
         )
