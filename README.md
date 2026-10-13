@@ -34,8 +34,11 @@ outside this repo. Do not commit audio, personal data, or local session notes.
 ## Quick start
 
 Open [Jeff Story Song Vault Dashboard.html](Jeff%20Story%20Song%20Vault%20Dashboard.html)
-locally in a browser. No server, account, API key, or package install is needed
-to browse the committed dashboard. Clipboard and resume storage depend on browser
+locally in a browser. The dashboard is dark by default (Jeff's preference) and
+does not follow the OS light preference. Native controls use `color-scheme: dark`.
+A complete WCAG AA light palette remains in the stylesheet so contrast gates stay
+dual-theme. No server, account, API key, or package install is needed to browse
+the committed dashboard. Clipboard and resume storage depend on browser
 permissions; blocked storage soft-fails.
 
 For development, use **Python 3.12** (the CI version) and **Node.js** for the
