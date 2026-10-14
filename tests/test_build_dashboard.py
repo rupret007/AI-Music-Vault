@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sys
 import unittest
 
@@ -1825,6 +1826,121 @@ class DashboardDarkThemeDefaultTests(unittest.TestCase):
         self.assertGreaterEqual(
             contrast_ratio(dark["bg"], dark["ink"]), WCAG_AA_NORMAL_TEXT
         )
+
+
+def _braced_block(text, start_marker):
+    start = text.index(start_marker)
+    brace_start = text.index("{", start)
+    depth = 0
+    cursor = brace_start
+    while cursor < len(text):
+        if text[cursor] == "{":
+            depth += 1
+        elif text[cursor] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : cursor + 1]
+        cursor += 1
+    raise AssertionError("unbalanced braces looking for " + start_marker)
+
+
+class DashboardScoreBarDesktopLabelTests(unittest.TestCase):
+    """A08: desktop rows must name Potential / Readiness / Momentum, not just a top legend."""
+
+    def _html(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            return handle.read()
+
+    def _builder(self):
+        with open(
+            os.path.join(ROOT, "scripts", "build_dashboard.py"),
+            encoding="utf-8",
+        ) as handle:
+            return handle.read()
+
+    def _style_block(self, source=None):
+        html = source if source is not None else self._html()
+        return html.split("<style>", 1)[1].split("</style>", 1)[0]
+
+    def _script(self, source=None):
+        html = source if source is not None else self._html()
+        return html.split("<script>", 1)[1].split("</script>", 1)[0]
+
+    def test_desktop_breakpoint_does_not_visually_hide_score_labels(self):
+        for source in (self._html(), self._builder()):
+            desktop_block = _braced_block(self._style_block(source), "@media(min-width:641px)")
+            self.assertNotIn("clip:rect(0,0,0,0)", desktop_block)
+            self.assertNotIn("width:1px;height:1px", desktop_block)
+            self.assertNotIn("position:absolute", desktop_block)
+            self.assertNotIn(".score-lab", desktop_block)
+            self.assertIn('"id title s1 s2 s3"', desktop_block)
+            self.assertIn(".score-pot{grid-area:s1}", desktop_block)
+            self.assertIn(".score-rdy{grid-area:s2}", desktop_block)
+            self.assertIn(".score-mom{grid-area:s3}", desktop_block)
+            self.assertIn("display:contents", desktop_block)
+
+    def test_score_lab_font_size_is_at_least_12px(self):
+        for source in (self._html(), self._builder()):
+            rule = _braced_block(self._style_block(source), ".score-lab{")
+            font_size = re.search(r"font-size:(\d+)px", rule)
+            self.assertIsNotNone(font_size, "expected .score-lab to set an explicit font-size")
+            self.assertGreaterEqual(int(font_size.group(1)), 12)
+            self.assertNotIn("clip:rect(0,0,0,0)", rule)
+            self.assertNotIn("position:absolute", rule)
+
+    def test_phone_row_puts_title_then_id_project_then_scores(self):
+        for source in (self._html(), self._builder()):
+            style = self._style_block(source)
+            rhead = _braced_block(style, ".rhead{")
+            self.assertIn(
+                'grid-template-areas:"title title title" "id proj proj" "scores scores scores" "next next next"',
+                rhead,
+            )
+            self.assertNotIn(
+                "grid-template-columns:64px minmax(0,1fr) minmax(0,1fr)",
+                rhead,
+            )
+            title_at = rhead.index('"title title title"')
+            id_at = rhead.index('"id proj proj"')
+            scores_at = rhead.index('"scores scores scores"')
+            next_at = rhead.index('"next next next"')
+            self.assertLess(title_at, id_at)
+            self.assertLess(id_at, scores_at)
+            self.assertLess(scores_at, next_at)
+            scores = _braced_block(style, ".scores{")
+            self.assertIn("grid-area:scores", scores)
+            self.assertIn("repeat(3,minmax(0,1fr))", scores)
+
+    def test_next_step_snippet_does_not_interleave_with_scores_or_project(self):
+        for source in (self._html(), self._builder()):
+            script = self._script(source)
+            self.assertIn('class="rnext"', script)
+            self.assertIn('class="rproj"', script)
+            self.assertNotIn("${nxtShort?` · ${esc(nxtShort)}`:''}", script)
+            proj_idx = script.index('class="rproj"')
+            next_idx = script.index('class="rnext"')
+            scores_idx = script.index('class="scores"')
+            self.assertLess(proj_idx, scores_idx)
+            self.assertLess(scores_idx, next_idx)
+
+    def test_row_markup_names_each_score_bar_and_keeps_aria_numbers(self):
+        for source in (self._html(), self._builder()):
+            script = self._script(source)
+            self.assertIn('<span class="score-lab">Potential</span>', script)
+            self.assertIn('<span class="score-lab">Readiness</span>', script)
+            self.assertIn('<span class="score-lab">Momentum</span>', script)
+            self.assertNotIn('role="columnheader"', script)
+            self.assertIn('class="score score-pot"', script)
+            self.assertIn('class="score score-rdy"', script)
+            self.assertIn('class="score score-mom"', script)
+            self.assertIn('aria-label="Potential, readiness, and momentum scores"', script)
+            self.assertIn(
+                "Potential ${hasScore(d.pot)?d.pot:'unscored'}, readiness ${hasScore(d.rdy)?d.rdy:'unscored'}, momentum ${hasScore(d.mom)?d.mom:'unscored'}",
+                script,
+            )
 
 
 if __name__ == "__main__":
