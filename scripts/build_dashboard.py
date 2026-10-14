@@ -312,6 +312,8 @@ input{flex:1;min-width:0;width:100%}
 .copied{color:var(--good)}
 .pill.wk-write{color:var(--write)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--listen)}
 .work-copy,.sit-down{margin-top:8px}
+.sit-down-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+@media(max-width:390px){.sit-down-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}}
 .sit-memo{margin-top:4px}
 .sit-logic{margin-top:6px}
 .sit-logic-assets{margin-top:4px;color:var(--ink2);font-size:14px;overflow-wrap:anywhere}
@@ -339,7 +341,7 @@ input{flex:1;min-width:0;width:100%}
   <div class="resume-next" id="resumeWorkLogic" hidden></div>
   <div class="resume-next" id="resumeWorkAssets" hidden></div>
   <button type="button" class="subtle-btn" id="copyResumeLogic" hidden>Copy Logic-ready next</button>
- <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
+ <p class="resume-hint" id="resumeWorkHint" hidden>This browser keeps only a work kind and catalog ID. Forget clears it. Sit-down handoff stays in Session Log: copy next step + intake name before leaving.</p>
   </details>
 </section>
 <p class="resume-status" id="resumeWorkStatus" aria-live="polite"></p>
@@ -399,7 +401,7 @@ input{flex:1;min-width:0;width:100%}
 <div class="controls"><input id="mq" placeholder="Search __TX_SEARCHABLE_TOTAL__ usable transcript snippets… (try: its alright, garden, better than now)" aria-label="Search memo transcripts" aria-controls="mlist" aria-autocomplete="list" aria-activedescendant=""></div>
 <div class="memo-scope" id="memoScope" hidden><div><span id="memoScopeText"></span><div class="memo-next" id="memoScopeNext" hidden></div><div class="memo-next" id="memoScopeHook" hidden></div></div><span><button type="button" class="subtle-btn" id="copyMemoWork" hidden data-copy-work="">Copy work card</button> <button type="button" class="subtle-btn" id="clearMemoScope">Show all memos</button></span></div>
 <p id="memoWhisper" class="memo-whisper">Hits are leads, not gospel — Whisper mishears sung words.</p>
-<div id="mlist" role="listbox" aria-label="Memo search results"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div></div>
+<div id="mlist" role="listbox" aria-label="Memo search results"><div class="mhint">Type 3+ letters to search __TX_SEARCHABLE_TOTAL__ usable-text transcripts. Source truth: __TX_TOTAL__ transcribed and __TX_MATCHED_TOTAL__ matched; __TX_SEARCHABLE_MATCHED__ matched rows have enough text for this search index. Copy the intake name only (sanitized). Sit-down handoff: pair intake name + Copy next step in Session Log.</div></div>
 </div>
 </main>
 <footer class="foot">Catalog v''' + CATALOG_VERSION + r'''. Originals never moved or renamed — this is an index on top. Three active songs only (flagship / quick win / experimental). Blue Skies Fade stays its own protected lane. Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac — open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) — this page does not open audio. Logic-ready next is catalog evidence, not a completed export.</footer>
@@ -955,7 +957,7 @@ function render(){
   <div class="scores" role="group" aria-label="Potential, readiness, and momentum scores"><div class="score score-pot"><span class="score-lab">Potential</span>${bar(d.pot,'pot')}</div><div class="score score-rdy"><span class="score-lab">Readiness</span>${bar(d.rdy,'rdy')}</div><div class="score score-mom"><span class="score-lab">Momentum</span>${bar(d.mom,'mom')}</div></div>
   ${nxtShort?`<span class="rnext">${esc(nxtShort)}</span>`:''}
  </div>${memoEvidenceBySong[d.id]?` <button type="button" class="pill memo-link" data-open-memos="${esc(d.id)}">${memoEvidenceBySong[d.id].n} memo${memoEvidenceBySong[d.id].n===1?'':'s'}</button>`:''}</div><div class="detail" id="song-detail-${esc(d.id)}" hidden>
-  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}${nxt?`<div>Next: ${esc(nxt)}</div>`:rawNx?`<div class="memo-next">No safe catalog next step.</div>`:''}${lrFormats.length?`<div class="sit-logic-assets">Assets on file: ${lrFormats.map(t=>esc(t)).join(' · ')}</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)} <button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button></div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latestIntake.label)}</span>${latestIntake.copy?` <button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}<div class="memo-next">${latestIntake.copy?'Copy the intake name only (sanitized);':'No copy-safe intake name on this memo row yet;'} write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence — write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.</div>`}</div>
+  <div class="sit-down"><h4>Sit-down</h4>${wk&&wk!=='unknown'?`<span class="pill wk-${esc(wk)}">${esc(wk)}</span>`:''}${lrPill?`<span class="pill">${esc(lrPill)}</span>`:''}<p class="memo-next sit-catalog-next" data-sit-next="${esc(d.id)}" hidden></p>${lrFormats.length?`<div class="sit-logic-assets">Assets on file: ${lrFormats.map(t=>esc(t)).join(' · ')}</div>`:''}${lrNext?`<div class="sit-logic">Logic-ready next: ${esc(lrNext)}</div>`:`<div class="sit-logic memo-next">No Logic-ready next from the catalog.</div>`}${latest?`<div class="sit-memo">Latest memo evidence: ${esc(latest.d||'undated')} · Voice Memo Intake <span>${esc(latestIntake.label)}</span><div class="memo-next">${latestIntake.copy?'Copy the intake name only (sanitized).':'No copy-safe intake name on this memo row yet.'} Pair intake name + Copy next step in Session Log before you leave.</div></div>`:`<div class="sit-memo memo-next">No searchable memo evidence for this song.</div>`}${(nxt||lrNext||latestIntake.copy)?`<div class="sit-down-actions">${nxt?`<button type="button" class="subtle-btn" data-copy-sit-next="${esc(d.id)}" hidden>Copy next step</button>`:''}${lrNext?`<button type="button" class="subtle-btn" data-copy-logic="${esc(d.id)}">Copy Logic-ready next</button>`:''}${latestIntake.copy?`<button type="button" class="subtle-btn" data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}</div>`:''}</div>
   ${theme?`<h4>Theme</h4>${esc(theme)}`:''}
   ${hook?`<h4>Hook</h4>${esc(hook)}`:''}
   <h4>Status</h4><span class="pill">${esc(d.c)}</span><span class="pill">lyrics: ${esc(d.ly)}</span><span class="pill">audio: ${esc(String(d.au||'').split('—')[0])}</span>${d.key?`<span class="pill">key ${esc(d.key)}</span>`:''}${d.bpm?`<span class="pill">${esc(d.bpm)} bpm</span>`:''}${hasScore(d.mom)?`<span class="pill">momentum ${d.mom}</span>`:''}<span class="pill">writers: ${esc(d.wr)}</span>
@@ -1079,6 +1081,7 @@ function toggleSong(head,forceOpen){
  if(!detail||!detail.classList.contains('detail'))return;
  const open=forceOpen===true?true:forceOpen===false?false:detail.hidden;
  detail.hidden=!open;head.setAttribute('aria-expanded',String(open));
+ if(typeof updateSitDownCatalogNext==='function')updateSitDownCatalogNext();
 }
 function parseVaultHash(raw,names){
  const text=String(raw||'').replace(/^#/,'');
@@ -1178,8 +1181,8 @@ function updateWorkSessionState(){
   workSessionEvidence.textContent=!song
    ?'Choose a song to see its verified catalog action.'
    :ev&&ev.n
-    ?`${ev.n} searchable memo${ev.n===1?'':'s'}${ev.last?' · latest '+ev.last:''}. Review the evidence before working in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first), then log the sit-down handoff in Session Log.`
-    :next?'No searchable memo evidence for this song. The next step comes from the catalog. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.':'No safe catalog next step or searchable memo evidence. Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). This page does not open audio.';
+    ?`${ev.n} searchable memo${ev.n===1?'':'s'}${ev.last?' · latest '+ev.last:''}. Review the evidence, then log the sit-down handoff in Session Log.`
+    :next?'No searchable memo evidence for this song. The next step comes from the catalog.':'No safe catalog next step or searchable memo evidence for this song.';
  }
  if(openWorkEvidence){
   openWorkEvidence.hidden=!(song&&ev&&ev.n);
@@ -1189,6 +1192,41 @@ function updateWorkSessionState(){
  }
  if(workPrev)workPrev.disabled=idx<=0;
  if(workNext)workNext.disabled=!ids.length||(idx>=0&&idx>=ids.length-1);
+ if(typeof updateSitDownCatalogNext==='function')updateSitDownCatalogNext();
+}
+function sessionShowsSongNext(id){
+ const songId=String(id||'');
+ if(!songId)return false;
+ const kind=typeof work!=='undefined'&&work?String(work.value||''):'';
+ if(!kind)return false;
+ if(typeof workSession!=='undefined'&&workSession&&workSession.hidden)return false;
+ if(typeof activeWorkSongId==='undefined'||String(activeWorkSongId||'')!==songId)return false;
+ const song=typeof DATA!=='undefined'?DATA.find(row=>row&&row.id===songId):null;
+ return typeof safeWorkNextStep==='function'&&!!safeWorkNextStep(song);
+}
+function updateSitDownCatalogNext(){
+ if(typeof list==='undefined'||!list||!list.querySelectorAll)return;
+ list.querySelectorAll('[data-sit-next]').forEach(el=>{
+  const id=String((el.dataset&&el.dataset.sitNext)||'');
+  const row=el.closest?el.closest('[data-song-id]'):null;
+  const box=row&&row.querySelector?row.querySelector('.sit-down'):null;
+  const copyBtn=box&&box.querySelector?box.querySelector('[data-copy-sit-next]'):null;
+  const song=typeof DATA!=='undefined'?DATA.find(d=>d&&d.id===id):null;
+  const nxt=typeof safeWorkNextStep==='function'?safeWorkNextStep(song):'';
+  const rawNx=song&&typeof flattenWorkField==='function'?flattenWorkField(song.nx):'';
+  if(typeof sessionShowsSongNext==='function'&&sessionShowsSongNext(id)&&nxt){
+   el.hidden=true;el.textContent='';
+   if(copyBtn){copyBtn.hidden=true;copyBtn.disabled=true;}
+   return;
+  }
+  if(nxt){
+   el.hidden=false;el.textContent='Do this now: '+nxt;
+   if(copyBtn){copyBtn.hidden=false;copyBtn.disabled=false;}
+   return;
+  }
+  el.hidden=!rawNx;el.textContent=rawNx?'No safe catalog next step.':'';
+  if(copyBtn){copyBtn.hidden=true;copyBtn.disabled=true;}
+ });
 }
 function focusWorkSong(id,moveFocus){
  const row=[...list.querySelectorAll('[data-song-id]')].find(x=>x.dataset.songId===id);
@@ -1329,6 +1367,14 @@ function allowedExactWorkSongId(songId){
  const saved=typeof readStoredWorkSession==='function'?readStoredWorkSession(vaultStorage(),typeof sname!=='undefined'?sname:null,typeof DATA!=='undefined'?DATA:null):null;
  return saved&&String(saved.id||'')===id?id:'';
 }
+function copySitDownNextStep(songId,btn){
+ const id=String(songId||'');
+ if(!id||typeof DATA==='undefined')return false;
+ const song=DATA.find(d=>d&&d.id===id);
+ const next=typeof safeWorkNextStep==='function'?safeWorkNextStep(song):'';
+ if(!next)return false;
+ return copyVaultText(next,btn,'Copy next step');
+}
 function copyExactSongNextStep(songId,btn){
  const id=allowedExactWorkSongId(songId);
  if(!id||typeof DATA==='undefined')return false;
@@ -1382,6 +1428,8 @@ list.addEventListener('click',e=>{
  if(copyFile){copyMemoFile(copyFile.dataset.copyFile,copyFile);return;}
  const copyLogic=e.target.closest('[data-copy-logic]');
  if(copyLogic){copySongLogicNext(copyLogic.dataset.copyLogic,copyLogic);return;}
+ const copySit=e.target.closest('[data-copy-sit-next]');
+ if(copySit){copySitDownNextStep(copySit.dataset.copySitNext,copySit);return;}
  const copy=e.target.closest('[data-copy-work]');
  if(copy){copySongWork(copy.dataset.copyWork,copy);return;}
  const memos=e.target.closest('[data-open-memos]');
@@ -1389,7 +1437,7 @@ list.addEventListener('click',e=>{
  const head=e.target.closest('[data-toggle-song]');if(head)toggleSong(head);
 });
 list.addEventListener('keydown',e=>{
- if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]')||e.target.closest('[data-copy-file]')||e.target.closest('[data-copy-logic]'))return;
+ if(e.target.closest('[data-open-memos]')||e.target.closest('[data-copy-work]')||e.target.closest('[data-copy-file]')||e.target.closest('[data-copy-logic]')||e.target.closest('[data-copy-sit-next]'))return;
  const head=e.target.closest('[data-toggle-song]');
  if(head&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleSong(head);}
 });
@@ -1535,7 +1583,7 @@ function mrender(){
  memoSearchCursor=-1;
  if(mq&&mq.setAttribute)mq.setAttribute('aria-activedescendant','');
  if((!activeMemoSong&&term.length<3)||(term.length>0&&term.length<3)){
-  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Copy the intake name only (sanitized); write, produce, or listen in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). Sit-down handoff: pair intake name + Copy next step in Session Log. This page does not open audio.</div>`;return;
+  mlist.innerHTML=`<div class="mhint">${activeMemoSong?'Leave search empty to see every matched memo, newest first, or type':'Type'} 3+ letters to search. Source truth: ${TX_TOTAL} transcribed and ${TX_MATCHED_TOTAL} matched; ${TX_SEARCHABLE_MATCHED} matched rows are searchable. Copy the intake name only (sanitized). Sit-down handoff: pair intake name + Copy next step in Session Log.</div>`;return;
  }
  const hits=[];
  for(const m of TX){

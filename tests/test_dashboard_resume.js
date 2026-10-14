@@ -19,7 +19,8 @@ assert.ok(resume[1].indexOf('id="resumeWorkNext"') < resume[1].indexOf('id="copy
 assert.ok(resume[1].indexOf('id="copyResumeNext"') < resume[1].indexOf('id="forgetWorkSession"'));
 assert.ok(resume[1].indexOf('id="forgetWorkSession"') < resume[1].indexOf('id="resumeWorkLogic"'));
 assert.match(resume[1], /<details class="resume-details"><summary>Logic-ready next and session details<\/summary>/);
-assert.match(resume[1], /WAVs\/AIFF\/MIDI preference/);
+assert.match(html, /WAVs\/AIFF\/MIDI preference/);
+assert.match(html, /this page does not open audio/i);
 const overview = html.match(/<details[^>]*id="catalogOverview"[^>]*>([\s\S]*?)<\/details>/);
 assert.ok(overview, "Subtitle and counts must remain available in native disclosure");
 assert.ok(!/<details[^>]*id="catalogOverview"[^>]*\bopen\b/.test(html),

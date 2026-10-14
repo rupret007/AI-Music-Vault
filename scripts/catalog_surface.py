@@ -1165,7 +1165,72 @@ def dashboard_exposes_song_work(html: str) -> bool:
         and "Start a work session" in chrome
         and "More filters" in chrome
         and "Sit-down" in chrome
+        and "sit-down-actions" in chrome
+        and "data-sit-next" in chrome
+        and "data-copy-sit-next" in chrome
+        and "function updateSitDownCatalogNext(" in chrome
+        and "function sessionShowsSongNext(" in chrome
+        and "function copySitDownNextStep(" in chrome
     )
+
+
+SIT_DOWN_INLINE_COPY_MARKERS = (
+    "Next: ${esc(nxt)}",
+    "Next: <span>${esc(nxt)}</span>",
+    "Logic-ready next: ${esc(lrNext)} <button",
+    'data-copy-file="${esc(latestIntake.copy)}">Copy intake name</button>`:''}<div class="memo-next">',
+    "Catalog next step: see",
+)
+SIT_DOWN_ACTIONS_ROW = '<div class="sit-down-actions">'
+SIT_DOWN_ACTIONS_FLEX = ".sit-down-actions{display:flex"
+SIT_DOWN_ACTIONS_PHONE = "@media(max-width:390px){.sit-down-actions{display:flex"
+SIT_DOWN_FOOTER_HONESTY = (
+    "open in Logic (export honesty: WAVs/AIFF/MIDI preference, no Ableton-first) "
+    "— this page does not open audio"
+)
+
+
+def dashboard_sit_down_copy_actions_on_own_row(html: str) -> bool:
+    """Sit-down next is song-bound; copy controls sit on their own flex row."""
+    chrome = dashboard_markup_chrome(html)
+    if SIT_DOWN_ACTIONS_ROW not in chrome:
+        return False
+    if SIT_DOWN_ACTIONS_FLEX not in chrome:
+        return False
+    if SIT_DOWN_ACTIONS_PHONE not in chrome:
+        return False
+    if re.search(r"\.sit-down-actions\{[^}]*display:\s*inline\b", chrome):
+        return False
+    if any(marker in chrome for marker in SIT_DOWN_INLINE_COPY_MARKERS):
+        return False
+    if "export honesty, WAVs/AIFF/MIDI preference, no Ableton-first" in chrome:
+        return False
+    lowered = chrome.lower()
+    if lowered.count(SIT_DOWN_FOOTER_HONESTY.lower()) != 1:
+        return False
+    if "wavs/aiff/midi" not in lowered:
+        return False
+    if "data-sit-next" not in chrome:
+        return False
+    if "function updateSitDownCatalogNext(" not in chrome:
+        return False
+    if "function sessionShowsSongNext(" not in chrome:
+        return False
+    if "function copySitDownNextStep(" not in chrome:
+        return False
+    sit_at = chrome.find('<div class="sit-down">')
+    if sit_at < 0:
+        return False
+    work_copy_at = chrome.find('<div class="work-copy">', sit_at)
+    sit = chrome[sit_at:work_copy_at if work_copy_at > sit_at else sit_at + 5000]
+    actions_at = sit.find(SIT_DOWN_ACTIONS_ROW)
+    if actions_at < 0:
+        return False
+    for marker in ("data-copy-sit-next", "data-copy-logic", "data-copy-file"):
+        mark_at = sit.find(marker)
+        if mark_at < 0 or mark_at < actions_at:
+            return False
+    return True
 
 
 def dashboard_resumes_song_work_privately(html: str) -> bool:

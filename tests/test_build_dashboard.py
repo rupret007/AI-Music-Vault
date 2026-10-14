@@ -46,6 +46,7 @@ from catalog_surface import (  # noqa: E402
     dashboard_search_mark_contrast_ready,
     dashboard_dark_theme_default,
     dashboard_resumes_song_work_privately,
+    dashboard_sit_down_copy_actions_on_own_row,
     dashboard_theme_tokens,
     embedded_dashboard_payloads,
     latest_memo_for_song,
@@ -309,6 +310,7 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertTrue(dashboard_memo_query_ranks_catalog_matches(dashboard))
         self.assertFalse(dashboard_opens_owner_audio(dashboard))
         self.assertTrue(dashboard_exposes_song_work(dashboard))
+        self.assertTrue(dashboard_sit_down_copy_actions_on_own_row(dashboard))
         self.assertTrue(dashboard_resumes_song_work_privately(dashboard))
         self.assertTrue(dashboard_finds_remembered_song_names(dashboard))
         self.assertTrue(dashboard_exposes_logic_ready(dashboard))
@@ -325,8 +327,8 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("Start a work session", dashboard)
         self.assertIn("More filters", dashboard)
         self.assertIn("Sit-down", dashboard)
-        self.assertIn("Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first)", dashboard)
         self.assertIn("open in Logic (export honesty:", dashboard)
+        self.assertIn("this page does not open audio", dashboard.lower())
         self.assertIn("Logic projects, keys, and WAV/AIFF/MIDI exports stay on your Mac", dashboard)
         self.assertIn("Copy work card", dashboard)
         self.assertIn("function songWorkKind(", dashboard)
@@ -349,16 +351,33 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn("function latestMemoForSong(", dashboard)
         self.assertIn("Sit-down handoff stays in Session Log: copy next step + intake name before leaving.", dashboard)
         self.assertIn(
-            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
             "Sit-down handoff stays in Session Log: copy next step + intake name before leaving.",
             dashboard,
         )
         self.assertIn("then log the sit-down handoff in Session Log.", dashboard)
         self.assertIn(
-            "No searchable memo evidence for this song. The next step comes from the catalog. "
-            "Work in Logic (export honesty, WAVs/AIFF/MIDI preference, no Ableton-first). "
-            "This page does not open audio.",
+            "No searchable memo evidence for this song. The next step comes from the catalog.",
             dashboard,
+        )
+        self.assertIn("sit-down-actions", dashboard)
+        self.assertIn('<div class="sit-down-actions">', dashboard)
+        self.assertIn(".sit-down-actions{display:flex", dashboard)
+        self.assertIn("@media(max-width:390px){.sit-down-actions{display:flex", dashboard)
+        self.assertIn("data-sit-next", dashboard)
+        self.assertIn("data-copy-sit-next", dashboard)
+        self.assertIn("function updateSitDownCatalogNext(", dashboard)
+        self.assertIn("function sessionShowsSongNext(", dashboard)
+        self.assertIn("function copySitDownNextStep(", dashboard)
+        self.assertNotIn("Next: ${esc(nxt)}", dashboard)
+        self.assertNotIn("Next: <span>${esc(nxt)}</span>", dashboard)
+        self.assertNotIn("Catalog next step: see", dashboard)
+        self.assertNotIn("Logic-ready next: ${esc(lrNext)} <button", dashboard)
+        self.assertEqual(
+            dashboard.lower().count(
+                "open in logic (export honesty: wavs/aiff/midi preference, "
+                "no ableton-first) — this page does not open audio"
+            ),
+            1,
         )
         self.assertIn("Sit-down handoff: pair intake name + Copy next step in Session Log.", dashboard)
         self.assertIn(
@@ -374,10 +393,36 @@ class DashboardMemoHonestyTests(unittest.TestCase):
         self.assertIn('class="intake-loc"', dashboard)
         self.assertIn("Voice&nbsp;Memo&nbsp;Intake", dashboard)
         self.assertIn("MEMO_VISIBLE_CAP=80", dashboard)
-        self.assertIn("No copy-safe intake name on this memo row yet;", dashboard)
+        self.assertIn("No copy-safe intake name on this memo row yet.", dashboard)
         self.assertIn("no copy-safe intake name yet", dashboard)
         self.assertNotIn("Latest source (auto-resolved)", dashboard)
         self.assertNotIn("<h4>Known assets</h4>", dashboard)
+
+    def test_committed_sit_down_layout_mutations_fail_closed(self):
+        with open(
+            os.path.join(ROOT, "Jeff Story Song Vault Dashboard.html"),
+            encoding="utf-8",
+        ) as handle:
+            html = handle.read()
+        self.assertTrue(dashboard_sit_down_copy_actions_on_own_row(html))
+        span = html.replace(
+            '<div class="sit-down-actions">', '<span class="sit-down-actions">', 1
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(span))
+        inline = html.replace(
+            ".sit-down-actions{display:flex", ".sit-down-actions{display:inline", 1
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(inline))
+        nxt = html + "Next: <span>${esc(nxt)}</span>"
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(nxt))
+        dup = html + (
+            " open in Logic (export honesty: WAVs/AIFF/MIDI preference, "
+            "no Ableton-first) — this page does not open audio"
+        )
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(dup))
+        no_row = html.replace('<div class="sit-down-actions">', "<div>", 1)
+        self.assertIn(".sit-down-actions{display:flex", no_row)
+        self.assertFalse(dashboard_sit_down_copy_actions_on_own_row(no_row))
 
 
 class DashboardSongWorkTests(unittest.TestCase):

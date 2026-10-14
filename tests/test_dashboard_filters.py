@@ -64,6 +64,31 @@ class DashboardFilterLayoutTests(unittest.TestCase):
                 self.assertEqual(selects["width"], "100%")
                 self.assertEqual(selects["min-width"], "0")
 
+    def test_sit_down_actions_stay_on_their_own_flex_row(self):
+        for name, text in self.surfaces():
+            with self.subTest(surface=name):
+                desktop = self.rules(text, ".sit-down-actions")
+                self.assertTrue(desktop)
+                self.assertEqual(desktop[0]["display"], "flex")
+                self.assertEqual(desktop[0]["flex-wrap"], "wrap")
+                self.assertIn('<div class="sit-down-actions">', text)
+                self.assertIn("data-sit-next", text)
+                self.assertIn("data-copy-sit-next", text)
+                self.assertNotIn("Catalog next step: see", text)
+                self.assertNotIn("Next: ${esc(nxt)}", text)
+                self.assertEqual(
+                    text.lower().count(
+                        "open in logic (export honesty: wavs/aiff/midi preference, "
+                        "no ableton-first) — this page does not open audio"
+                    ),
+                    1,
+                )
+                phone_chunk = text.split("@media(max-width:390px){", 1)[1]
+                phone = self.rules(phone_chunk, ".sit-down-actions")
+                self.assertTrue(phone)
+                self.assertEqual(phone[0]["display"], "flex")
+                self.assertEqual(phone[0]["flex-wrap"], "wrap")
+
     def test_existing_filter_controls_and_honesty_remain(self):
         for name, text in self.surfaces():
             with self.subTest(surface=name):
@@ -71,9 +96,9 @@ class DashboardFilterLayoutTests(unittest.TestCase):
                 self.assertEqual(re.findall(r'<select id="([^"]+)"', details),
                                  ["proj", "scored", "scope", "evidence", "work", "logicReady"])
                 self.assertEqual(len(re.findall(r'<select[^>]+aria-label="[^"]+"', details)), 6)
-                for copy in ("Catalog rows are not the official set.",
-                             "This page does not open audio.", "WAVs/AIFF/MIDI"):
-                    self.assertTrue(copy in text, copy)
+                self.assertIn("Catalog rows are not the official set.", text)
+                self.assertIn("WAVs/AIFF/MIDI", text)
+                self.assertIn("this page does not open audio", text.lower())
 
 
 if __name__ == "__main__":
