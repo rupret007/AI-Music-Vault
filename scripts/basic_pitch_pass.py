@@ -8,6 +8,12 @@ WHAT THIS DOES
   takes, and the Blue Skies Fade beginning — and writes one .mid file per memo
   into "06 Working Copies/MIDI For Logic/".
 
+  Reports a new export only after checking for a nonempty output file.
+  Existing friendly files are skipped, never replaced. A failed export or
+  missing source makes the command exit nonzero. File checks do not verify
+  musical accuracy or Logic compatibility; actual Logic/MIDI export remains
+  NOT RUN until a real file is verified separately.
+
   Drag any .mid into a Logic project and you get the melody/chords as editable
   notes — instant scratch track to build on. Originals untouched, as always.
 
@@ -20,7 +26,10 @@ HOW TO RUN (Terminal on the mac mini)
     python3 -m pip install --user basic-pitch
   then try again. Tell Claude when it's done (or paste any error).
 """
-import os, sys
+import os
+import stat
+import sys
+import tempfile
 
 VAULT = os.path.expanduser("~/Music/Jeff Story Song Vault")
 INTAKE = os.path.join(VAULT, "Voice Memo Intake")
@@ -42,6 +51,13 @@ TARGETS = [
     ("20240822 211138-11CAA9C0.m4a", "Blue Skies Fade full memo (Aug 2024)"),
 ]
 
+def verify_output(path):
+    """Check the artifact, not MIDI semantics or compatibility with Logic."""
+    info = os.lstat(path)
+    if not stat.S_ISREG(info.st_mode) or info.st_size == 0:
+        raise ValueError(f"expected a nonempty regular output file: {path}")
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     try:
@@ -50,34 +66,46 @@ def main():
     except ImportError:
         print("ERROR: basic_pitch not importable. Run:")
         print("  python3 -m pip install --user basic-pitch")
-        sys.exit(1)
+        return 1
 
-    done, missing = 0, 0
+    done, existing, missing, failed = 0, 0, 0, 0
     for fname, nice in TARGETS:
         src = os.path.join(INTAKE, fname)
-        if not os.path.exists(src):
-            print(f"skip (not found): {fname}")
-            missing += 1
-            continue
-        # predict_and_save writes <input>_basic_pitch.mid into OUT
+        midi_out = os.path.join(OUT, nice + ".mid")
         try:
-            predict_and_save([src], OUT, save_midi=True, sonify_midi=False,
-                             save_model_outputs=False, save_notes=False,
-                             model_or_model_path=ICASSP_2022_MODEL_PATH)
-            # rename to the friendly name
-            base = os.path.splitext(os.path.basename(src))[0]
-            midi_in = os.path.join(OUT, base + "_basic_pitch.mid")
-            midi_out = os.path.join(OUT, nice + ".mid")
-            if os.path.exists(midi_in) and not os.path.exists(midi_out):
-                os.rename(midi_in, midi_out)
+            if os.path.lexists(midi_out):
+                verify_output(midi_out)
+                print(f"existing/skipped: {nice}.mid")
+                existing += 1
+                continue
+            if not os.path.isfile(src):
+                print(f"skip (not found): {fname}")
+                missing += 1
+                continue
+            # A fresh directory prevents stale default output from being
+            # mistaken for this inference's result. Partial files are cleaned.
+            with tempfile.TemporaryDirectory(prefix=".basic-pitch-", dir=OUT) as work:
+                predict_and_save([src], work, save_midi=True, sonify_midi=False,
+                                 save_model_outputs=False, save_notes=False,
+                                 model_or_model_path=ICASSP_2022_MODEL_PATH)
+                base = os.path.splitext(os.path.basename(src))[0]
+                midi_in = os.path.join(work, base + "_basic_pitch.mid")
+                verify_output(midi_in)
+                # Same-filesystem link publishes without overwriting even if
+                # another process creates the friendly destination meanwhile.
+                os.link(midi_in, midi_out)
+                verify_output(midi_out)
             print(f"OK: {nice}.mid")
             done += 1
         except Exception as e:
             print(f"FAILED {fname}: {e}")
+            failed += 1
 
-    print(f"\nDone: {done} MIDI files in '06 Working Copies/MIDI For Logic/' "
-          f"({missing} source files not found).")
-    print("Drag any .mid straight into Logic. Tell Claude when you've run this.")
+    print(f"\nResults: {done} newly exported MIDI files in '06 Working Copies/MIDI For Logic/' "
+          f"({existing} existing/skipped, {missing} source files not found, {failed} failed).")
+    print("File checks only; actual Logic/MIDI export remains NOT RUN "
+          "until a real file is verified separately.")
+    return 1 if failed or missing else 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
