@@ -9,8 +9,9 @@ WHAT THIS DOES
   into "06 Working Copies/MIDI For Logic/".
 
   Reports a new export only after checking for a nonempty output file.
-  Existing friendly files are skipped, never replaced. A failed export or
-  missing source makes the command exit nonzero. File checks do not verify
+  Existing friendly files are skipped, never replaced, without loading Basic
+  Pitch or requiring the original source. A failed export or a missing source
+  that still needs export makes the command exit nonzero. File checks do not verify
   musical accuracy or Logic compatibility; actual Logic/MIDI export remains
   NOT RUN until a real file is verified separately.
 
@@ -59,15 +60,13 @@ def verify_output(path):
 
 
 def main():
-    os.makedirs(OUT, exist_ok=True)
     try:
-        from basic_pitch.inference import predict_and_save
-        from basic_pitch import ICASSP_2022_MODEL_PATH
-    except ImportError:
-        print("ERROR: basic_pitch not importable. Run:")
-        print("  python3 -m pip install --user basic-pitch")
+        os.makedirs(OUT, exist_ok=True)
+    except OSError as e:
+        print(f"ERROR: cannot create MIDI output directory {OUT}: {e}")
         return 1
 
+    inference = None
     done, existing, missing, failed = 0, 0, 0, 0
     for fname, nice in TARGETS:
         src = os.path.join(INTAKE, fname)
@@ -82,19 +81,32 @@ def main():
                 print(f"skip (not found): {fname}")
                 missing += 1
                 continue
+            # Existing outputs and missing inputs need no model or inference
+            # dependencies. Cache a successful import for the remaining targets.
+            if inference is None:
+                try:
+                    from basic_pitch.inference import predict_and_save
+                    from basic_pitch import ICASSP_2022_MODEL_PATH
+                except ImportError as e:
+                    raise RuntimeError(
+                        "basic_pitch not importable. Run: "
+                        "python3 -m pip install --user basic-pitch"
+                    ) from e
+                inference = (predict_and_save, ICASSP_2022_MODEL_PATH)
+            predict_and_save, model_path = inference
             # A fresh directory prevents stale default output from being
             # mistaken for this inference's result. Partial files are cleaned.
             with tempfile.TemporaryDirectory(prefix=".basic-pitch-", dir=OUT) as work:
                 predict_and_save([src], work, save_midi=True, sonify_midi=False,
                                  save_model_outputs=False, save_notes=False,
-                                 model_or_model_path=ICASSP_2022_MODEL_PATH)
+                                 model_or_model_path=model_path)
                 base = os.path.splitext(os.path.basename(src))[0]
                 midi_in = os.path.join(work, base + "_basic_pitch.mid")
                 verify_output(midi_in)
                 # Same-filesystem link publishes without overwriting even if
                 # another process creates the friendly destination meanwhile.
                 os.link(midi_in, midi_out)
-                verify_output(midi_out)
+            verify_output(midi_out)
             print(f"OK: {nice}.mid")
             done += 1
         except Exception as e:
