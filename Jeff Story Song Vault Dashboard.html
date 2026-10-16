@@ -629,7 +629,8 @@ function songSearchHit(row,term){
  songAliases(row).forEach(alias=>names.push(normalizeSearch(alias)));
  const kept=names.filter(Boolean);
  const qtok=norm.split(' ').filter(Boolean);
- if(kept.some(name=>name===norm))return {hit:true,rank:0,via:'name'};
+ // Exact names lead before prefix matches and the selected secondary sort.
+ if(kept.some(name=>name===norm))return {hit:true,rank:-1,via:'name'};
  if(qtok.length&&kept.some(name=>{
   const toks=name.split(' ').filter(Boolean);
   return toks.length>=qtok.length&&toks.slice(0,qtok.length).join(' ')===qtok.join(' ');

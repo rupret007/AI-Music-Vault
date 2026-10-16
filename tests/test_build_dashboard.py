@@ -763,6 +763,49 @@ class DashboardSongFindTests(unittest.TestCase):
         self.assertFalse(song_search_hit(memo_only, "ca", memos)["hit"])
         self.assertFalse(song_search_hit(memo_only, "missing", memos)["hit"])
 
+    def test_exact_song_names_outrank_prefixes(self):
+        cases = [
+            ({"id": "ZZ-0001", "t": "Don't Stop"}, "dont stop", "Don't Stop Again"),
+            ({"id": "ZZ-0001", "t": "Zulu", "aka": ["Demo"]}, "demo", "Demo Again"),
+            ({"id": "ZZ-0001", "t": "Zulu"}, "ZZ-0001", "ZZ-0001 Again"),
+            ({"song_id": "ZZ-0001", "canonical_title": "Don't Stop"},
+             "  DON'T stop!  ", "Don't Stop Again"),
+            ({"song_id": "ZZ-0001", "canonical_title": "Zulu", "alt_titles": ["Demo"]},
+             "demo", "Demo Again"),
+        ]
+        for exact, query, prefix_title in cases:
+            with self.subTest(exact=exact, query=query):
+                exact_hit = song_search_hit(exact, query)
+                prefix_hit = song_search_hit({"id": "AA-0001", "t": prefix_title}, query)
+                self.assertTrue(exact_hit["hit"])
+                self.assertEqual(exact_hit["via"], "name")
+                self.assertTrue(prefix_hit["hit"])
+                self.assertLess(exact_hit["rank"], prefix_hit["rank"])
+
+    def test_catalog_exact_titles_outrank_longer_titles(self):
+        with open(os.path.join(ROOT, "data", "master_catalog.json"), encoding="utf-8") as handle:
+            songs = {row["song_id"]: row for row in json.load(handle)["songs"]}
+        for exact_id, prefix_id in [("ST-0110", "JS-0070"), ("JS-0112", "JS-0108")]:
+            with self.subTest(exact_id=exact_id, prefix_id=prefix_id):
+                query = songs[exact_id]["canonical_title"]
+                exact_hit = song_search_hit(songs[exact_id], query)
+                prefix_hit = song_search_hit(songs[prefix_id], query)
+                self.assertTrue(prefix_hit["hit"])
+                self.assertLess(exact_hit["rank"], prefix_hit["rank"])
+
+    def test_partial_name_search_ranking_stays_ordered(self):
+        rows = [
+            {"id": "TEST-1", "t": "Demo Again"},
+            {"id": "TEST-2", "t": "Demonstration"},
+            {"id": "TEST-3", "t": "A Demo"},
+            {"id": "TEST-4", "t": "Other", "th": "demo"},
+            {"id": "TEST-5", "t": "Unrelated"},
+        ]
+        hits = [song_search_hit(row, "demo", {"TEST-5": "demo lyric"}) for row in rows]
+        self.assertTrue(all(hit["hit"] for hit in hits))
+        ranks = [hit["rank"] for hit in hits]
+        self.assertTrue(all(left < right for left, right in zip(ranks, ranks[1:])))
+
     def test_short_memo_query_does_not_scan_titles_or_filenames(self):
         memos = memo_lyric_norm_by_song(
             [

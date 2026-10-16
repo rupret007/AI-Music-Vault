@@ -930,8 +930,9 @@ def _song_search_field_hay(row) -> str:
 def song_search_hit(row, term, memo_norm_by_song=None) -> dict:
     """Rank a catalog row for the Songs search box.
 
-    Name / alias / id beat theme and next-action text. A long enough query
-    may also hit searchable matched memo lyrics. Memo titles stay out.
+    Exact normalized names / aliases / ids beat longer name prefixes, which
+    beat theme and next-action text. A long enough query may also hit
+    searchable matched memo lyrics. Memo titles stay out.
     """
     if not isinstance(row, dict):
         return {"hit": False, "rank": 99, "via": ""}
@@ -945,7 +946,7 @@ def song_search_hit(row, term, memo_norm_by_song=None) -> dict:
         return [part for part in name.split() if part]
 
     if any(name == norm for name in names):
-        return {"hit": True, "rank": 0, "via": "name"}
+        return {"hit": True, "rank": -1, "via": "name"}
     if query_tokens and any(
         name_tokens(name)[: len(query_tokens)] == query_tokens for name in names
     ):
