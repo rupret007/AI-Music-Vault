@@ -8,9 +8,15 @@ WHAT THIS DOES
   transcript per memo into a new "03 Voice Memos/Transcripts" folder.
   It never touches, renames, or moves the original .m4a files.
 
+  Reports a new transcript only after checking for a nonempty text file.
+  Existing nonempty transcripts are skipped, never replaced. Empty or
+  unreadable existing files are retried. Any failed memo makes the
+  command exit nonzero after saving successful transcripts. File checks
+  do not verify listening or lyric accuracy; transcription is not listening.
+
   It's resumable: if you stop it (Ctrl+C, closed Terminal, whatever) and
-  run it again, it skips any memo that already has a transcript and just
-  keeps going where it left off.
+  run it again, it skips any memo that already has a nonempty transcript
+  and retries the rest.
 
 HOW TO RUN
   1. Open Terminal.
@@ -42,6 +48,7 @@ WHEN IT'S DONE
 """
 
 import os
+import stat
 import sys
 import time
 import json
@@ -55,6 +62,7 @@ MANIFEST_PATH = os.path.join(TRANSCRIPTS, "_manifest.json")
 ERROR_LOG = os.path.join(TRANSCRIPTS, "_errors.log")
 
 MODEL_NAME = "base.en"  # good speed/accuracy balance for a first full pass
+SYNTHETIC_NOTE = "File checks only; transcription is not listening."
 
 
 def safe_filename(name: str) -> str:
@@ -63,11 +71,40 @@ def safe_filename(name: str) -> str:
     return name[:150] if name else "untitled"
 
 
+def complete_transcript(path):
+    """True only for a nonempty regular UTF-8 transcript file."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    if not stat.S_ISREG(info.st_mode) or info.st_size == 0:
+        return False
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return bool(handle.read().strip())
+    except (OSError, UnicodeError):
+        return False
+
+
+def verify_transcript(path):
+    """Check the artifact, not listening or lyric accuracy."""
+    if not complete_transcript(path):
+        raise ValueError(f"expected a nonempty transcript file: {path}")
+
+
+def _discard_incomplete(path):
+    if os.path.isfile(path) and not complete_transcript(path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
 def main():
     if not os.path.isdir(INTAKE):
         print(f"ERROR: can't find the intake folder at:\n  {INTAKE}")
         print("Edit the VAULT path near the top of this script if your folder is elsewhere.")
-        sys.exit(1)
+        return 1
 
     os.makedirs(TRANSCRIPTS, exist_ok=True)
 
@@ -77,12 +114,12 @@ def main():
         print("ERROR: the 'whisper' package isn't importable. If the Workbench install")
         print("errored, paste the error back to Claude. Otherwise try:")
         print("  python3 -m pip install --user --break-system-packages openai-whisper")
-        sys.exit(1)
+        return 1
 
     memos = sorted(f for f in os.listdir(INTAKE) if f.lower().endswith(".m4a"))
     if not memos:
         print(f"No .m4a files found in {INTAKE} — nothing to do.")
-        sys.exit(0)
+        return 0
 
     print(f"Found {len(memos)} memos. Loading Whisper model '{MODEL_NAME}' "
           f"(first run downloads it, ~150MB)...")
@@ -103,16 +140,24 @@ def main():
         base = os.path.splitext(fname)[0]
         out_path = os.path.join(TRANSCRIPTS, safe_filename(base) + ".txt")
 
-        if os.path.exists(out_path):
+        if complete_transcript(out_path):
             skipped += 1
             continue
 
         src_path = os.path.join(INTAKE, fname)
         try:
+            if not os.path.isfile(src_path):
+                raise ValueError("source is not a regular file")
             result = model.transcribe(src_path, fp16=False)
-            text = result.get("text", "").strip()
-            with open(out_path, "w") as f:
-                f.write(text)
+            text = result.get("text", "")
+            if not isinstance(text, str):
+                text = ""
+            text = text.strip()
+            if not text:
+                raise ValueError("empty transcript")
+            with open(out_path, "w", encoding="utf-8") as handle:
+                handle.write(text)
+            verify_transcript(out_path)
             manifest[fname] = {
                 "transcript_file": os.path.basename(out_path),
                 "chars": len(text),
@@ -121,8 +166,9 @@ def main():
             done += 1
         except Exception as e:
             errors += 1
-            with open(ERROR_LOG, "a") as f:
-                f.write(f"{fname}: {e}\n")
+            _discard_incomplete(out_path)
+            with open(ERROR_LOG, "a") as handle:
+                handle.write(f"{fname}: {e}\n")
 
         if i % 5 == 0 or i == len(memos):
             elapsed = time.time() - start_time
@@ -131,17 +177,18 @@ def main():
             eta_min = (remaining / rate / 60) if rate > 0 else 0
             print(f"[{i}/{len(memos)}] done={done} skipped={skipped} errors={errors} "
                   f"— est. {eta_min:.0f} min remaining")
-            with open(MANIFEST_PATH, "w") as f:
-                json.dump(manifest, f, indent=2)
+            with open(MANIFEST_PATH, "w") as handle:
+                json.dump(manifest, handle, indent=2)
 
-    with open(MANIFEST_PATH, "w") as f:
-        json.dump(manifest, f, indent=2)
+    with open(MANIFEST_PATH, "w") as handle:
+        json.dump(manifest, handle, indent=2)
 
-    print(f"\nFinished. Transcribed {done} new memos, skipped {skipped} already done, "
-          f"{errors} errors (see _errors.log).")
+    print(f"\nResults: {done} newly transcribed, {skipped} existing/skipped, "
+          f"{errors} failed.")
     print(f"Transcripts are in: {TRANSCRIPTS}")
-    print("Tell Claude it's done and it'll take it from here.")
+    print(SYNTHETIC_NOTE)
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
