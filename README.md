@@ -40,6 +40,9 @@ A complete WCAG AA light palette remains in the stylesheet so contrast gates sta
 dual-theme. No server, account, API key, or package install is needed to browse
 the committed dashboard. Clipboard and resume storage depend on browser
 permissions; blocked storage soft-fails.
+Copy buttons confirm success only after the browser accepts the copy. If both
+clipboard methods fail, an inline status explains the failure and keeps retry
+available; you can also select and copy the displayed text manually.
 
 For development, use **Python 3.12** (the CI version) and **Node.js** for the
 navigation smoke test (verified locally with Node 22). The core build and checks
@@ -104,6 +107,17 @@ paths rejected and uses isolated temporary browser storage. Missing Chrome or a
 failed launch exits non-zero; that is not viewport verification. No dependencies
 are downloaded by the test. This check is not part of hosted catalog-validate.
 
+Check clipboard failure feedback, retry, and keyboard focus in an installed
+Chrome/Chromium at phone and desktop widths:
+
+```bash
+node tests/test_dashboard_clipboard_browser.js
+```
+
+This check uses synthetic text and mocked clipboard methods in an isolated
+browser profile; it never reads or writes the system clipboard. The offline
+clipboard unit regressions also run in the standard Python unittest gate.
+
 Optional: `python3.12 scripts/build_xlsx.py` needs `openpyxl` and writes
 `data/Jeff Story Master Song Catalog.xlsx`. It is untracked, not gitignored, and
 contains historical work-plan/read-me text; it is not the current handoff.
@@ -125,6 +139,8 @@ test; it does not establish that any audio has been heard or exported.
    from a link, search, or row expand without that session, and sit-down shows
    **Do this now** for the expanded song. Unsafe or empty actions say no safe
    catalog next step and have no copy button.
+   With clipboard access blocked, check the copy status for failure, then retry
+   after allowing access or select the displayed text to copy manually.
 3. Use **Review memo evidence** when present. It opens scoped memo search, never
    audio. Missing evidence is labeled plainly.
 4. Refresh: the exact song and work kind reopen. Escape / Clear filters leaves
