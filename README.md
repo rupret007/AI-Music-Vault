@@ -129,7 +129,9 @@ test; it does not establish that any audio has been heard or exported.
    audio. Missing evidence is labeled plainly.
 4. Refresh: the exact song and work kind reopen. Escape / Clear filters leaves
    the same song and safe next step in Resume; **Resume** returns to that song.
-5. Click **Forget**, then refresh. Resume stays gone and the work hash is cleared.
+5. Click **Forget** to end the active session, then change a search/filter or sort
+   and refresh. Resume stays gone and the work hash is cleared. Starting a new
+   Write / Produce / Listen session creates a new browser record.
    Browser storage holds only schema version, work kind, and catalog ID. Extra
    fields, stale schemas, unknown IDs, and mismatched kinds are rejected.
 6. Search Songs by an alias or a title without apostrophes; arrow keys move a

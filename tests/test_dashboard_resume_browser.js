@@ -147,6 +147,7 @@ const MEASURE_EXPR = `(() => {
     workCopySongId: (document.getElementById("copyWorkNext") || {}).getAttribute
       ? document.getElementById("copyWorkNext").getAttribute("data-song-id") : "",
     stored: localStorage.getItem(${JSON.stringify(storageKey)}),
+    hash: location.hash,
   };
 })()`;
 
@@ -326,13 +327,53 @@ async function tabTo(cdp) {
       assert.equal(state.resumeHidden, true);
       assert.equal(state.overviewOpen, false, "Forget must not auto-open catalog details");
       assert.equal(state.focusOpenWork, "write");
+      const assertForgotten = async action => {
+        const forgotten = await evalValue(cdp, MEASURE_EXPR);
+        assert.equal(forgotten.stored, null, action + " must not recreate the forgotten record");
+        assert.equal(forgotten.resumeHidden, true, action + " must keep Resume hidden");
+        assert.equal(forgotten.workSessionHidden, true, action + " must keep the forgotten session closed");
+        assert.doesNotMatch(forgotten.hash, /^#work=/, action + " must not restore a work hash");
+      };
+      await evalValue(cdp, `(() => {
+        const sort = document.getElementById("sort");
+        sort.value = "t";
+        sort.dispatchEvent(new Event("input", { bubbles: true }));
+      })()`);
+      await assertForgotten("Sorting after Forget");
+      await evalValue(cdp, `(() => {
+        document.querySelector("#advancedFilters summary").click();
+        const scored = document.getElementById("scored");
+        scored.value = "1";
+        scored.dispatchEvent(new Event("input", { bubbles: true }));
+      })()`);
+      await assertForgotten("Filtering after Forget");
+      for (const tab of ["tabM", "tabS"]) {
+        await evalValue(cdp, `document.getElementById(${JSON.stringify(tab)}).click()`);
+        await assertForgotten("Switching to " + tab + " after Forget");
+      }
+      await evalValue(cdp, `(() => {
+        const search = document.getElementById("q");
+        search.value = ${JSON.stringify(saved.id)};
+        search.dispatchEvent(new Event("input", { bubbles: true }));
+      })()`);
+      await assertForgotten("Searching after Forget");
       await cdp.send("Page.reload");
       await waitFor(cdp, `!!document.querySelector('#workStarts button')`, "reload after Forget");
       state = await evalValue(cdp, MEASURE_EXPR);
       assert.equal(state.resumeHidden, true);
       assert.equal(state.stored, null);
+      await assertForgotten("Reloading after Forget and browsing");
+      await evalValue(cdp, `document.querySelector('[data-open-work="write"]').click()`);
+      await waitFor(cdp, `!document.getElementById("workSession").hidden`, "new session after Forget");
+      state = await evalValue(cdp, MEASURE_EXPR);
+      const restarted = JSON.parse(state.stored);
+      assert.deepEqual(Object.keys(restarted).sort(), ["id", "kind", "v"]);
+      assert.equal(restarted.kind, "write", "An explicit new session must be remembered after Forget");
+      assert.equal(restarted.v, 1);
+      assert.equal(state.resumeHidden, false);
+      assert.equal(state.hash, "#work=write");
       results.push({ viewport, saved, boxes });
-      console.log(`PASS: resume ${viewport.name} geometry, mutation rejection, keyboard, Resume and Forget`);
+      console.log(`PASS: resume ${viewport.name} geometry, mutation rejection, keyboard, Resume, durable Forget and explicit restart`);
     }
     const version = await waitJson("http://127.0.0.1:" + debugPort + "/json/version");
     fs.writeFileSync(path.join(outdir, "resume-geometry.json"), JSON.stringify({

@@ -679,8 +679,12 @@ function forgetLastWorkSession(){
  const remaining=readStoredWorkSession(storage,sname,DATA);
  const result=forgetWorkSessionResult(cleared,remaining);
  if(result.ok){
+  // End the active queue before rendering so it cannot save the forgotten record.
   if(typeof lastWorkKind!=='undefined')lastWorkKind='';
+  if(typeof activeWorkSongId!=='undefined')activeWorkSongId='';
+  if(typeof work!=='undefined'&&work)work.value='';
   if(typeof writeVaultHash==='function')writeVaultHash('','');
+  if(typeof render==='function')render();
  }
  updateResumeWork();
  announceWorkSession(result.message);
