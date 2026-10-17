@@ -66,6 +66,7 @@ const context = vm.createContext({
   resumeWorkStatus: element(),
   catalogOverview: { open: false }, catalogOverviewSummary: { hidden: false },
   workStarts: { querySelector: () => ({ focus() { focused = true; } }) },
+  work: { value: "" }, activeWorkSongId: "", lastWorkKind: "",
 });
 for (const name of ["songWorkKind", "workKindLabel", "parseStoredWorkSession", "readStoredWorkSession", "storeWorkSession",
   "clearStoredWorkSession", "vaultStorage", "announceWorkSession", "forgetWorkSessionResult",
@@ -107,15 +108,47 @@ assert.equal(context.resumeWorkNext.textContent, "");
 assert.equal(context.copyResumeNext.hidden, true);
 assert.equal(context.copyResumeNext.disabled, true);
 assert.equal(context.copyResumeNext.dataset.songId, "");
+// Forget ends the active session too: a later render must not save it again.
+context.work.value = "listen";
+context.activeWorkSongId = "TEST-1";
+context.lastWorkKind = "listen";
 assert.match(extractFunction("forgetLastWorkSession"), /requestAnimationFrame/);
 assert.equal(context.forgetLastWorkSession(), true);
 assert.equal(memory.size, 0);
+assert.equal(context.work.value, "", "Forget must leave the work queue");
+assert.equal(context.activeWorkSongId, "", "Forget must clear the active song");
+assert.equal(context.lastWorkKind, "", "Switching tabs must not restart forgotten work");
 assert.equal(context.resumeWork.hidden, true);
 assert.equal(context.catalogOverview.open, true, "Forget must not reset an explicit catalog disclosure");
 assert.equal(context.catalogOverviewSummary.hidden, false);
 assert.equal(focused, true, "Forget must move keyboard focus to a visible start choice");
 assert.equal(context.resumeWorkStatus.textContent, "Forgot this browser record.");
 context.DATA[0].nx = "Confirm the chorus lines";
+// A failed removal must keep the saved and active session available to retry.
+context.storeWorkSession(storage, "write", "TEST-1", context.sname, context.DATA);
+const savedBeforeFailure = memory.get("resume-test");
+context.work.value = "write";
+context.activeWorkSongId = "TEST-1";
+context.lastWorkKind = "write";
+context.window.localStorage = {
+  ...storage,
+  removeItem() { throw new Error("removal blocked"); },
+};
+focused = false;
+assert.equal(context.forgetLastWorkSession(), false);
+assert.equal(memory.get("resume-test"), savedBeforeFailure);
+assert.equal(context.work.value, "write");
+assert.equal(context.activeWorkSongId, "TEST-1");
+assert.equal(context.lastWorkKind, "write");
+assert.equal(context.resumeWork.hidden, false);
+assert.equal(context.resumeWorkStatus.textContent, "Could not clear this browser record.");
+assert.equal(focused, false, "Failed Forget must keep focus on the retry control");
+context.window.localStorage = storage;
+assert.equal(context.forgetLastWorkSession(), true, "Forget can be retried after storage recovers");
+assert.equal(memory.size, 0);
+assert.equal(context.work.value, "");
+assert.equal(context.activeWorkSongId, "");
+assert.equal(context.lastWorkKind, "");
 context.catalogOverview.open = false;
 for (const raw of ['{"v":1,"kind":"write","id":"missing"}',
   '{"v":1,"kind":"write","id":"TEST-1","title":"extra"}', "bad JSON"]) {
