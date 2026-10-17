@@ -786,9 +786,10 @@ function render(){
   ${memoCountBySong[d.id]?`<h4>Matched memo evidence</h4><button type="button" class="memo-link" data-open-memos="${esc(d.id)}">Open ${memoCountBySong[d.id]} searchable memo${memoCountBySong[d.id]===1?'':'s'}</button>`:''}
  </div></div>`;}).join(''):`<div class="empty">${emptySongsCopy()}</div>`;
  if(wv&&visibleSongIds.length){
-  if(!visibleSongIds.includes(activeWorkSongId))activeWorkSongId=visibleSongIds[0];
-  focusWorkSong(activeWorkSongId,false);
- }else if(!wv||!visibleSongIds.length){
+  // Filtering can hide a selection, but only an explicit choice may replace it.
+  if(!activeWorkSongId)activeWorkSongId=visibleSongIds[0];
+  if(visibleSongIds.includes(activeWorkSongId))focusWorkSong(activeWorkSongId,false);
+ }else if(!wv){
   activeWorkSongId='';
  }
  updateWorkSessionState();
@@ -956,6 +957,7 @@ function updateWorkSessionState(){
  const kind=typeof work!=='undefined'&&work?String(work.value||''):'';
  const ids=typeof visibleSongIds!=='undefined'?visibleSongIds:[];
  const idx=typeof activeWorkSongId!=='undefined'?ids.indexOf(activeWorkSongId):-1;
+ const hiddenSelection=typeof activeWorkSongId!=='undefined'&&!!activeWorkSongId&&idx<0;
  workSession.hidden=!kind;
  if(kind&&workSessionText){
   const label=typeof workKindLabel==='function'?workKindLabel(kind):(kind[0].toUpperCase()+kind.slice(1));
@@ -963,7 +965,7 @@ function updateWorkSessionState(){
    ?`${label} · no matching songs`
    :idx>=0
     ?`${label} · ${idx+1} of ${ids.length} · ${sname[ids[idx]]}`
-    :`${label} · ${ids.length} song${ids.length===1?'':'s'}`;
+    :`${label} · ${ids.length} song${ids.length===1?'':'s'}${hiddenSelection?' · current song hidden by filters':''}`;
  }
  const song=idx>=0&&typeof DATA!=='undefined'?DATA.find(row=>row&&row.id===ids[idx]):null;
  const next=safeWorkNextStep(song);
@@ -996,7 +998,7 @@ function updateWorkSessionState(){
  }
  if(workSessionEvidence){
   workSessionEvidence.textContent=!song
-   ?'Choose a song to see its verified catalog action.'
+   ?hiddenSelection?'Adjust filters to return to your song. Use Next or search and press Enter to choose another.':'Choose a song to see its verified catalog action.'
    :ev&&ev.n
     ?`${ev.n} searchable memo${ev.n===1?'':'s'}${ev.last?' · latest '+ev.last:''}. Review the evidence, then log the sit-down handoff in Session Log.`
     :next?'No searchable memo evidence for this song. The next step comes from the catalog.':'No safe catalog next step or searchable memo evidence for this song.';

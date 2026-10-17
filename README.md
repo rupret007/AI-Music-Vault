@@ -22,6 +22,8 @@ outside this repo. Do not commit audio, personal data, or local session notes.
 - Start Write / Produce / Listen on the highest-momentum matching song, move
   through a bounded queue, and resume the exact song after refresh. Copy a
   sanitized work card or next step; unsafe or missing actions fail closed.
+  Search and filters preserve your selected song even when it is temporarily
+  hidden. Use Next or search and press Enter to explicitly select another song.
 - **Recent changes (September–October 2026):** Logic-ready sit-down shows
   **Assets on file**, **Logic-ready next**, and **Copy Logic-ready next** from
   catalog evidence. Memo intake names and work actions reject owner-audio
@@ -108,6 +110,15 @@ paths rejected and uses isolated temporary browser storage. Missing Chrome or a
 failed launch exits non-zero; that is not viewport verification. No dependencies
 are downloaded by the test. This check is not part of hosted catalog-validate.
 
+To verify that temporary searches and filters keep the exact work-session song:
+
+```bash
+node tests/test_dashboard_session_filters_browser.js
+```
+
+This additional Chrome check uses synthetic rows and isolated temporary storage
+at both viewport sizes. It covers Resume, refresh, and explicit song selection.
+
 Check exact-name search ordering and Enter / arrow-key selection in installed
 Chrome with synthetic catalog rows and isolated temporary browser storage:
 
@@ -140,7 +151,11 @@ Open the dashboard locally. This manual browser check complements the Node smoke
 test; it does not establish that any audio has been heard or exported.
 
 1. Click Write, Produce, or Listen. Note the song and `N of M` position; use Next
-   to check a non-first song.
+   to check a non-first song. Search for another song, then for a query with no
+   matches: Resume must keep the original song, and the work strip must hide its
+   action buttons while that song is filtered out. Erase the search to restore
+   the original selection, or use Resume to clear the filters and return to it.
+   Next or Enter explicitly selects a matching song and updates Resume.
 2. Read **Do this now** and use **Copy next step**. The clipboard must match the
    sanitized action without audio filenames or locations. Sit-down does not
    repeat that catalog next step while the session is this song. Open a song
