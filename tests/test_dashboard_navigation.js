@@ -1496,6 +1496,46 @@ const sortSongRows = new Function(
   "songSearchHit",
   "return (" + extractFunction(script, "sortSongRows") + ");",
 )(songSearchHit);
+// Relevance must win before every user-selected secondary sort, including
+// exact aliases whose canonical titles sort after a competing prefix.
+for (const [exact, query, prefixTitle] of [
+  [{ id: "ZZ-0001", t: "Don't Stop" }, "  DONT stop! ", "Don't Stop Again"],
+  [{ id: "ZZ-0001", t: "Zulu", aka: ["Demo"] }, "demo", "Demo Again"],
+  [{ id: "ZZ-0001", t: "Zulu" }, "zz-0001", "ZZ-0001 Again"],
+]) {
+  const rows = [
+    { id: "AA-0001", t: prefixTitle, mom: 99, pot: 99, rdy: 99 },
+    { ...exact, mom: 1, pot: 1, rdy: 1 },
+  ];
+  if (songSearchHit(rows[1], query).rank >= songSearchHit(rows[0], query).rank) {
+    fail("an exact normalized title, alias, or ID must outrank a longer prefix");
+  }
+  for (const key of ["mom", "pot", "rdy", "id", "t", "memo", "logic"]) {
+    const matches = sortSongRows(rows, query, key);
+    if (matches[0].row.id !== exact.id) fail("exact search must lead under " + key);
+    if (matches.length !== 2) fail("prefix matches must remain available");
+  }
+  const jumps = namedSongsForMemoQuery(query, rows);
+  if (jumps[0].row.id !== exact.id) fail("Memo Search name jumps must also lead with the exact match");
+  if (sortSongRows(rows, "", "mom")[0].row.id !== "AA-0001") {
+    fail("empty searches must retain the selected sort");
+  }
+}
+const sameNameRows = [
+  { id: "ZZ-0001", t: "Demo", mom: 10 },
+  { id: "AA-0001", t: "Other", aka: ["Demo"], mom: 90 },
+];
+if (sortSongRows(sameNameRows, "demo", "mom")[0].row.id !== "AA-0001") {
+  fail("equally exact matches must still use the selected sort");
+}
+const cappedNameRows = Array.from({ length: 7 }, (_, i) => ({
+  id: "AA-000" + i, t: "Demo " + i,
+}));
+cappedNameRows.push({ id: "ZZ-0001", t: "Zulu", aka: ["Demo"] });
+const cappedJumps = namedSongsForMemoQuery("demo", cappedNameRows);
+if (cappedJumps.length !== 6 || cappedJumps[0].row.id !== "ZZ-0001") {
+  fail("the exact alias must survive Memo Search's six-name limit");
+}
 const ranked = sortSongRows(
   [
     { id: "JS-9998", t: "Other Song", th: "candy lane is in the notes", mom: 90 },
