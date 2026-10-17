@@ -116,6 +116,9 @@ input{flex:1;min-width:0;width:100%}
 .lane .song-link{font-weight:700;color:var(--ink)}
 .memo-next{color:var(--ink3);font-size:13px;margin-top:3px;overflow-wrap:anywhere}
 .copied{color:var(--good)}
+.copy-status{color:var(--ink2);font-size:13px;overflow-wrap:anywhere}
+.copy-status:empty{display:none}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .pill.wk-write{color:var(--write)}.pill.wk-produce{color:var(--rdy)}.pill.wk-listen{color:var(--listen)}
 .work-copy,.sit-down{margin-top:8px}
 .sit-down-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
@@ -136,6 +139,7 @@ input{flex:1;min-width:0;width:100%}
 <h1><span aria-hidden="true">🎸 </span>Jeff Story Song Vault</h1>
 <p class="sub">No audio in this repo, and catalog rows are not the live set.</p>
 </header>
+<p id="copyStatus" class="sr-only" role="status" aria-live="polite"></p>
 <section class="work-now resume-work" id="resumeWork" aria-labelledby="resumeWorkButton" hidden>
   <h2><button type="button" class="work-start" id="resumeWorkButton">Resume <span id="resumeWorkText"></span></button></h2>
   <div class="resume-next" id="resumeWorkNext" hidden></div>
@@ -222,6 +226,8 @@ const TX_SEARCHABLE_MATCHED = 355;
 const COVER_COUNT = 93;
 const RECOVERED_COUNT = 11;
 const WORK_SESSION_KEY='vault:last-work:v1';
+const copyFeedback=new WeakMap();
+let latestCopyAttempt=0;
 const q=document.getElementById('q'),proj=document.getElementById('proj'),
  sort=document.getElementById('sort'),scored=document.getElementById('scored'),
  scope=document.getElementById('scope'),evidence=document.getElementById('evidence'),
@@ -1123,26 +1129,60 @@ function handleVaultKey(e){
 function copyVaultText(text,btn,idleLabel){
  const value=String(text||'');
  if(!value)return false;
- const done=()=>{
-  if(btn){btn.textContent='Copied';btn.classList.add('copied');
-   setTimeout(()=>{btn.textContent=idleLabel||'Copy';btn.classList.remove('copied');},1200);}
+ const attempt=++latestCopyAttempt;
+ const label=idleLabel||'Copy';
+ const announcement=document.getElementById('copyStatus');
+ if(announcement)announcement.textContent='';
+ let state;
+ if(btn){
+  const previous=copyFeedback.get(btn);
+  if(previous)clearTimeout(previous.timer);
+  const status=previous?previous.status:document.createElement('span');
+  if(!previous){
+   status.className='copy-status';
+   btn.insertAdjacentElement('afterend',status);
+  }
+  state={status,timer:null};
+  copyFeedback.set(btn,state);
+  status.textContent='';
+  btn.textContent='Copying…';
+  btn.classList.remove('copied');
+ }
+ const finish=ok=>{
+  const message=ok?`${label}: copied.`:`${label}: copy failed. Try again or copy the text manually.`;
+  if(announcement&&attempt===latestCopyAttempt)announcement.textContent=message;
+  if(btn&&copyFeedback.get(btn)===state){
+   btn.textContent=ok?'Copied':label;
+   btn.classList.toggle('copied',ok);
+   state.status.textContent=message;
+   if(ok)state.timer=setTimeout(()=>{
+    if(copyFeedback.get(btn)!==state)return;
+    btn.textContent=label;btn.classList.remove('copied');state.status.textContent='';
+   },1200);
+  }
+  return ok;
  };
  const fallback=()=>{
+  if(attempt!==latestCopyAttempt)return finish(false);
+  let ta,focused,ok=false;
   try{
-   const ta=document.createElement('textarea');
+   focused=document.activeElement;
+   ta=document.createElement('textarea');
    ta.value=value;ta.setAttribute('readonly','');
    ta.style.position='fixed';ta.style.left='-9999px';
    document.body.appendChild(ta);ta.select();
-   const ok=document.execCommand('copy');
-   document.body.removeChild(ta);
-   if(ok)done();
-   return ok;
-  }catch(err){return false;}
+   ok=document.execCommand('copy')===true;
+  }catch(err){}finally{
+   if(ta&&ta.parentNode)ta.parentNode.removeChild(ta);
+   if(focused&&typeof focused.focus==='function')focused.focus({preventScroll:true});
+  }
+  return finish(ok);
  };
- if(typeof navigator!=='undefined'&&navigator.clipboard&&navigator.clipboard.writeText){
-  navigator.clipboard.writeText(value).then(done).catch(()=>{fallback();});
-  return true;
- }
+ try{
+  if(typeof navigator!=='undefined'&&navigator.clipboard&&typeof navigator.clipboard.writeText==='function'){
+   return Promise.resolve(navigator.clipboard.writeText(value)).then(()=>finish(true),fallback);
+  }
+ }catch(err){return fallback();}
  return fallback();
 }
 function copySongWork(songId,btn){
