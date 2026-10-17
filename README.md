@@ -15,8 +15,9 @@ outside this repo. Do not commit audio, personal data, or local session notes.
 ## Features
 
 - Search songs by title, existing aliases, punctuation-folded names, or searchable
-  matched memo lyrics; Enter opens the closest result. Memo Search folds the same
-  apostrophes and punctuation, so `its alright` finds It’s Alright. Navigate
+  matched memo lyrics; exact titles, aliases, and catalog IDs come before longer
+  prefix matches under every sort. Enter opens the closest result. Memo Search
+  folds the same apostrophes and punctuation, so `its alright` finds It’s Alright. Navigate
   between a song and its matched memo evidence, with date sorting and scoped search.
 - Start Write / Produce / Listen on the highest-momentum matching song, move
   through a bounded queue, and resume the exact song after refresh. Copy a
@@ -118,6 +119,13 @@ node tests/test_dashboard_session_filters_browser.js
 This additional Chrome check uses synthetic rows and isolated temporary storage
 at both viewport sizes. It covers Resume, refresh, and explicit song selection.
 
+Check exact-name search ordering and Enter / arrow-key selection in installed
+Chrome with synthetic catalog rows and isolated temporary browser storage:
+
+```bash
+node tests/test_dashboard_search_browser.js
+```
+
 Check clipboard failure feedback, retry, and keyboard focus in an installed
 Chrome/Chromium at phone and desktop widths:
 
@@ -167,8 +175,10 @@ test; it does not establish that any audio has been heard or exported.
    fields, stale schemas, unknown IDs, and mismatched kinds are rejected.
 6. Search Songs by an alias or a title without apostrophes; arrow keys move a
    visible highlight among results and Enter opens the focused row (closest
-   result if none is highlighted). Escape clears search. Memo Search folds the
-   same punctuation (`its alright` finds It’s Alright) and uses the same
+   result if none is highlighted). An exact name stays first even when a longer
+   title starts with that name and has a higher score or earlier catalog ID.
+   Escape clears search. Memo Search folds the same punctuation (`its alright`
+   finds It’s Alright) and uses the same
    arrow/Enter focus. Memo lyric matches are leads, not listens.
 7. Check **Logic-ready next**, **Assets on file**, and **Copy Logic-ready next**
    when shown. Pair Voice Memo Intake name + **Copy next step** in your local
